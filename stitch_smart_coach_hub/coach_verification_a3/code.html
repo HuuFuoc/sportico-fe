@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#dad7ff",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-container-high": "#e8e8e7",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed": "#140f54",
+                        "on-error-container": "#93000a",
+                        "secondary": "#58579b",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#7e3000",
+                        "on-surface-variant": "#464555",
+                        "on-error": "#ffffff",
+                        "primary-container": "#4f46e5",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "outline-variant": "#c7c4d8",
+                        "on-surface": "#1a1c1c",
+                        "on-primary-fixed": "#0f0069",
+                        "tertiary-container": "#a44100",
+                        "inverse-surface": "#2f3130",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#777587",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-tertiary-container": "#ffd2be",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#4d44e3",
+                        "surface-container-low": "#f3f4f3",
+                        "secondary-container": "#b6b4ff",
+                        "surface-container-highest": "#e2e2e2",
+                        "inverse-primary": "#c3c0ff",
+                        "background": "#f9f9f8",
+                        "on-secondary-container": "#454386",
+                        "on-tertiary-fixed": "#351000",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "surface-bright": "#f9f9f8",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dadad9",
+                        "inverse-on-surface": "#f1f1f0",
+                        "surface": "#f9f9f8",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#eeeeed",
+                        "surface-variant": "#e2e2e2",
+                        "on-background": "#1a1c1c",
+                        "primary": "#3525cd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-margin": "24px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "gutter": "16px",
+                        "base": "8px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "h3": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "h1": ["Inter"],
+                        "body-base": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h2": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #f9f9f8;
+            color: #1a1c1c;
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f9f9f8;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e2e2;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-surface dark:bg-surface-dim border-r border-surface-variant dark:border-outline-variant flex flex-col py-lg px-md z-50">
+<div class="mb-xl px-sm">
+<h2 class="font-h2 text-h2 font-bold text-primary dark:text-inverse-primary">ProCoach</h2>
+<p class="text-body-sm text-on-surface-variant">Elite Performance</p>
+</div>
+<nav class="flex-1 space-y-xs">
+<div class="flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-base text-body-base">Home</span>
+</div>
+<div class="flex items-center gap-sm px-sm py-xs text-primary dark:text-inverse-primary font-medium bg-surface-container-high dark:bg-surface-container-highest cursor-pointer active:scale-95 transition-transform rounded">
+<span class="material-symbols-outlined">verified</span>
+<span class="font-body-base text-body-base">Verification</span>
+</div>
+<div class="flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">search</span>
+<span class="font-body-base text-body-base">Find Coaches</span>
+</div>
+<div class="flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-body-base text-body-base">AI Match</span>
+</div>
+<div class="flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-body-base text-body-base">My Schedule</span>
+</div>
+<div class="flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-body-base text-body-base">Messages</span>
+</div>
+<div class="flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-body-base text-body-base">Progress</span>
+</div>
+</nav>
+<div class="mt-auto flex items-center gap-sm px-sm py-xs text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-base text-body-base">Settings</span>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[220px] flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 h-[56px] w-[calc(100%-220px)] bg-surface-container-lowest dark:bg-surface border-b border-surface-variant dark:border-outline-variant flex items-center justify-between px-lg z-40">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-lg pl-xl pr-md py-xs text-body-base focus:ring-1 focus:ring-primary" placeholder="Search coach applications..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-xs hover:bg-surface-container rounded-full transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<div class="h-sm w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-sm">
+<img alt="User Profile" class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcECaNf2QEnHfvjSSdl2RcxZcuocM3OO-wgFyLVZ5k15c2_cyumY62Ty9_U8n_p63nbXnsCmGh2Ybaf2Pmia1OO_ijkGG3M2mRmhC2NbHUc1xD5VFov55RaQ80ygjCMnTs3zb3GnO64dI_LfxRBIcNc8eUVFMK6XhhwMjfyKKCAVq_O6zmnEetT2Qrq_5eAlBe5WUGyp49XOyl8Qu1_upyBbcy-9HrWagZiVwkWvQYKiUd3sRCsEnJVUHhD7yYdZukUVpg_1WXRPZd"/>
+<span class="font-body-base font-medium hidden md:block">Admin Console</span>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="mt-[56px] p-lg flex gap-lg h-[calc(100vh-56px)] overflow-hidden">
+<!-- Coach Verification List -->
+<div class="flex-1 flex flex-col min-w-0">
+<div class="flex items-center justify-between mb-lg">
+<div>
+<h1 class="font-h1 text-h1">Coach Verification</h1>
+<p class="text-body-base text-on-surface-variant">Review and manage professional coach credentials.</p>
+</div>
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-xs px-md py-sm bg-surface-container-lowest border border-outline-variant rounded-lg text-body-base hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                            Filter
+                        </button>
+<button class="flex items-center gap-xs px-md py-sm bg-primary text-on-primary rounded-lg text-body-base hover:opacity-90 transition-opacity">
+                            Batch Action
+                        </button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">COACH</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">SPECIALTY</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">DOCUMENTS</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant">SUBMISSION DATE</th>
+<th class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant text-right">STATUS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1: Selected/Active -->
+<tr class="bg-surface-container text-primary font-medium cursor-pointer transition-colors border-l-2 border-l-primary">
+<td class="px-md py-md">
+<div class="flex items-center gap-sm">
+<img alt="Coach Profile Picture" class="w-10 h-10 rounded-full border border-outline-variant" data-alt="A professional headshot of a middle-aged sports coach with a determined expression, set against a blurred outdoor athletic field. The lighting is bright and clear, reflecting a high-performance sports training environment. The style is clean, minimalist, and authoritative, using a professional photographic aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDq7V_c748RGcG8zNpSg24EJtqZdxGnWKn9G5S3WmGUA9UngZ0gK6e-0kNfWVxOOXaG0lsNnJJ84jLId3jL68ekWlALBQAEISJstpmQkeXckCX3HfDJtYNYSt5SoSnyLH4aDlaV4Auu55TSY7wB4GJb1hUp0xmTSCG9rsZpQ-Pgzs8Jff0iO68IWGP9SaAkjqPC363LWCBC9nyAgw1K0Cbr7c9bm2f0gLOz6hv1CrNA6LlUzH4vT--dkFaZdWcmq_Qw4EsOQXKovK8X"/>
+<div>
+<div class="text-body-base font-semibold">Marcus Rivera</div>
+<div class="text-body-sm text-on-surface-variant font-normal">marcus.r@procoach.ai</div>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-surface-container-highest rounded text-body-sm text-on-surface-variant">Strength &amp; Conditioning</span>
+</td>
+<td class="px-md py-md">
+<div class="flex gap-xs">
+<span class="px-xs py-[2px] bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-bold">ID</span>
+<span class="px-xs py-[2px] bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-bold">CERT</span>
+</div>
+</td>
+<td class="px-md py-md text-body-base text-on-surface-variant">Oct 12, 2023</td>
+<td class="px-md py-md text-right">
+<span class="inline-flex items-center px-sm py-xs rounded bg-tertiary-fixed text-on-tertiary-fixed-variant text-[11px] font-semibold uppercase tracking-wider">Under Review</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container transition-colors cursor-pointer group">
+<td class="px-md py-md">
+<div class="flex items-center gap-sm">
+<img alt="Coach Profile Picture" class="w-10 h-10 rounded-full border border-outline-variant" data-alt="A close-up portrait of a female coach in her late 20s wearing a technical athletic zip-up, with a focused and friendly gaze. The setting is an indoor high-tech gymnasium with soft, cool-toned ambient lighting. The visual style is crisp and modern, focusing on professionalism and athletic expertise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI8GSt2p9opCFW8tsGwC1ffSImILr5zVg52NI6h_Jdd3zqDd8EEmaVX999jpKUNSgTTf5CN1Q3G2OpgrpU7C95jzD_vB6O5TocFcYGnegVnXvFiH-mnDhjtdAlrYyrNhGOc_rX3dmiYNDlN-pUivDMu7y_iCb6cbqjIrq9QZ6lRv1gA609MPQN9t342h0zrGiLw_GtA0PKZV1PxBZJcEMiL5DwPADfPu8jwQe8afBgPCsDCmZAxniuXd_VYitu89--zqmzyICLeHjx"/>
+<div>
+<div class="text-body-base font-semibold text-on-surface group-hover:text-primary transition-colors">Sarah Chen</div>
+<div class="text-body-sm text-on-surface-variant font-normal">s.chen@elite.com</div>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-surface-container-highest rounded text-body-sm text-on-surface-variant">Tennis (Pro Tour)</span>
+</td>
+<td class="px-md py-md">
+<div class="flex gap-xs">
+<span class="px-xs py-[2px] bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-bold">ID</span>
+<span class="px-xs py-[2px] bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-bold">CERT</span>
+<span class="px-xs py-[2px] bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-bold">BIO</span>
+</div>
+</td>
+<td class="px-md py-md text-body-base text-on-surface-variant">Oct 14, 2023</td>
+<td class="px-md py-md text-right">
+<span class="inline-flex items-center px-sm py-xs rounded bg-surface-container-highest text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">Pending</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container transition-colors cursor-pointer group">
+<td class="px-md py-md">
+<div class="flex items-center gap-sm">
+<img alt="Coach Profile Picture" class="w-10 h-10 rounded-full border border-outline-variant" data-alt="A portrait of a male basketball coach with a whistle around his neck, looking intently off-camera. The background shows a modern basketball court with clean lines and bright, even lighting. The mood is one of serious coaching and tactical precision. The style is minimalist and high-definition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDl-CZxJbz7rNpBYcLjJTjkW7crSMNghRWSnZh0udzWjzbMfTa5CfdX5kZapa4EyEM8AdTed_OkRx3rPXXk7PtBL342UGcrtWKXqcPbHQ0m_HJvAz14ceUNwNCJdZVHydYalpN-EzCJOuJozWesiUp6kYL8iaHJaxf0Nj2OUJnVOdGFb4fVWfGRILi2WDOnCPge3Oe8jzWz3iusuIqSmFlgqBlcLE72b3cRXYDp7qnBo38vJRiwE797zPdPueieY_4k40MP2T5xV68"/>
+<div>
+<div class="text-body-base font-semibold text-on-surface group-hover:text-primary transition-colors">Julian Dupont</div>
+<div class="text-body-sm text-on-surface-variant font-normal">j.dupont@hoops.net</div>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-surface-container-highest rounded text-body-sm text-on-surface-variant">Basketball Tactical</span>
+</td>
+<td class="px-md py-md">
+<div class="flex gap-xs">
+<span class="px-xs py-[2px] bg-primary/10 text-primary border border-primary/20 rounded text-[10px] font-bold">ID</span>
+</div>
+</td>
+<td class="px-md py-md text-body-base text-on-surface-variant">Oct 15, 2023</td>
+<td class="px-md py-md text-right">
+<span class="inline-flex items-center px-sm py-xs rounded bg-surface-container-highest text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">Pending</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Empty space filler for UI polish -->
+<div class="flex-1 bg-surface-container-lowest"></div>
+</div>
+</div>
+<!-- Review Panel (Split View/Drawer) -->
+<div class="w-[420px] bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col overflow-hidden">
+<div class="p-md border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
+<h3 class="font-h3 text-h3">Review: Marcus Rivera</h3>
+<button class="p-xs hover:bg-surface-container rounded-full">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-md space-y-lg custom-scrollbar">
+<!-- Bio & Profile -->
+<section>
+<div class="flex items-center gap-md mb-md">
+<img alt="Coach Profile Picture" class="w-16 h-16 rounded-lg border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCM7wsCtXUrz8cnhr5D4TJTGtuS00Yc2Ll3-qn2IwLbs00LXFyr04q8JEaCTPVccJW39OCQpk68ibHY32vxmNBNhCOt-xTQBMjQ7HqOU-wxCifHr3d0_Hi1nreKDrrcrhfv0gVuCj6JqXbeQvuhq_HAC_WTM46DSGEKFOsNw6OMyk6wZ7SgHpbf4PXclJThS5LUwX3iw8XH5wcFHtftofcpH3cX-Dhjwpw0bYvkyczouTIYmHzqIBsOn_SAdERW1U4GrDD0EzMz5hUA"/>
+<div>
+<h4 class="font-h3 text-on-surface">Marcus Rivera</h4>
+<p class="text-body-sm text-on-surface-variant">San Diego, CA</p>
+<div class="flex gap-sm mt-xs">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">link</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">share</span>
+</div>
+</div>
+</div>
+<p class="text-body-base text-on-surface-variant leading-relaxed">
+                            Certified NSCA Strength &amp; Conditioning specialist with 10+ years experience working with professional NFL athletes. Focus on explosive power and injury prevention.
+                        </p>
+</section>
+<!-- Document Viewer -->
+<section class="space-y-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">SUBMITTED DOCUMENTS</label>
+<div class="space-y-xs">
+<div class="p-sm bg-surface-container-low border border-outline-variant rounded-lg flex items-center justify-between group hover:border-primary transition-colors cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">badge</span>
+<div>
+<div class="text-body-base font-medium">Government ID</div>
+<div class="text-body-sm text-on-surface-variant">rivera_passport_2023.pdf</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">visibility</span>
+</div>
+<div class="p-sm bg-surface-container-low border border-outline-variant rounded-lg flex items-center justify-between group hover:border-primary transition-colors cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">verified_user</span>
+<div>
+<div class="text-body-base font-medium">NSCA Certification</div>
+<div class="text-body-sm text-on-surface-variant">cscs_cert_2209.pdf</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">visibility</span>
+</div>
+</div>
+<!-- Mini Document Preview (The 'Viewer') -->
+<div class="mt-md aspect-video bg-surface-container-high rounded-lg border border-outline-variant overflow-hidden relative group">
+<img alt="Document Preview" class="w-full h-full object-cover grayscale opacity-50 group-hover:opacity-80 transition-opacity" data-alt="A clean, minimalist scan of a professional certification document. The paper has an official watermark and a dark gold seal in the bottom corner. The background is a crisp white, and the typography on the document is elegant and serifed. The lighting is flat and neutral, mimicking a high-quality scanner output. The aesthetic is extremely professional and secure." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2RLMaR9BBlLJgf2wkY2rAAwmXRs5l59iGXNnvZFOi8W4SM9cG7TW3SSGiyrjGFUNDhAKaGmGZuypEzlVESW8rm8MLo-beuL-ToLKLlYTIIbBvV05s6_iRoBfcsfpwJmr4V4-SFpLdb1GYwmtQny734YQ2wpc4RoKp2LftKC4vo5yAJfkS8sc58JUwPkIct9gcqC5bGwvEt3HvlAKX59FjypZHZcUk6HFIhtO7n-ixeZxCOf8eTax9eCVD6PsioL_E0h--qjfGDb4z"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="bg-surface-container-lowest/90 px-md py-sm rounded-lg border border-outline-variant flex items-center gap-sm font-medium hover:bg-white transition-colors">
+<span class="material-symbols-outlined">zoom_in</span>
+                                    Open Full Preview
+                                </button>
+</div>
+</div>
+</section>
+<!-- Notes Section -->
+<section class="space-y-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">REVIEW NOTES</label>
+<textarea class="w-full bg-surface-container-low border-outline-variant rounded-lg p-sm text-body-base focus:ring-1 focus:ring-primary h-24 resize-none" placeholder="Add internal notes about this verification..."></textarea>
+</section>
+</div>
+<!-- Action Footer -->
+<div class="p-md bg-surface-container-low border-t border-outline-variant space-y-sm">
+<button class="w-full py-sm bg-primary text-on-primary rounded-lg font-h3 hover:opacity-95 transition-opacity flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Approve Coach
+                    </button>
+<div class="grid grid-cols-2 gap-sm">
+<button class="py-sm bg-surface-container-lowest border border-outline-variant rounded-lg text-body-base font-medium hover:bg-surface-container transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[18px]">contact_support</span>
+                            Request Info
+                        </button>
+<button class="py-sm bg-surface-container-lowest border border-error/20 text-error rounded-lg text-body-base font-medium hover:bg-error-container transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+                            Reject
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

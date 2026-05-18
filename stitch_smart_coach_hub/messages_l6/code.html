@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#4d44e3",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "tertiary-fixed": "#ffdbcc",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed": "#351000",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "surface-container": "#eeeeed",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-secondary-fixed": "#140f54",
+                    "on-background": "#1a1c1c",
+                    "on-secondary-fixed-variant": "#413f82",
+                    "tertiary": "#7e3000",
+                    "surface-variant": "#e2e2e2",
+                    "primary-container": "#4f46e5",
+                    "on-secondary-container": "#454386",
+                    "background": "#f9f9f8",
+                    "surface-dim": "#dadad9",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#f3f4f3",
+                    "on-tertiary-container": "#ffd2be",
+                    "inverse-surface": "#2f3130",
+                    "secondary": "#58579b",
+                    "inverse-primary": "#c3c0ff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e2e2e2",
+                    "secondary-fixed": "#e2dfff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#7b2f00",
+                    "secondary-container": "#b6b4ff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary-fixed": "#0f0069",
+                    "on-primary-container": "#dad7ff",
+                    "on-surface": "#1a1c1c",
+                    "surface": "#f9f9f8",
+                    "outline-variant": "#c7c4d8",
+                    "on-primary": "#ffffff",
+                    "outline": "#777587",
+                    "inverse-on-surface": "#f1f1f0",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#a44100",
+                    "surface-bright": "#f9f9f8",
+                    "tertiary-fixed-dim": "#ffb695",
+                    "on-surface-variant": "#464555",
+                    "surface-container-high": "#e8e8e7",
+                    "primary": "#3525cd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "container-margin": "24px",
+                    "base": "8px",
+                    "xs": "4px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "sm": "8px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Inter"],
+                    "body-base": ["Inter"],
+                    "h3": ["Inter"],
+                    "h1": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "h2": ["Inter"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                    "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9f9f8; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="text-on-surface bg-background">
+<!-- Shared SideNavBar Component -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-surface dark:bg-surface-dim border-r border-surface-variant dark:border-outline-variant flex flex-col h-full py-lg px-md">
+<div class="mb-xl px-sm">
+<h2 class="font-h2 text-h2 font-bold text-primary dark:text-inverse-primary">ProCoach</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Elite Performance</p>
+</div>
+<nav class="flex-1 space-y-xs">
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-body-base text-body-base">Home</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-body-base text-body-base">Find Coaches</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-body-base text-body-base">AI Match</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-body-base text-body-base">My Schedule</span>
+</a>
+<!-- Active Tab: Messages -->
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-primary dark:text-inverse-primary font-medium bg-surface-container-high dark:bg-surface-container-highest" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-body-base text-body-base">Messages</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-body-base text-body-base">Progress</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs cursor-pointer active:scale-95 transition-all text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-base text-body-base">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-sm py-md">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="Coach Profile Picture" class="w-full h-full object-cover" data-alt="A professional headshot of a male sports performance coach with a focused expression. He is outdoors in soft daylight, wearing athletic gear. The overall image has a clean, minimalist feel with a soft-focus background of a modern training facility, aligning with a professional light-mode UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgFSy9TJ6vWvWFBc77H9Q2mLYq5BKrbUbF-RoQ9-XL7px6mnab6W3IFBUvMwpRyCCHBxWXR-RvFyScXYoF1HEtz29d28iKdIQfhua6G5ufqJop7yQbyRCynYuQA27CaLukOQQu-M1M6sNE0EG16rDgG-hDdGZjHBLkpj8ZbrDztLzI8qeGStU8TnGXhMokThssD5dI4HrCp03H0HUvb_e_iSMutw5PHzQmQnszAh1YZnHtCffn8qlsGH_EMSuiF6C-4llUoCdtSBVD"/>
+</div>
+<div>
+<p class="font-label-caps text-label-caps">Coach Marcus</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Shared TopAppBar Component -->
+<header class="fixed top-0 right-0 h-[56px] w-[calc(100%-220px)] bg-surface-container-lowest dark:bg-surface border-b border-surface-variant dark:border-outline-variant flex items-center justify-between px-lg z-10">
+<div class="flex items-center gap-md">
+<span class="font-h3 text-h3 font-bold text-primary dark:text-inverse-primary">Messages</span>
+<div class="h-6 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 font-body-base text-body-base w-64" placeholder="Search conversations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-xs hover:bg-surface-container transition-all duration-200">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-lg overflow-hidden border border-outline-variant cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A portrait of a young athlete with a determined gaze, captured in high-key lighting for a clean and modern professional look. The background is a simple, off-white studio wall which fits the minimalist design aesthetic. The lighting is soft and even, emphasizing clarity and professional quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCd3WYITwDieuLcG06JcXsrJFJBHWvfi2F4xru9o8_bZk5Lrsh-JmO5GYOYGqd4cfYjJ2iGRoWoCn3EEFrJnz41yZG33egf7x0LEMrNes6SUbkcsDkQUx8KCaV68iHZu47pP_hVFVL8lpcPd5rmfJJMd8CaF-esoISbEQyspT00X0zxxMMk15KyBVr9yOjAusFZnvyeaG270U9IJQIO5vkhkrhUWIBT8OjyLmJzORnSlSgli7AY07OdmcluyqKbKu0Yys8kIEd6ApOP"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-[220px] pt-[56px] h-screen flex">
+<!-- Left: Conversation List -->
+<section class="w-[320px] border-r border-surface-variant bg-surface-container-low flex flex-col">
+<div class="p-md border-b border-surface-variant flex justify-between items-center bg-surface">
+<span class="font-h3 text-h3">Inbox</span>
+<button class="p-xs hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="edit_square">edit_square</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto scrollbar-hide">
+<!-- Conversation Item (Active) -->
+<div class="p-md bg-surface border-b border-surface-variant border-l-4 border-l-primary cursor-pointer">
+<div class="flex gap-sm">
+<div class="relative flex-shrink-0">
+<img alt="Coach Sarah" class="w-10 h-10 rounded-lg object-cover" data-alt="A portrait of a senior high-performance coach, with sharp, professional lighting highlighting his experience. He is wearing a dark navy tracksuit in a high-tech training center. The aesthetic is clean, sharp, and minimalist, using a cool-toned color palette consistent with elite sports technology." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxt9oEjCbX39AwvSnX2CuhjBxvYNdfFjcLnIpcbjAF3oVhPLV-0CATIt-sHerwU-s-5mpYZPEo9Gf8OXv0OMX4kZbwFO9Gc_Rfw_etcDfRpCZejiUDTj0p9pX062MNO685BfdBaZafA6IXWH_uilIDTwIwgW_k5OU9e4N1TtRR7tUPAAld5AdICA_LiOksFKg42lo1F9WOmL7JqK2CzxI6XKLm6s_0nJp8f6oO_wXwfSv93vfgm2T3GuJycraP45cYJGyNLkMY4aMD"/>
+<div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full"></div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h4 class="font-h3 text-h3 truncate">Coach Sarah Miller</h4>
+<span class="font-body-sm text-body-sm text-outline">10:45 AM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">That backhand looks much more stable...</p>
+</div>
+</div>
+</div>
+<!-- Conversation Item -->
+<div class="p-md hover:bg-surface-container transition-colors border-b border-surface-variant cursor-pointer">
+<div class="flex gap-sm">
+<div class="relative flex-shrink-0">
+<img alt="Coach Mike" class="w-10 h-10 rounded-lg object-cover" data-alt="A portrait of a fitness mentor in an industrial-style gym setting. The lighting is moody but clear, focusing on the mentor's face. The color palette includes subtle greys and deep blues, maintaining a professional and serious atmosphere for a high-end sports application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpJoBO7Byoi0BOYVoGD2qRbNhjlRuhYHmq2MaTcodeFYM_ETr_bHjD-vewdcSBrKi-RetdoUznfnO7b4LeNLtcD6_-ZQdYDZiB2umeBRDgxOSVxw3zXvY1uUwash7Oe5EIYw6gOT4I2YAdj-IlngqHErpiz7Kh7e7qWR41NCzgPC98SVvimSIYkuKzBdm_MIlqrWawTTnhgjYMu7LGO59uBXXldJdqLEgfJdwvVOeTHc5GYGZis7-_iPtdQBGnOb0sUukJal1vzNfQ"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h4 class="font-h3 text-h3 truncate">David Chen</h4>
+<span class="font-body-sm text-body-sm text-outline">Yesterday</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">How's the recovery coming along?</p>
+</div>
+</div>
+</div>
+<!-- AI Assistant Item -->
+<div class="p-md hover:bg-surface-container transition-colors border-b border-surface-variant cursor-pointer">
+<div class="flex gap-sm">
+<div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h4 class="font-h3 text-h3 truncate">AI Strategy Buddy</h4>
+<span class="font-body-sm text-body-sm text-outline">2d ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-primary font-medium truncate italic">New workout insight available!</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right: Active Thread -->
+<section class="flex-1 flex flex-col bg-background">
+<!-- Thread Top Bar -->
+<div class="h-[64px] px-lg border-b border-surface-variant bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-md">
+<img alt="Sarah Profile" class="w-10 h-10 rounded-lg object-cover" data-alt="Close-up of a professional athlete coach in an office setting. The office has glass walls and minimalist furniture. The lighting is bright and professional, suggesting a premium service. The coach looks directly at the camera with a supportive and knowledgeable expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIw_xARIhixzmmq8TNHp_R3LVeSTSQhTPVIsTAYirlyejJjPxOga4c9DHyvGAmryr6VuZ2NNzcn4iyzTS2K9yS4NE1rVGF5n-P1A76GtoqcqIKEsPjvHcLTsJKGEgQVEMrrIodXhkE62z7NNM11III5eU0G6iynHw5r8NJbITiAllelNfrABBCGMTTyghlel-Wc_vl7fyWnbgm9grRyzOvktMCxYf4S-7p42PZy3HDQ31TyGfbUz-ibECPZpR4GM_zGBXShNlBfln3"/>
+<div>
+<h4 class="font-h3 text-h3">Coach Sarah Miller</h4>
+<a class="font-body-sm text-body-sm text-primary hover:underline" href="#">View Performance Profile</a>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="px-md py-xs border border-outline-variant rounded-lg font-label-caps text-label-caps hover:bg-surface-container transition-colors">Schedule Session</button>
+<button class="p-xs hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-outline" data-icon="more_vert">more_vert</span></button>
+</div>
+</div>
+<!-- Messages Area -->
+<div class="flex-1 overflow-y-auto p-lg space-y-lg flex flex-col bg-[#FDFDFD]">
+<div class="flex justify-center">
+<span class="font-label-caps text-label-caps text-outline bg-surface px-md py-xs rounded-full">Today</span>
+</div>
+<!-- Coach Message (Left) -->
+<div class="flex items-end gap-sm max-w-[70%]">
+<div class="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 mb-1">
+<img alt="Sarah" class="w-full h-full object-cover" data-alt="A portrait of a female coach in a professional setting. The image uses soft, natural light coming from a window, highlighting a calm and professional demeanor. The background is simple and uncluttered, fitting the minimalist design principles of the application's UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj8NahyO9xXnveSXDgCfeZrL5mjiCcehZsPUT-OI02PkY6XuGeMc4r_oPiPe9amWTosPpHouUGm-QZMWvYaBYDAgpHKAYi034AojWQ4eN_WF3z8TJfGrAh7uyZ1GTsvC6Ujy-U8XuAErqL3hW4asnHet-kyE4VCgfLwqNoSZoPnf8_XmvdFFbwX6g6B2KdLGAJvKJGYV7CkdW9s55MKRuanSq_hWjZJHL3l9870lTUIm2g-3FP1bKtWeOJJ0zRxo97YohpQL1O8mZ8"/>
+</div>
+<div class="bg-surface-container text-on-surface p-md rounded-xl rounded-bl-none border border-surface-variant">
+<p class="font-body-base text-body-base">I've just reviewed the footage from your Tuesday session. Your footwork on the baseline has improved significantly by about 15% in terms of reaction time.</p>
+<span class="font-body-sm text-body-sm text-outline mt-xs block">10:30 AM</span>
+</div>
+</div>
+<!-- Learner Message (Right) -->
+<div class="flex items-end gap-sm max-w-[70%] self-end flex-row-reverse">
+<div class="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 mb-1">
+<img alt="You" class="w-full h-full object-cover" data-alt="Professional profile picture of a young male athlete. He is dressed in high-quality sports apparel with a focused and determined expression. The background is a clean athletic track blurred in the distance, providing a bright and professional feel that aligns with the application's premium aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoh0P6445JccAQ1pl4LFySNpr0NvE-ddo-WfuhqoFMm-bQ3CEIkibWLT3jAktmfL6JtJUGPJ0rXFvuhC8eF3Gqq5d_pjstMcroTDLR-Yi-WWEW8HOqY6IYlr3ohOWwqJ1EDabIFEw4yYrcWpThXBCFKRlNHxmoXT4E_jaRs0sQAK69btrwPEjBTn-KBhnKEFyX0ewIgBaTqNxsFLPcNlBvF8VYvs1Vj7jo0WMDxaUdJbwYqO1Z9L09cA89irZ_myLfrzqcTXILS7Nd"/>
+</div>
+<div class="bg-primary text-on-primary p-md rounded-xl rounded-br-none">
+<p class="font-body-base text-body-base">Thanks, Coach! I felt much more balanced. Should I start incorporating the weighted drills you mentioned last week?</p>
+<span class="font-body-sm text-body-sm text-on-primary-container opacity-80 mt-xs block text-right">10:32 AM</span>
+</div>
+</div>
+<!-- Coach Message (Left) -->
+<div class="flex items-end gap-sm max-w-[70%]">
+<div class="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 mb-1">
+<img alt="Sarah" class="w-full h-full object-cover" data-alt="A professional portrait of a sports coach, highlighting experience and authority. The lighting is sharp and detailed, set within a modern gym with a clean, high-end look. The overall style is minimalist and focused, utilizing a restricted color palette of greys, whites, and deep blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb80aSwxgQURKdWQgcBELZXILBrfbclTuhSkk0LHEEEQuZA6-QSq6XaYVRf9B2ZqinWPCFoTkoVOf1fLlNtKYJD0DgV28e2PeE0NXsA-D3O2bx4JrVEj34GPoQuGyQKRzi5IkJdyJXKVmxVrJJzpAE-C4gjAAl8YO7EPU6Ke4ExG9GQetsaPxW2jliDXg081oOGrpObh03IMm42pDAe_xeoo1Mn95oc1WczQJI9eVr8cbdC3mLqnqBt5AfvG0E2jM2GWw_O-CHIjNb"/>
+</div>
+<div class="bg-surface-container text-on-surface p-md rounded-xl rounded-bl-none border border-surface-variant">
+<p class="font-body-base text-body-base">Exactly. Let's start with 3 sets of the lateral shuffle with the 5lb band. Don't overdo it—quality over quantity right now.</p>
+<span class="font-body-sm text-body-sm text-outline mt-xs block">10:45 AM</span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-lg bg-surface border-t border-surface-variant">
+<!-- AI Sparkle Chip -->
+<div class="mb-md">
+<button class="inline-flex items-center gap-xs px-md py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors group">
+<span class="material-symbols-outlined text-[16px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-caps text-label-caps">Ask AI for advice</span>
+</button>
+</div>
+<!-- Main Input Row -->
+<div class="flex items-center gap-md">
+<button class="p-xs hover:bg-surface-container text-outline">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+<div class="flex-1 bg-background border border-outline-variant rounded-xl px-md py-sm flex items-center gap-sm focus-within:border-primary transition-all">
+<input class="flex-1 bg-transparent border-none focus:ring-0 font-body-base text-body-base" placeholder="Type a message to Coach Sarah..." type="text"/>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-on-surface" data-icon="mood">mood</span>
+</div>
+<button class="w-10 h-10 bg-primary text-on-primary rounded-xl flex items-center justify-center hover:bg-primary-container transition-all active:scale-95 shadow-sm">
+<span class="material-symbols-outlined" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+<div class="mt-sm flex justify-center">
+<p class="font-body-sm text-body-sm text-outline">Press Enter to send</p>
+</div>
+</div>
+</section>
+</main>
+</body></html>

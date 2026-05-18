@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProCoach | Profile &amp; Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#4d44e3",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "tertiary-fixed": "#ffdbcc",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed": "#351000",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "surface-container": "#eeeeed",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-secondary-fixed": "#140f54",
+                    "on-background": "#1a1c1c",
+                    "on-secondary-fixed-variant": "#413f82",
+                    "tertiary": "#7e3000",
+                    "surface-variant": "#e2e2e2",
+                    "primary-container": "#4f46e5",
+                    "on-secondary-container": "#454386",
+                    "background": "#f9f9f8",
+                    "surface-dim": "#dadad9",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#f3f4f3",
+                    "on-tertiary-container": "#ffd2be",
+                    "inverse-surface": "#2f3130",
+                    "secondary": "#58579b",
+                    "inverse-primary": "#c3c0ff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e2e2e2",
+                    "secondary-fixed": "#e2dfff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#7b2f00",
+                    "secondary-container": "#b6b4ff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary-fixed": "#0f0069",
+                    "on-primary-container": "#dad7ff",
+                    "on-surface": "#1a1c1c",
+                    "surface": "#f9f9f8",
+                    "outline-variant": "#c7c4d8",
+                    "on-primary": "#ffffff",
+                    "outline": "#777587",
+                    "inverse-on-surface": "#f1f1f0",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#a44100",
+                    "surface-bright": "#f9f9f8",
+                    "tertiary-fixed-dim": "#ffb695",
+                    "on-surface-variant": "#464555",
+                    "surface-container-high": "#e8e8e7",
+                    "primary": "#3525cd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "container-margin": "24px",
+                    "base": "8px",
+                    "xs": "4px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "sm": "8px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Inter"],
+                    "body-base": ["Inter"],
+                    "h3": ["Inter"],
+                    "h1": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "h2": ["Inter"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                    "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #f9f9f8;
+            color: #1a1c1c;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e2e2;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="font-body-base text-body-base bg-background">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-surface border-r border-surface-variant flex flex-col h-full py-lg px-md">
+<div class="mb-xl px-sm">
+<h2 class="font-h2 text-h2 font-bold text-primary">ProCoach</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Elite Performance</p>
+</div>
+<nav class="flex-1 space-y-xs">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-base">Home</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-body-base">Find Coaches</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-body-base">AI Match</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-body-base">My Schedule</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-body-base">Messages</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-body-base">Progress</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-primary font-medium bg-surface-container-high cursor-pointer active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-base">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-md py-sm flex items-center gap-md">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-surface-variant bg-surface-container">
+<img alt="Coach Profile Picture" class="w-full h-full object-cover" data-alt="A professional headshot of a male sports coach in his late 30s. He is wearing a minimalist navy blue athletic polo shirt. The background is a clean, out-of-focus high-end training facility with soft, diffused daylight. The image has a crisp, professional aesthetic consistent with a light-mode UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVGsjMMk02FXB_IpSTdiAMMxKZoFi4qujdX5rZnRTPnA78fGFpAUmAzhIZ3fpkfF_R1dRbgIHGqh8HdPkR-rw0-j5xTVqlz5iSeKU8T28qUzMDdwPFWPjMeADfhwqY0exP0BRzrpc9504j-PI7hvip-1bQscvkVtFZxy8iP_nnqMtpaVwB6s9pmAtkumyHiqmUJyVWrHo3jFcmlY9bkMa-82fbA6hcSGuN6I2p4h3zwL3H65jYvdF1VH920RBTcVXTgH9wzdEuyIGu"/>
+</div>
+<div class="overflow-hidden">
+<p class="font-body-sm font-medium truncate">Marcus Thorne</p>
+<p class="text-[10px] text-on-surface-variant truncate uppercase tracking-wider">Head Coach</p>
+</div>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 h-[56px] w-[calc(100%-220px)] bg-surface-container-lowest border-b border-surface-variant flex items-center justify-between px-lg z-10">
+<div class="flex items-center gap-md flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-surface-container-low border border-surface-variant rounded-xl py-xs pl-xl pr-md text-body-sm focus:ring-0 focus:border-primary transition-all" placeholder="Search settings or tools..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="text-on-surface-variant hover:bg-surface-container transition-all duration-200 p-xs rounded-lg">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full border border-surface-variant overflow-hidden cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A close-up portrait of a professional athletic director, characterized by a clean-cut appearance and wearing a modern gray tracksuit. The lighting is bright and even, reflecting a clinical but welcoming elite performance environment. The color palette is composed of neutrals with high-key whites and subtle cool tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEXJbHesHh8gxJcvm7P7EpZNkC9-iiK3PyWUSXvMn7bbQGiafIIX1VRdVkrkc2V5R6WVGU9bYLbORReDqV3r5z3MaqTpMjoyFmNxIziY04gs7BFbX2zIHh--Vc4TnOrk3mpXpsEODxkYWbcEJIz_oWF7xRRreoFhUw6wATyiL2ERQS4hWrBCsrsO1-X-MQLSqVoeQvDJ333ulJZw4G7gYh_kTo2PhyNGjDzHpPZDcWFI4bVmBDNEkcmnxftkZsATWB2KDtErs7Qi3q"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[220px] mt-[56px] p-container-margin min-h-[calc(100vh-56px)]">
+<div class="max-w-6xl mx-auto">
+<div class="grid grid-cols-12 gap-gutter items-start">
+<!-- Left: Profile Card -->
+<div class="col-span-12 lg:col-span-4 space-y-gutter">
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-lg sticky top-[80px]">
+<div class="flex flex-col items-center text-center">
+<div class="relative group mb-md">
+<div class="w-24 h-24 rounded-full border-2 border-primary-container p-xs bg-white">
+<img alt="Marcus Thorne" class="w-full h-full rounded-full object-cover" data-alt="A detailed headshot of a fit professional coach in a bright outdoor setting with soft bokeh. He wears a premium black athletic shirt. The image is captured with professional studio-quality lighting to ensure it fits perfectly into a minimalist, modern UI with white and indigo highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAImwd-oZGzq-R2ISuZeXf2aLM43N5zTFT_P9KPE967GTbTJ6jhrsapluDq11JZazWksVlrIvxIYkTomlD-to531BIugxYCH_tBNHJLUcFOrUG6oK1LJH0dnsj-2zFJ_EMA4tufX6m560MPiOF6dGHQQwKqrttJsdc_6QNPU71g69EDJ9XoZu0o8BRQpPhcwq4-iScDdOb8fbXOeWcZdpFdpU3WgFhZNnd8pIbRix1V29NBvJblxrO5g_oWwqSOKP4kGjRAdrbR4A5L"/>
+</div>
+<button class="absolute bottom-0 right-0 bg-primary text-on-primary w-8 h-8 rounded-full border-2 border-surface-container-lowest flex items-center justify-center shadow-sm hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</div>
+<h1 class="font-h1 text-h2 text-on-surface font-bold">Marcus Thorne</h1>
+<p class="font-body-base text-on-surface-variant mb-lg">Performance Director &amp; Lead Tactical Analyst</p>
+<div class="w-full space-y-sm text-left">
+<p class="font-label-caps text-label-caps text-outline uppercase">Interests</p>
+<div class="flex flex-wrap gap-xs">
+<span class="px-sm py-xs bg-surface-container rounded-lg font-body-sm text-on-surface">VO2 Max Training</span>
+<span class="px-sm py-xs bg-surface-container rounded-lg font-body-sm text-on-surface">Data Analytics</span>
+<span class="px-sm py-xs bg-surface-container rounded-lg font-body-sm text-on-surface">Sports Psych</span>
+<span class="px-sm py-xs bg-surface-container rounded-lg font-body-sm text-on-surface">Youth Dev</span>
+<span class="px-sm py-xs bg-surface-container rounded-lg font-body-sm text-on-surface">Biomechanics</span>
+</div>
+</div>
+<div class="w-full h-[1px] bg-surface-variant my-lg"></div>
+<div class="w-full grid grid-cols-2 gap-md text-left">
+<div>
+<p class="font-label-caps text-[10px] text-outline uppercase mb-xs">Experience</p>
+<p class="font-h3 text-h3 text-on-surface">12 Years</p>
+</div>
+<div>
+<p class="font-label-caps text-[10px] text-outline uppercase mb-xs">Athletes</p>
+<p class="font-h3 text-h3 text-on-surface">42 active</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Settings Accordion Groups -->
+<div class="col-span-12 lg:col-span-8 space-y-md">
+<!-- Account Settings -->
+<section class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden">
+<div class="px-lg py-md bg-surface-container-low flex justify-between items-center cursor-pointer group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">person</span>
+<h3 class="font-h3 text-h3 text-on-surface">Account Settings</h3>
+</div>
+<span class="material-symbols-outlined text-outline transition-transform group-hover:translate-y-px">keyboard_arrow_down</span>
+</div>
+<div class="p-lg space-y-lg">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-outline">Email Address</label>
+<input class="w-full border border-surface-variant rounded-lg px-md py-sm bg-surface-container-lowest focus:border-primary outline-none transition-all" type="email" value="marcus.thorne@procoach.ai"/>
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-outline">Phone Number</label>
+<input class="w-full border border-surface-variant rounded-lg px-md py-sm bg-surface-container-lowest focus:border-primary outline-none transition-all" type="tel" value="+1 (555) 234-5678"/>
+</div>
+</div>
+<div class="flex justify-end">
+<button class="px-lg py-sm bg-primary text-on-primary rounded-lg font-medium hover:opacity-90 transition-opacity">Update Account</button>
+</div>
+</div>
+</section>
+<!-- Notifications -->
+<section class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden">
+<div class="px-lg py-md bg-surface-container-low flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+<h3 class="font-h3 text-h3 text-on-surface">Notifications</h3>
+</div>
+<span class="material-symbols-outlined text-outline">keyboard_arrow_down</span>
+</div>
+<div class="p-lg divide-y divide-surface-variant">
+<div class="flex items-center justify-between py-md">
+<div>
+<p class="font-h3 text-on-surface">Email Updates</p>
+<p class="font-body-sm text-on-surface-variant">Receive weekly summary reports of athlete progress.</p>
+</div>
+<div class="w-12 h-6 bg-primary-container rounded-full relative p-xs transition-colors cursor-pointer">
+<div class="w-4 h-4 bg-white rounded-full absolute right-xs"></div>
+</div>
+</div>
+<div class="flex items-center justify-between py-md">
+<div>
+<p class="font-h3 text-on-surface">Session Alerts</p>
+<p class="font-body-sm text-on-surface-variant">Instant alerts when an athlete completes a workout.</p>
+</div>
+<div class="w-12 h-6 bg-primary-container rounded-full relative p-xs transition-colors cursor-pointer">
+<div class="w-4 h-4 bg-white rounded-full absolute right-xs"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- AI Preferences -->
+<section class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden">
+<div class="px-lg py-md bg-surface-container-low flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<h3 class="font-h3 text-h3 text-on-surface">AI Preferences</h3>
+<span class="px-xs py-[1px] bg-primary/10 text-primary rounded text-[10px] font-bold uppercase">Beta</span>
+</div>
+<span class="material-symbols-outlined text-outline">keyboard_arrow_up</span>
+</div>
+<div class="p-lg space-y-md">
+<div class="bg-surface-container-low p-md rounded-lg border border-primary/10 flex items-start gap-md">
+<span class="material-symbols-outlined text-primary mt-xs">info</span>
+<p class="font-body-sm text-on-surface-variant">Our AI Match engine uses your coaching philosophy and interests to pair you with the most compatible athletes.</p>
+</div>
+<div class="divide-y divide-surface-variant">
+<div class="flex items-center justify-between py-md">
+<div>
+<p class="font-h3 text-on-surface">Smart Matchmaking</p>
+<p class="font-body-sm text-on-surface-variant">Allow AI to suggest new athletes based on your workload.</p>
+</div>
+<div class="w-12 h-6 bg-primary-container rounded-full relative p-xs transition-colors cursor-pointer">
+<div class="w-4 h-4 bg-white rounded-full absolute right-xs"></div>
+</div>
+</div>
+<div class="flex items-center justify-between py-md">
+<div>
+<p class="font-h3 text-on-surface">Auto-Insight Generation</p>
+<p class="font-body-sm text-on-surface-variant">Generate AI performance summaries after every 5 sessions.</p>
+</div>
+<div class="w-12 h-6 bg-surface-container rounded-full relative p-xs transition-colors cursor-pointer">
+<div class="w-4 h-4 bg-white rounded-full absolute left-xs"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Subscription -->
+<section class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden">
+<div class="px-lg py-md bg-surface-container-low flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">credit_card</span>
+<h3 class="font-h3 text-h3 text-on-surface">Subscription</h3>
+</div>
+<span class="material-symbols-outlined text-outline">keyboard_arrow_down</span>
+</div>
+<div class="p-lg flex items-center justify-between">
+<div class="flex items-center gap-lg">
+<div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div>
+<div class="flex items-center gap-sm">
+<p class="font-h3 text-on-surface">ProCoach Elite Plan</p>
+<span class="px-sm py-xs bg-primary text-on-primary rounded font-label-caps text-[10px] uppercase tracking-widest">Pro</span>
+</div>
+<p class="font-body-sm text-on-surface-variant">Billed annually ($240.00/yr). Renews Sep 12, 2024.</p>
+</div>
+</div>
+<button class="px-md py-sm border border-surface-variant rounded-lg font-medium hover:bg-surface-container transition-colors">Manage Plan</button>
+</div>
+</section>
+<!-- Danger Zone -->
+<section class="border border-error/30 rounded-xl overflow-hidden bg-error-container/10">
+<div class="px-lg py-md bg-error-container/20 flex justify-between items-center cursor-pointer">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-error">warning</span>
+<h3 class="font-h3 text-h3 text-error">Danger Zone</h3>
+</div>
+</div>
+<div class="p-lg flex items-center justify-between">
+<div>
+<p class="font-h3 text-on-surface">Delete Account</p>
+<p class="font-body-sm text-on-surface-variant">Permanently remove your account and all coach-athlete data.</p>
+</div>
+<button class="px-md py-sm bg-error text-on-error rounded-lg font-medium hover:opacity-90 transition-opacity">Delete Permanently</button>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+</body></html>

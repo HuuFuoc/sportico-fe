@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProCoach AI - Session Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffdbcc",
+                    "secondary-container": "#b6b4ff",
+                    "tertiary": "#7e3000",
+                    "secondary": "#58579b",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "tertiary-container": "#a44100",
+                    "on-secondary": "#ffffff",
+                    "primary": "#3525cd",
+                    "on-secondary-fixed-variant": "#413f82",
+                    "surface": "#f9f9f8",
+                    "secondary-fixed": "#e2dfff",
+                    "surface-dim": "#dadad9",
+                    "outline": "#777587",
+                    "on-background": "#1a1c1c",
+                    "surface-container-highest": "#e2e2e2",
+                    "background": "#f9f9f8",
+                    "on-primary-container": "#dad7ff",
+                    "surface-container-low": "#f3f4f3",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "on-tertiary-container": "#ffd2be",
+                    "inverse-on-surface": "#f1f1f0",
+                    "inverse-surface": "#2f3130",
+                    "on-surface-variant": "#464555",
+                    "inverse-primary": "#c3c0ff",
+                    "on-primary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed": "#0f0069",
+                    "primary-container": "#4f46e5",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-tertiary-fixed": "#351000",
+                    "on-secondary-container": "#454386",
+                    "error-container": "#ffdad6",
+                    "outline-variant": "#c7c4d8",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#e2dfff",
+                    "on-secondary-fixed": "#140f54",
+                    "tertiary-fixed-dim": "#ffb695",
+                    "on-tertiary-fixed-variant": "#7b2f00",
+                    "surface-bright": "#f9f9f8",
+                    "on-surface": "#1a1c1c",
+                    "surface-tint": "#4d44e3",
+                    "surface-container-high": "#e8e8e7",
+                    "surface-container": "#eeeeed",
+                    "surface-variant": "#e2e2e2",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xl": "32px",
+                    "lg": "24px",
+                    "base": "8px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "container-margin": "24px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "h3": ["Inter"],
+                    "h1": ["Inter"],
+                    "h2": ["Inter"],
+                    "body-base": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                    "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                    "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e8e8e5; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d1d1cf; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-base antialiased">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 bottom-0 w-[220px] bg-surface border-r border-outline-variant flex flex-col py-xl">
+<div class="px-lg mb-xl">
+<h1 class="text-h1 font-h1 text-primary">ProCoach AI</h1>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Elite Performance</p>
+</div>
+<nav class="flex-1 space-y-xs">
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-caps text-label-caps">Dashboard</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-caps text-label-caps">Schedule</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-caps text-label-caps">Athletes</span>
+</div>
+<!-- Active Tab: Library (acting as Browse) -->
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-primary font-bold border-r-2 border-primary bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-label-caps text-label-caps">Library</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-caps text-label-caps">Analytics</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-caps text-label-caps">AI Insights</span>
+</div>
+</nav>
+<div class="px-lg mb-md">
+<button class="w-full bg-primary-container text-white py-base rounded-lg font-h3 text-h3 flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                New Session
+            </button>
+</div>
+<footer class="mt-auto space-y-xs">
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</div>
+</footer>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[220px] h-[56px] bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-lg z-10">
+<div class="flex items-center gap-md flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size: 18px;">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-xs pl-xl pr-md text-body-sm focus:outline-none focus:border-primary transition-colors" placeholder="Search coaches or sessions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:bg-surface-container transition-colors p-xs rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container transition-colors p-xs rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container transition-colors p-xs rounded-full">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="h-6 w-[1px] bg-outline-variant"></div>
+<span class="font-h3 text-h3 text-primary cursor-pointer active:scale-95">Coach Mode</span>
+<img alt="User profile" class="w-8 h-8 rounded-full object-cover cursor-pointer border border-outline-variant" data-alt="A professional headshot of a female athlete in high-performance gear, set against a minimalist studio background with soft cinematic lighting. The image uses a clean, modern aesthetic with a neutral color palette of whites and soft greys to match a professional UI design. Her expression is focused and calm, conveying reliability and expertise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDC89J2FTStattiPTW_vTfZ4Fk7Qrwg0NHlfSe-ooU4oO2Z_2_ON31Y_5tC1Us_z5230-cC3RX5Ija5vhlrzgnJfsfV9oN17tlrvKmEU4c4AV9hdQ2eEx-JoLXCuX6xzRT6I9rho9tzdjdWw_CH6jrxdq4nmsa45d_UA9VIsqDSZrWMtCtvyWP_JNY7hN4_N-Fd5T15YTiPoLwQyyK1dmusAvJcQxJ_Vm5egabofdBQP6YzAd_NpNVnHSYEenIZGgl487OOSgM5pHbT"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[220px] pt-[56px] p-lg">
+<!-- Marketplace Header & Filter Chips -->
+<section class="mb-xl">
+<div class="flex justify-between items-end mb-md">
+<div>
+<h2 class="text-h1 font-h1 text-on-surface mb-xs">Coach Marketplace</h2>
+<p class="text-body-base font-body-base text-on-surface-variant">Find the perfect mentor to accelerate your athletic progress.</p>
+</div>
+<div class="flex gap-sm">
+<button class="flex items-center gap-xs px-md py-xs bg-surface-container-high border border-outline-variant rounded-lg text-body-sm font-medium hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" style="font-size: 16px;">tune</span>
+                        Filters
+                    </button>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="flex flex-wrap gap-sm">
+<button class="px-md py-xs bg-primary text-white rounded-full text-body-sm font-medium">All Sports</button>
+<button class="px-md py-xs bg-surface-container border border-outline-variant text-on-surface-variant rounded-full text-body-sm font-medium hover:border-primary hover:text-primary transition-all">Tennis</button>
+<button class="px-md py-xs bg-surface-container border border-outline-variant text-on-surface-variant rounded-full text-body-sm font-medium hover:border-primary hover:text-primary transition-all">Basketball</button>
+<button class="px-md py-xs bg-surface-container border border-outline-variant text-on-surface-variant rounded-full text-body-sm font-medium hover:border-primary hover:text-primary transition-all">Swimming</button>
+<button class="px-md py-xs bg-surface-container border border-outline-variant text-on-surface-variant rounded-full text-body-sm font-medium hover:border-primary hover:text-primary transition-all">Price: Low to High</button>
+<button class="px-md py-xs bg-surface-container border border-outline-variant text-on-surface-variant rounded-full text-body-sm font-medium hover:border-primary hover:text-primary transition-all">Rating 4.5+</button>
+<button class="px-md py-xs bg-primary-container/10 border border-primary/20 text-primary rounded-full text-body-sm font-medium flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 14px; font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                    AI-Enhanced
+                </button>
+</div>
+</section>
+<!-- Bento Grid / Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+<!-- Coach Card 1 (AI Match) -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-all flex flex-col relative">
+<div class="absolute top-md right-md z-10">
+<div class="bg-primary text-white text-[10px] font-bold px-sm py-xs rounded flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 12px; font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                        AI MATCH
+                    </div>
+</div>
+<div class="h-48 overflow-hidden bg-surface-container">
+<img alt="Coach David" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A detailed portrait of a male professional fitness coach in a high-tech gym environment. The lighting is crisp and directional, emphasizing muscle definition and technical gear. The overall color palette is dominated by professional greys and deep blues, aligned with a high-end sports technology platform aesthetic. The atmosphere is energetic and focused." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8QF7gyxdScZ6Hr2Ws-bgC7Rncj2AB9AKNiZNJwoisf__WHeQH8e2HYRFpO8OyJXOvGgT03xAifiDK1d1yA1krNiq4vX6M4AuVY6hXP6DtmIYBC0cLybyft1E7zHM7yoMNI2IoNdei8kTxE9Il_WSmh-WJCe9g4eTldBBne5_FQmzbXAfullfVR34UAkVM5vTJ_HwgCMRzRnWVrbs6HxdMo1j40gpyWWBmfgR2QSdO5QJfC9M_8ZWpxfRdiFqTcV0t06IauOliONEM"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-h2 text-h2 text-on-surface">David Chen</h3>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-bold ml-xs">4.9</span>
+</div>
+</div>
+<p class="text-body-sm text-on-surface-variant font-medium mb-base">Performance Running Specialist</p>
+<div class="flex flex-wrap gap-xs mb-lg">
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Pro Tier</span>
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Marathon</span>
+</div>
+<div class="mt-auto flex justify-between items-center">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold">Hourly Rate</p>
+<p class="text-h3 font-h3 text-on-surface">$85.00</p>
+</div>
+<button class="bg-primary text-white px-md py-xs rounded-lg text-body-sm font-medium hover:bg-primary/90 transition-colors">Book Session</button>
+</div>
+</div>
+</div>
+<!-- Coach Card 2 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-all flex flex-col">
+<div class="h-48 overflow-hidden bg-surface-container">
+<img alt="Coach Sarah" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A cinematic portrait of a female yoga and wellness coach in a serene, bright studio with natural sunlight streaming through large windows. The environment is minimalist and tranquil, featuring light wood floors and white walls. The lighting is soft and airy, creating a professional and inviting vibe for a luxury wellness marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkPjiAMF088V2bLhcP5TrS8TneZGI2rdZDpCZkLREDmE9yV7iCuGf-Ps-RYoP_jZgar_DZrp8ZnemHqvmqVmfV4Z1V1V8sO_DISiv9t86sFdY7UCdWGzk4dQFtMcpKqvqOS86x8bDo-G0nRHvbknFIqVhNGVZ98YjILOSExMvG1_wzkD2IJDYkp15y78XOlXYHKfea20yXhVxPueg3BHZgDRHk2b-TnErdEisW1Bu5GKmfos02z6HoaGx3vJaPuuK3PN_g_8iMekgr"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-h2 text-h2 text-on-surface">Sarah Jenkins</h3>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-bold ml-xs">4.8</span>
+</div>
+</div>
+<p class="text-body-sm text-on-surface-variant font-medium mb-base">Mobility &amp; Flexiblity</p>
+<div class="flex flex-wrap gap-xs mb-lg">
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Wellness</span>
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Yoga</span>
+</div>
+<div class="mt-auto flex justify-between items-center">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold">Hourly Rate</p>
+<p class="text-h3 font-h3 text-on-surface">$60.00</p>
+</div>
+<button class="bg-primary text-white px-md py-xs rounded-lg text-body-sm font-medium hover:bg-primary/90 transition-colors">Book Session</button>
+</div>
+</div>
+</div>
+<!-- Coach Card 3 (AI Match) -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-all flex flex-col relative">
+<div class="absolute top-md right-md z-10">
+<div class="bg-primary text-white text-[10px] font-bold px-sm py-xs rounded flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 12px; font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                        AI MATCH
+                    </div>
+</div>
+<div class="h-48 overflow-hidden bg-surface-container">
+<img alt="Coach Michael" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A professional male basketball coach on a modern indoor court with high-key lighting. The background shows blurred court markings and professional sports equipment. The image emphasizes high information density and professional technical skill. The color palette features sharp whites and blues, consistent with a premium coaching platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUEiRJB2tdomyCP3nWngFpBiXQKr2XD2UtIDzGATIr00vROqowL8ZeKrKX7WQ1qSOjlGis0PiQoGYxunLR8IvPTg3p_0AouKLn0Pc7yY5LJdBiSjpcPha7QUTAmxidnIbWryO1TWxNZjRNS41odIqA4BmyXXnYPdjTKuvv3hEK6DzjO3aazyy_beggtEUN5ntrfAJHOfUGjq68HGH77ypovMPk2cSaob5hRYAyRhRph5cD_USq0SDFHNzxhFpbYLtlHBLNhrWE_e_X"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-h2 text-h2 text-on-surface">Michael Torres</h3>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-bold ml-xs">5.0</span>
+</div>
+</div>
+<p class="text-body-sm text-on-surface-variant font-medium mb-base">Elite Basketball Trainer</p>
+<div class="flex flex-wrap gap-xs mb-lg">
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">D1 Coach</span>
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Shooting</span>
+</div>
+<div class="mt-auto flex justify-between items-center">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold">Hourly Rate</p>
+<p class="text-h3 font-h3 text-on-surface">$120.00</p>
+</div>
+<button class="bg-primary text-white px-md py-xs rounded-lg text-body-sm font-medium hover:bg-primary/90 transition-colors">Book Session</button>
+</div>
+</div>
+</div>
+<!-- Coach Card 4 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-all flex flex-col">
+<div class="h-48 overflow-hidden bg-surface-container">
+<img alt="Coach Elena" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A portrait of a female swimming coach at the edge of a high-end training pool. The water reflects shimmering light, and the overall aesthetic is clean and crisp. The lighting is bright and outdoor-focused, creating a fresh and professional feeling. The composition is balanced and modern, fitting for a elite marketplace interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWhkRpqh0psfx4I5dcsrbqUKjBFrr7oU3rYIYEz8Hv13Opiww6e_9_g8gcgvZZRnY-CUhiwGRRZ8psovXWCqI4NKWWV-B4gilXb6JJVTeYrw68XG_3lYxDM0p7JHztT7sEzyaZqtc-jBRi1-AxsLHygnP97DLWZ27MzrjhNxz5IzspART32PfO82fPMIN7EDHS6WTyDD6aYvuLV4zQIMQWlVzrPJu3TSwvXnpX-XhTR1Hncg-sSf1Od6lW4v42NtG8MfqktrRYM_EF"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-h2 text-h2 text-on-surface">Elena Rossi</h3>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-bold ml-xs">4.7</span>
+</div>
+</div>
+<p class="text-body-sm text-on-surface-variant font-medium mb-base">Olympic Swim Coach</p>
+<div class="flex flex-wrap gap-xs mb-lg">
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">National Team</span>
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Triathlon</span>
+</div>
+<div class="mt-auto flex justify-between items-center">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold">Hourly Rate</p>
+<p class="text-h3 font-h3 text-on-surface">$110.00</p>
+</div>
+<button class="bg-primary text-white px-md py-xs rounded-lg text-body-sm font-medium hover:bg-primary/90 transition-colors">Book Session</button>
+</div>
+</div>
+</div>
+<!-- Coach Card 5 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-all flex flex-col">
+<div class="h-48 overflow-hidden bg-surface-container">
+<img alt="Coach Marcus" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A professional male tennis coach holding a racket, standing on a blue hard court under bright midday sun. The background is slightly blurred to focus on the coach's determined expression. The visual style is crisp and professional, using a primary color palette that complements a modern UI design. High detail in the sports apparel and equipment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQbe9D-ONAp6URUOsZiLybQhI4JwPtYkxwO66s3IT1rCnOBdUK4HrwtLXbvl26XUk_lR8ffYW3PNJqbaHRy8coi94Pf5Apy-HLXOcFt8YxBKE_6JBn87h9uKg4vqE3XR2uFXtePTdb3aJaVmjwamZL0q_5Td3Ae8CP6fMc-a2vRVSiZVqCYF8BaZc1tcH8pwrXPMi6oULkRcK4Djwp3JgSNuuiLcs9ZeSZZ7OiNxsCX23aKl0aJSVy81rp17bsMwDnp3wLL-guSzJw"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-h2 text-h2 text-on-surface">Marcus Vance</h3>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-bold ml-xs">4.9</span>
+</div>
+</div>
+<p class="text-body-sm text-on-surface-variant font-medium mb-base">ATP Technical Coach</p>
+<div class="flex flex-wrap gap-xs mb-lg">
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">ATP Certified</span>
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Grass/Clay</span>
+</div>
+<div class="mt-auto flex justify-between items-center">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold">Hourly Rate</p>
+<p class="text-h3 font-h3 text-on-surface">$95.00</p>
+</div>
+<button class="bg-primary text-white px-md py-xs rounded-lg text-body-sm font-medium hover:bg-primary/90 transition-colors">Book Session</button>
+</div>
+</div>
+</div>
+<!-- Coach Card 6 (AI Match) -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-all flex flex-col relative">
+<div class="absolute top-md right-md z-10">
+<div class="bg-primary text-white text-[10px] font-bold px-sm py-xs rounded flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 12px; font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                        AI MATCH
+                    </div>
+</div>
+<div class="h-48 overflow-hidden bg-surface-container">
+<img alt="Coach Jessica" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A portrait of a female crossfit coach in a minimalist industrial gym setting. The lighting is moody yet bright where it counts, highlighting her athletic posture. The background features heavy lifting equipment in a clean, organized layout. The aesthetic is professional, tough, and technical, perfectly fitting an elite coaching platform's AI-matching interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCryL90w7VBf0BdUPJvZU7JurqJO7AlARB8z_C8nO8Nck5OH8mTOjCpm21ZZxXVhRiaRs_xPbf_DlnCuvs3a286FyVolB3HfkibU7o1mEjuvNekkknPDDoTEN1qo9pR9akGNzbBl7xV2babZ51OWwyLBO1coXyLq4p7ZcpoHSHCN2Msqha1DxJ02MJPVL6OBeoxCiEw3B0nWTctwSefzNfE7y0zfnNXVE-JqCZUWDtfPa6mB6oAlrIgFo_7ss3rs6GIjTTsh95BEpOr"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-h2 text-h2 text-on-surface">Jessica Wu</h3>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-bold ml-xs">5.0</span>
+</div>
+</div>
+<p class="text-body-sm text-on-surface-variant font-medium mb-base">Strength &amp; Conditioning</p>
+<div class="flex flex-wrap gap-xs mb-lg">
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">Powerlifting</span>
+<span class="text-[10px] uppercase tracking-wider bg-surface-container text-on-surface-variant px-xs py-[2px] rounded">HIIT</span>
+</div>
+<div class="mt-auto flex justify-between items-center">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold">Hourly Rate</p>
+<p class="text-h3 font-h3 text-on-surface">$75.00</p>
+</div>
+<button class="bg-primary text-white px-md py-xs rounded-lg text-body-sm font-medium hover:bg-primary/90 transition-colors">Book Session</button>
+</div>
+</div>
+</div>
+<!-- Empty State / Load More Card -->
+<div class="bg-surface-container-low border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center p-xl group cursor-pointer hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" style="font-size: 48px;">expand_more</span>
+<p class="font-h3 text-h3 text-on-surface-variant mt-md">Load More Coaches</p>
+<p class="text-body-sm text-on-surface-variant text-center mt-xs">Showing 6 of 142 elite professionals</p>
+</div>
+</div>
+<!-- AI Match Sticky Banner -->
+<div class="fixed bottom-lg right-lg max-w-sm bg-surface-container-lowest border border-primary/20 p-md rounded-xl shadow-lg border-l-4 border-l-primary flex gap-md items-start z-20">
+<div class="bg-primary-container/10 p-xs rounded-lg">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div>
+<h4 class="font-h3 text-h3 text-on-surface">Smart Match Active</h4>
+<p class="text-body-sm text-on-surface-variant">We've highlighted 3 coaches that perfectly match your training goals and schedule.</p>
+<button class="text-primary font-bold text-body-sm mt-xs hover:underline">View analysis details →</button>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+</button>
+</div>
+</main>
+</body></html>

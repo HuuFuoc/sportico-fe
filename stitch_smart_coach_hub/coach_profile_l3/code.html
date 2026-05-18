@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProCoach - Elite Performance Coach Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#4d44e3",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "surface-container": "#eeeeed",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-secondary-fixed": "#140f54",
+                        "on-background": "#1a1c1c",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "tertiary": "#7e3000",
+                        "surface-variant": "#e2e2e2",
+                        "primary-container": "#4f46e5",
+                        "on-secondary-container": "#454386",
+                        "background": "#f9f9f8",
+                        "surface-dim": "#dadad9",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f3f4f3",
+                        "on-tertiary-container": "#ffd2be",
+                        "inverse-surface": "#2f3130",
+                        "secondary": "#58579b",
+                        "inverse-primary": "#c3c0ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e2e2e2",
+                        "secondary-fixed": "#e2dfff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "secondary-container": "#b6b4ff",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#e2dfff",
+                        "on-primary-fixed": "#0f0069",
+                        "on-primary-container": "#dad7ff",
+                        "on-surface": "#1a1c1c",
+                        "surface": "#f9f9f8",
+                        "outline-variant": "#c7c4d8",
+                        "on-primary": "#ffffff",
+                        "outline": "#777587",
+                        "inverse-on-surface": "#f1f1f0",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#a44100",
+                        "surface-bright": "#f9f9f8",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "on-surface-variant": "#464555",
+                        "surface-container-high": "#e8e8e7",
+                        "primary": "#3525cd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-margin": "24px",
+                        "base": "8px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "sm": "8px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "body-base": ["Inter"],
+                        "h3": ["Inter"],
+                        "h1": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "h2": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #E8E8E5;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-base">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 right-0 h-[56px] w-[calc(100%-220px)] flex items-center justify-between px-lg bg-surface-container-lowest border-b border-surface-variant z-50">
+<div class="flex items-center gap-md">
+<span class="font-h3 text-h3 font-bold text-primary">ProCoach</span>
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="bg-surface-container-low border border-surface-variant rounded-lg pl-xl pr-md py-xs text-body-sm focus:outline-none focus:border-primary-container w-[280px]" placeholder="Search coaches..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-container rounded-full p-xs transition-all">notifications</span>
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A clean, professional headshot of a person in a minimalist setting, captured with soft, natural lighting. The style is modern and high-resolution, following a professional corporate aesthetic with a neutral, light-mode background that emphasizes clarity and approachable professionalism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwvGV0jTBNkAorWcrgyn93fYayA6r3fl-sxnwh7TCkvkNXVWCv7BjiMnaOdEoBZa8Mn085O1VhHZvs-n5Koojv7fmCku7vLzuJW1HxQe7cko6sQhdiQsN91_k9BvMYsQhSB1Q-TWLZ8Un8ZcAot5-oatAje6kmp7lkL6VLJ1dVh7fboBZSuIVy8scu8WfhezDhDk6sgkMm-6fsDUKqEUCcUqUgIQ85gJaBz74eKNvFFcVWuPy3RJXZf37lrtPwojRjArOySML9DGed"/>
+</div>
+</nav>
+<!-- Side Navigation Shell -->
+<aside class="fixed left-0 top-0 h-full w-[220px] flex flex-col py-lg px-md bg-surface border-r border-surface-variant z-50">
+<div class="mb-xl px-sm">
+<div class="font-h2 text-h2 font-bold text-primary">ProCoach</div>
+<div class="text-body-sm text-on-surface-variant">Elite Performance</div>
+</div>
+<div class="flex flex-col gap-xs flex-grow">
+<!-- Home -->
+<div class="flex items-center gap-sm px-md py-sm rounded-lg cursor-pointer text-on-surface-variant hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-base">Home</span>
+</div>
+<!-- Find Coaches (Active) -->
+<div class="flex items-center gap-sm px-md py-sm rounded-lg cursor-pointer text-primary font-medium bg-surface-container-high transition-colors active:scale-95">
+<span class="material-symbols-outlined">search</span>
+<span class="font-body-base">Find Coaches</span>
+</div>
+<!-- AI Match -->
+<div class="flex items-center gap-sm px-md py-sm rounded-lg cursor-pointer text-on-surface-variant hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-body-base">AI Match</span>
+</div>
+<!-- My Schedule -->
+<div class="flex items-center gap-sm px-md py-sm rounded-lg cursor-pointer text-on-surface-variant hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-body-base">My Schedule</span>
+</div>
+<!-- Messages -->
+<div class="flex items-center gap-sm px-md py-sm rounded-lg cursor-pointer text-on-surface-variant hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-body-base">Messages</span>
+</div>
+<!-- Progress -->
+<div class="flex items-center gap-sm px-md py-sm rounded-lg cursor-pointer text-on-surface-variant hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-body-base">Progress</span>
+</div>
+</div>
+<div class="mt-auto px-md py-sm rounded-lg cursor-pointer text-on-surface-variant hover:bg-surface-container transition-colors active:scale-95">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-base">Settings</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[220px] pt-[56px] min-h-screen bg-background">
+<!-- Hero Section: Cover & Avatar -->
+<div class="relative w-full h-64 overflow-hidden">
+<img alt="Running track cover" class="w-full h-full object-cover" data-alt="A wide-angle, low-perspective shot of an elite synthetic running track at sunrise. The lighting is warm and dramatic, casting long shadows across the textured red surface and white lane markers. The background features a blurred, minimalist stadium structure under a clear, pale morning sky, evoking a sense of professional athletic excellence and quiet focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfo-7QOwDhGMPY17spzJ5gbDv0puSL8lbOKhMII3858Hi-UdCvi1cyXLfFoROajsKuUxlkJviLGEqmoubjFUpyF4cAn9IKruK5yYf8cYLQmK-gNktafoIoRt3zy-EVS97GfnwSSTNJdMMwU78tYo-NvC06bRiymapiAgIBMkpS-Qi2CapVRbmRW3P3C9fGfGxnZcx-Csgw7UbzafOsehLP1zpKsZT7bkmHkGwm4VbGOia_Y3Qy92QM8X5eRb3bPFwASrIGDafSE5o2"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+</div>
+<div class="max-w-[1200px] mx-auto px-lg -mt-16 relative z-10">
+<div class="flex flex-col md:flex-row items-end gap-md mb-lg">
+<div class="relative">
+<img alt="Coach Profile Picture" class="w-40 h-40 rounded-xl border-4 border-white shadow-sm object-cover" data-alt="A professional portrait of an athletic coach in their 40s, dressed in sleek, minimalist athletic apparel. The background is a softly blurred outdoor sports facility, maintaining a high-key, bright light-mode aesthetic. The coach's expression is confident and encouraging, embodying a professional and technical athletic persona." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6lbSUAUrwvv8I41bFAnLnLkeiuZuQNJYD-_KSb-AtHigNLKK2ay8Io4sUif71kSSOLtRmiHhKpdBBeufm7dNSCmXuhOF2wBUFEswoPiDwhVvJTJ4NSiIiLRT4pG87vrYwAy54SxHVKR72Ttorywl92sciuRyEb8JriPYcD8y6YMMMwzLDGVLQPAm_iVMSpkyOQY8VkFjCen70fSf3O6EogMkSBcuZwNqCNx_21nBneDGWfVLUcmILel4o32N0DxMuZ6ACh3BtjhXZ"/>
+<div class="absolute -bottom-2 -right-2 bg-primary p-1 rounded-lg border-2 border-white shadow-sm">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div class="flex-grow pb-xs">
+<div class="flex items-center gap-sm mb-xs">
+<h1 class="font-h1 text-h1 font-bold text-on-surface">Marcus Sterling</h1>
+<span class="bg-primary/10 text-primary text-label-caps px-sm py-xs rounded-lg flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+                            Elite Pro
+                        </span>
+</div>
+<div class="flex flex-wrap gap-sm text-body-sm text-on-surface-variant">
+<span class="flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]">location_on</span> Boulder, CO</span>
+<span class="flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]">star</span> 4.9 (124 reviews)</span>
+<span class="flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]">timer</span> 12 yrs exp</span>
+</div>
+</div>
+<div class="flex gap-sm pb-xs">
+<button class="bg-surface text-on-surface border border-outline-variant px-lg py-sm rounded-lg font-h3 hover:bg-surface-container transition-all active:scale-95">Message</button>
+<button class="bg-primary-container text-white px-lg py-sm rounded-lg font-h3 hover:bg-primary transition-all active:scale-95 shadow-sm">Book a Session</button>
+</div>
+</div>
+<!-- Content Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-xl pb-xl">
+<!-- Left Column (Bio & Intro) -->
+<div class="md:col-span-8 space-y-xl">
+<!-- Intro Video Placeholder -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl aspect-video relative group cursor-pointer overflow-hidden">
+<img alt="Video cover" class="w-full h-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105" data-alt="A cinematic, high-contrast shot of a marathon runner's legs mid-stride on an urban asphalt road during golden hour. The sunlight reflects off the road, creating a professional, documentary-style aesthetic. The focus is sharp on the technical biomechanics of the runner's movement, emphasizing precision and performance." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBn1yeNI0jtvMbcYs7TEilddOJl4Cdd6e9U4HpNbSoK7N6mhtkgROa0iuuVJ6vwKvKD_IxdHAlbGkW_xmyUBEG3k2gc_DxFLFNBjOjigLSIr48jagEv_yJT9JurDL5NiJ5_GdcSPx4XAa-WY36mB4PAGy6HlLzpRjTzVAeJwOx4k7jI00-0G_uO_aRg39X6heyzXNzenoz-FX7alwUm3NIYLRbSj-Vq5ldrHN8D_oiI6pX45gkBeQH2XjupVyBsNBKQDnsFDv-LByFn"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+</div>
+<div class="absolute bottom-md left-md">
+<span class="text-white text-h3 font-medium">Why Train With Me? (2:14)</span>
+</div>
+</div>
+<!-- Specialties -->
+<div class="flex gap-md">
+<div class="flex-1 p-lg border border-outline-variant rounded-xl bg-surface-container-lowest">
+<div class="flex items-center gap-sm mb-xs text-primary">
+<span class="material-symbols-outlined">directions_run</span>
+<span class="font-h3">Marathon Prep</span>
+</div>
+<p class="text-body-sm text-on-surface-variant leading-relaxed">Systematic 16-week cycles designed for Sub-3:00 goals, focusing on threshold efficiency and aerobic capacity.</p>
+</div>
+<div class="flex-1 p-lg border border-outline-variant rounded-xl bg-surface-container-lowest">
+<div class="flex items-center gap-sm mb-xs text-primary">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-h3">Biomechanics</span>
+</div>
+<p class="text-body-sm text-on-surface-variant leading-relaxed">Video analysis and gait correction to minimize injury risk and maximize energy return per stride.</p>
+</div>
+</div>
+<!-- Bio -->
+<div class="p-lg border border-outline-variant rounded-xl bg-surface-container-lowest">
+<h2 class="font-h2 text-h2 mb-md">About Marcus</h2>
+<p class="text-body-base text-on-surface-variant leading-relaxed mb-md">
+                            With over a decade of experience training professional endurance athletes, my approach combines data-driven physiological testing with psychological resilience training. I don't just write plans; I build robust athletes capable of handling the physical and mental rigors of elite performance.
+                        </p>
+<div class="flex gap-sm">
+<span class="bg-surface-container-high px-sm py-xs rounded-lg text-body-sm">VO2 Max Testing</span>
+<span class="bg-surface-container-high px-sm py-xs rounded-lg text-body-sm">Lactate Threshold</span>
+<span class="bg-surface-container-high px-sm py-xs rounded-lg text-body-sm">Nutritional Strategy</span>
+</div>
+</div>
+<!-- Reviews -->
+<div class="space-y-md">
+<h2 class="font-h2 text-h2">Client Reviews</h2>
+<div class="grid grid-cols-1 gap-md">
+<div class="p-lg border border-outline-variant rounded-xl bg-surface-container-lowest flex gap-md">
+<img alt="Client 1" class="w-12 h-12 rounded-full object-cover" data-alt="A high-key, minimalist portrait of a woman in athletic gear, smiling warmly. The lighting is bright and modern, against a clean white background. The image style is polished and professional, typical of an athlete's testimonial photo." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXsP5N36wQTdVMAGlZKjchDkzzuVCBI43UK6H5r-86ljYO-1GbHgD2N-0UIxBX7t2zI_9nbpkANwSAcV8hci4FhD8FdQEBlCNG6ozgTez8bX7O3D0AIa3SveGnG-TnrXI7Da7AS5m-iZKsLwKovvIfEnvbgH30YXocJop0bvWBBQ4-0hDLzstjHL-9cVj58IYHPP2mvYkj-8hqIVsUQn_BL4PKXpaz-lIORCgR3CvKJHC0NPX3-cHGIZMv0dqWagBYhDuo_C4CZ5eH"/>
+<div>
+<div class="flex items-center justify-between mb-xs">
+<span class="font-h3 text-on-surface">Sarah J. — PR: 3:02:14</span>
+<span class="text-body-sm text-on-surface-variant">2 weeks ago</span>
+</div>
+<div class="flex text-primary mb-sm">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="text-body-base text-on-surface-variant italic">"Marcus transformed my running form in 3 sessions. His technical knowledge is unmatched."</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (Sticky Widgets) -->
+<div class="md:col-span-4">
+<div class="sticky top-[80px] space-y-md">
+<!-- AI Match Gauge -->
+<div class="p-lg border border-primary-container/20 rounded-xl bg-primary/5">
+<div class="flex items-center justify-between mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<span class="font-h3 text-primary">AI Compatibility</span>
+</div>
+<span class="text-h1 font-bold text-primary">94%</span>
+</div>
+<div class="w-full bg-outline-variant h-2 rounded-full mb-md overflow-hidden">
+<div class="bg-primary h-full w-[94%]"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant">
+<span class="font-medium text-primary">Strong Match</span> — Based on your marathon goals and preference for data-driven biomechanical analysis.
+                            </p>
+</div>
+<!-- Pricing Tiers -->
+<div class="space-y-sm">
+<div class="p-md border border-outline-variant rounded-xl bg-white hover:border-primary-container transition-colors cursor-pointer group">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-h3 text-on-surface">Consultation</span>
+<span class="font-h2 font-bold text-primary">$120</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Single 60min technical review.</p>
+</div>
+<div class="p-md border-2 border-primary-container rounded-xl bg-primary/5 cursor-pointer relative">
+<div class="absolute -top-3 right-md bg-primary text-white text-[10px] font-bold px-sm py-xs rounded uppercase">Best Value</div>
+<div class="flex justify-between items-center mb-xs">
+<span class="font-h3 text-on-surface">Monthly Elite</span>
+<span class="font-h2 font-bold text-primary">$450</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Full plan + weekly video calls.</p>
+</div>
+<div class="p-md border border-outline-variant rounded-xl bg-white hover:border-primary-container transition-colors cursor-pointer group">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-h3 text-on-surface">Season Prep</span>
+<span class="font-h2 font-bold text-primary">$1,200</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">16-week structured marathon cycle.</p>
+</div>
+</div>
+<!-- Calendar Grid -->
+<div class="p-lg border border-outline-variant rounded-xl bg-surface-container-lowest">
+<h3 class="font-h3 mb-md">Availability: Next 5 Days</h3>
+<div class="grid grid-cols-5 gap-xs">
+<div class="text-center space-y-xs">
+<span class="text-[10px] uppercase text-on-surface-variant font-bold">Mon</span>
+<div class="bg-surface-container-high rounded-lg py-sm text-primary font-bold text-body-sm">3</div>
+</div>
+<div class="text-center space-y-xs">
+<span class="text-[10px] uppercase text-on-surface-variant font-bold">Tue</span>
+<div class="bg-primary/10 rounded-lg py-sm text-primary font-bold text-body-sm">Full</div>
+</div>
+<div class="text-center space-y-xs">
+<span class="text-[10px] uppercase text-on-surface-variant font-bold">Wed</span>
+<div class="bg-surface-container-high rounded-lg py-sm text-primary font-bold text-body-sm">5</div>
+</div>
+<div class="text-center space-y-xs">
+<span class="text-[10px] uppercase text-on-surface-variant font-bold">Thu</span>
+<div class="bg-surface-container-high rounded-lg py-sm text-primary font-bold text-body-sm">2</div>
+</div>
+<div class="text-center space-y-xs">
+<span class="text-[10px] uppercase text-on-surface-variant font-bold">Fri</span>
+<div class="bg-surface-container-high rounded-lg py-sm text-primary font-bold text-body-sm">4</div>
+</div>
+</div>
+<button class="w-full mt-md bg-primary-container text-white py-sm rounded-lg font-h3 hover:bg-primary transition-all active:scale-95 shadow-sm">Book a Session</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

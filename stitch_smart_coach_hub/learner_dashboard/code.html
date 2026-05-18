@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProCoach AI - Learner Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffdbcc",
+                        "secondary-container": "#b6b4ff",
+                        "tertiary": "#7e3000",
+                        "secondary": "#58579b",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "tertiary-container": "#a44100",
+                        "on-secondary": "#ffffff",
+                        "primary": "#3525cd",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "surface": "#f9f9f8",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-dim": "#dadad9",
+                        "outline": "#777587",
+                        "on-background": "#1a1c1c",
+                        "surface-container-highest": "#e2e2e2",
+                        "background": "#f9f9f8",
+                        "on-primary-container": "#dad7ff",
+                        "surface-container-low": "#f3f4f3",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary-container": "#ffd2be",
+                        "inverse-on-surface": "#f1f1f0",
+                        "inverse-surface": "#2f3130",
+                        "on-surface-variant": "#464555",
+                        "inverse-primary": "#c3c0ff",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#0f0069",
+                        "primary-container": "#4f46e5",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-secondary-container": "#454386",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#c7c4d8",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed": "#140f54",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "surface-bright": "#f9f9f8",
+                        "on-surface": "#1a1c1c",
+                        "surface-tint": "#4d44e3",
+                        "surface-container-high": "#e8e8e7",
+                        "surface-container": "#eeeeed",
+                        "surface-variant": "#e2e2e2",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "lg": "24px",
+                        "base": "8px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "container-margin": "24px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h3": ["Inter"],
+                        "h1": ["Inter"],
+                        "h2": ["Inter"],
+                        "body-base": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                        "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 bottom-0 w-[220px] bg-surface border-r border-outline-variant flex flex-col h-full py-xl z-20">
+<div class="px-lg mb-xl">
+<h1 class="text-h1 font-h1 text-primary">ProCoach AI</h1>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Elite Performance</p>
+</div>
+<nav class="flex-1 space-y-xs">
+<!-- Active Tab: Dashboard -->
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-primary font-bold border-r-2 border-primary">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-caps font-label-caps">Dashboard</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="text-label-caps font-label-caps">Schedule</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="text-label-caps font-label-caps">Athletes</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="text-label-caps font-label-caps">Library</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="text-label-caps font-label-caps">Analytics</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="text-label-caps font-label-caps">AI Insights</span>
+</div>
+</nav>
+<div class="mt-auto px-lg mb-md">
+<button class="w-full bg-primary-container text-on-primary py-sm rounded-lg text-body-base font-medium flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                New Session
+            </button>
+</div>
+<div class="border-t border-outline-variant pt-md">
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="text-label-caps font-label-caps">Profile</span>
+</div>
+<div class="flex items-center gap-md px-lg py-base cursor-pointer hover:bg-surface-container-high transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-label-caps font-label-caps">Logout</span>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[220px] h-[56px] bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-lg w-full z-10">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-lg pl-[40px] pr-md py-xs text-body-sm focus:ring-1 focus:ring-primary" placeholder="Search sessions, coaches, or data..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="bg-primary/10 text-primary px-md py-xs rounded-full text-body-sm font-medium hover:bg-primary/20 transition-colors">
+                Coach Mode
+            </button>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="settings">settings</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help">help</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-outline-variant overflow-hidden">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="Close-up professional portrait of a athletic trainer in a clean, high-key studio setting. The lighting is soft and directional, emphasizing clear skin and professional demeanor. The style is minimalist and high-end, fitting a premium digital platform with a white and indigo aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1PI9Gj2jU_q5mYI46wk8ie2914fWdbNqwIQ76q467oZJa8QUa2v3mRwwK2Q0OhbPq5EXOm-23IJt4fy0sZr9niTxqGdd9gpREpVDdTPQ_vJglvrKIul-MqYkhzab07pH9LH-8XxJ6QfW-dEc096MWRtYWZ21BMzOpclNn2fdCGdjQujyduEwPikD1fSFBVq80kOljDV0bvTxRcNIuf131Aew1ogFzoesa4cp-8I_Pf_6RSW7eaIcYhyTWDQWnedJ7_tpQ0oivIeer"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[220px] pt-[56px] p-xl min-h-screen">
+<!-- Welcome Section -->
+<section class="mb-xl">
+<div class="flex items-end justify-between mb-md">
+<div>
+<h2 class="text-h1 font-h1 text-on-surface">Welcome back, Alex</h2>
+<p class="text-body-base text-on-surface-variant">You've completed 85% of your weekly training goal. Keep pushing!</p>
+</div>
+<div class="flex gap-sm">
+<div class="bg-surface-container-lowest border border-outline-variant px-md py-sm rounded-xl flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="trending_up">trending_up</span>
+<div>
+<p class="text-label-caps text-on-surface-variant leading-none">Intensity</p>
+<p class="text-h3 font-h3">+12%</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant px-md py-sm rounded-xl flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="timer">timer</span>
+<div>
+<p class="text-label-caps text-on-surface-variant leading-none">Time Spent</p>
+<p class="text-h3 font-h3">14.5h</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-12 gap-lg">
+<!-- My Active Sessions (Bento Style) -->
+<div class="col-span-8">
+<div class="flex items-center justify-between mb-md">
+<h3 class="text-h2 font-h2">My Active Sessions</h3>
+<button class="text-primary text-body-sm font-medium hover:underline">View all</button>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md hover:border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container overflow-hidden">
+<img alt="Yoga session" class="w-full h-full object-cover" data-alt="Minimalist top-down view of a yoga mat and a bottle of water on a clean wooden floor in a bright, sunlit studio. The composition is clean and organized, with a focus on peace and clarity. High-key lighting with soft shadows in a light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqm-LGrafD9yEPnaVK-45Hrt8IJdoj-eUGx3gASDcA5vh90yssKaysgTtCqztPr_8Iu1rTZBYBTlhTyBhotaVL9slU_hVD9HOgg86GKzaXag8DLSe0jZoay0mPRPie4BGuYlVu1Y0SMNyorMY9GE7zxWAXbFZXMJWgEYXNDHXGIklEPAymXE8nmK07RVM1J7ZdxdrjqbsBoR_xb7ORkNnQPduZ-aG4xqZllg3r3KW5BhYOitjB6d7NoVd7yrfQEC-S5HbkjZmu8L33"/>
+</div>
+<span class="bg-green-100 text-green-700 text-[10px] px-sm py-[2px] rounded font-bold uppercase">Live</span>
+</div>
+<h4 class="text-h3 font-h3 mb-xs">Advanced Vinyasa Flow</h4>
+<p class="text-body-sm text-on-surface-variant mb-md">Coach: Sarah Jenkins</p>
+<div class="flex items-center gap-xs text-primary">
+<span class="material-symbols-outlined text-[18px]" data-icon="event">event</span>
+<span class="text-body-sm font-medium">Tomorrow, 08:00 AM</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md hover:border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container overflow-hidden">
+<img alt="Strength training" class="w-full h-full object-cover" data-alt="A clean, modern home gym setup featuring premium kettlebells and a minimalist bench. The background is a soft grey wall with professional lighting. The aesthetic is functional, precise, and high-quality, aligning with a performance-focused sports dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxoJV7_gwTiPN1ZC1BIpyklZ3gT8eMjicLoRcS4eDlL2voBkO2ztOzQKQDk7JtUoZuHRq7330REj7yFtdcYVXjzhBF6eFP-PpM7e5_uEGqcjthSGts5IuJ5vML2KM2aiLEvBnPEaT2BOb9PR1igo6ZTxuvOiJ8ooMx94y5gfOmKVU8OE2m10gdmx4Imx6rQayQyi8JcUjHvu87elGgW0vug2eN_boyu69mq9qOPkZKUOKhKQB2V0DQvg4us5OzuymkFz3bmTQzuDM8"/>
+</div>
+<span class="bg-secondary/10 text-secondary text-[10px] px-sm py-[2px] rounded font-bold uppercase">recorded</span>
+</div>
+<h4 class="text-h3 font-h3 mb-xs">Power &amp; Conditioning</h4>
+<p class="text-body-sm text-on-surface-variant mb-md">Coach: Marcus Thorne</p>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="event">event</span>
+<span class="text-body-sm">Thu, Oct 24, 05:30 PM</span>
+</div>
+</div>
+<!-- Card 3 (Wide) -->
+<div class="col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex items-center gap-lg hover:border-primary transition-colors cursor-pointer group">
+<div class="w-24 h-24 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Running coach" class="w-full h-full object-cover" data-alt="Action shot of a professional runner mid-stride on a modern urban track. The lighting is bright daylight, creating sharp details and high energy. The visual style is crisp and professional, emphasizing peak athletic performance and precision." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-SWcRfSdwVRM7hPFuIV_8s89CU9Dd8Kzelt9KRJmgUkIinyO688ncRexV6nT0cJY3vJHCCdOKUExOk1-9C8CU2tiB36OrB1-J1c9x8omE_Q6GhXccmMAFFIJW6Cj5jITi9ZBlGA1REx_k5ZMkXDJpfYfTbwb6XiM4CRfZ0iAGzQxYtr0M0Wgmj9B8mT1PBbtIThXGlwKyGlp-oJ4pOsJ-89sRmjHZdMgoVTKoOgw3wkUu-mqLsr147s5cUvC-5v3MrbWBtwcXmLgw"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<h4 class="text-h3 font-h3">Marathon Prep: Phase 2</h4>
+<span class="bg-primary/10 text-primary text-[10px] px-sm py-[2px] rounded-full font-bold">NEW MODULE</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-md">Focus on metabolic efficiency and sustained pace control. Join Coach David for a deep dive session.</p>
+<div class="flex items-center gap-lg">
+<div class="flex items-center gap-xs text-primary font-medium">
+<span class="material-symbols-outlined text-[18px]" data-icon="play_circle">play_circle</span>
+<span class="text-body-sm">Start Lesson</span>
+</div>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-body-sm">45 min</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Recommendations & Activity -->
+<div class="col-span-4 space-y-lg">
+<!-- AI Recommendations -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md">
+<div class="flex items-center gap-xs mb-md">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="text-h3 font-h3 text-primary">AI Recommendations</h3>
+</div>
+<div class="space-y-md">
+<div class="p-sm rounded-lg border border-primary/10 bg-primary/5">
+<p class="text-body-sm text-on-surface mb-sm">Based on your recent heart rate data, we recommend a recovery session.</p>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-[16px]" data-icon="spa">spa</span>
+<span class="text-body-sm font-medium text-primary">View Routine</span>
+</div>
+</div>
+<div class="p-sm rounded-lg border border-outline-variant hover:border-primary transition-colors cursor-pointer">
+<p class="text-body-sm text-on-surface-variant font-medium mb-xs">New Coach Match</p>
+<p class="text-body-sm text-on-surface-variant mb-sm">Coach Elena specialized in HIIT for sprinters.</p>
+<div class="flex items-center gap-xs">
+<span class="bg-primary text-on-primary text-[10px] px-xs py-[2px] rounded uppercase font-bold">98% Match</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md">
+<h3 class="text-h3 font-h3 mb-md">Recent Activity</h3>
+<div class="space-y-base">
+<div class="flex items-center gap-md py-base border-b border-outline-variant last:border-0">
+<div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle">check_circle</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-medium leading-tight">Session Completed</p>
+<p class="text-label-caps text-on-surface-variant">Morning Cardio Flow • 2h ago</p>
+</div>
+</div>
+<div class="flex items-center gap-md py-base border-b border-outline-variant last:border-0">
+<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit_note">edit_note</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-medium leading-tight">Note Added</p>
+<p class="text-label-caps text-on-surface-variant">Reviewing form on squats • 5h ago</p>
+</div>
+</div>
+<div class="flex items-center gap-md py-base border-b border-outline-variant last:border-0">
+<div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+<span class="material-symbols-outlined text-[18px]" data-icon="workspace_premium">workspace_premium</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-medium leading-tight">Badge Earned</p>
+<p class="text-label-caps text-on-surface-variant">10-Day Streak • Yesterday</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

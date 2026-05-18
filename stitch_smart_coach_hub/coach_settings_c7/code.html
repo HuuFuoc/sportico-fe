@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-container": "#ffd2be",
+                    "background": "#f9f9f8",
+                    "surface-dim": "#dadad9",
+                    "primary-fixed": "#e2dfff",
+                    "surface-bright": "#f9f9f8",
+                    "outline-variant": "#c7c4d8",
+                    "on-tertiary-fixed-variant": "#7b2f00",
+                    "on-secondary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#dad7ff",
+                    "on-error": "#ffffff",
+                    "surface": "#f9f9f8",
+                    "tertiary": "#7e3000",
+                    "surface-variant": "#e2e2e2",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "inverse-surface": "#2f3130",
+                    "surface-container": "#eeeeed",
+                    "tertiary-fixed-dim": "#ffb695",
+                    "outline": "#777587",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "inverse-on-surface": "#f1f1f0",
+                    "on-secondary-fixed": "#140f54",
+                    "secondary-fixed": "#e2dfff",
+                    "on-secondary-container": "#454386",
+                    "secondary": "#58579b",
+                    "on-surface-variant": "#464555",
+                    "tertiary-fixed": "#ffdbcc",
+                    "on-primary-fixed": "#0f0069",
+                    "on-background": "#1a1c1c",
+                    "primary": "#3525cd",
+                    "on-tertiary-fixed": "#351000",
+                    "on-surface": "#1a1c1c",
+                    "surface-container-low": "#f3f4f3",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "secondary-container": "#b6b4ff",
+                    "on-primary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#4d44e3",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#413f82",
+                    "surface-container-high": "#e8e8e7",
+                    "tertiary-container": "#a44100",
+                    "surface-container-highest": "#e2e2e2",
+                    "primary-container": "#4f46e5",
+                    "inverse-primary": "#c3c0ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "xl": "32px",
+                    "sm": "8px",
+                    "container-margin": "24px",
+                    "gutter": "16px",
+                    "xs": "4px",
+                    "base": "8px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Inter"],
+                    "h1": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "h2": ["Inter"],
+                    "h3": ["Inter"],
+                    "body-base": ["Inter"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                    "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                    "h3": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9f9f8; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar -->
+<aside class="bg-surface fixed left-0 top-0 bottom-0 w-[220px] border-r border-outline-variant flex flex-col h-full py-xl">
+<div class="px-lg mb-xl">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<h1 class="text-h1 font-h1 text-primary">ProCoach AI</h1>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Elite Performance</p>
+</div>
+<button class="mx-lg mb-xl bg-primary-container text-on-primary py-base px-md rounded font-h3 text-h3 flex items-center justify-center gap-sm hover:opacity-90 transition-all cursor-pointer active:scale-95">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            New Session
+        </button>
+<nav class="flex-1 space-y-xs">
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-label-caps">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-caps text-label-caps">My Learners</span>
+</a>
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-caps text-label-caps">Schedule</span>
+</a>
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="font-label-caps text-label-caps">Messages</span>
+</a>
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-caps text-label-caps">Earnings</span>
+</a>
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-label-caps text-label-caps">My Profile</span>
+</a>
+<a class="flex items-center gap-md px-lg py-base text-primary font-bold border-r-2 border-primary bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+</nav>
+<div class="mt-auto">
+<a class="flex items-center gap-md px-lg py-base text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="bg-surface-container-lowest fixed top-0 right-0 left-[220px] h-[56px] border-b border-outline-variant flex justify-between items-center px-lg z-10">
+<div class="flex items-center gap-md flex-1">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-base font-body-base w-64" placeholder="Search settings..." type="text"/>
+</div>
+<div class="flex items-center gap-lg">
+<div class="flex items-center gap-sm cursor-pointer hover:bg-surface-container px-sm py-xs rounded transition-colors active:scale-95">
+<span class="material-symbols-outlined text-primary" data-icon="stars" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="text-body-base font-body-base font-bold text-primary">Coach Mode</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help">help</span>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional headshot of a modern athletic coach in minimalist studio lighting. The coach is wearing high-end charcoal athletic gear against a clean white background. The image has a soft focus, high-key lighting style typical of a premium professional profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuADC0Ewf-b2nVPKwzVRd3W_OVTVvwCnsskGF6JGG4rweQFBdS3u5SRhweahMWKnMX1g2awMe1KN5USogZrFQIoV0fy3jrNogTJHJdZrCAbI0206p9vfajmjnBPpNEdOGqMVOTaKOHXQnZIO7hq1bLGOa_9zNNHsCjyHFHdEUktzG3pQ69wSlVap2ePczunHDQFi_KIPDoKt-UEZahFtEzF4Kg9B_Md_Z9UBaDjVIIsL3z1A07DEAzRqTPhqSAepG1D0jXFgs_X1_esB"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[220px] pt-[56px] min-h-screen">
+<div class="max-w-[1200px] mx-auto p-lg">
+<header class="mb-xl">
+<h2 class="text-h1 font-h1 text-on-surface mb-xs">Coach Settings</h2>
+<p class="text-body-base font-body-base text-on-surface-variant">Manage your account, preferences, and automated AI insights.</p>
+</header>
+<div class="settings-grid">
+<!-- Account Section -->
+<section class="col-span-12 md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg mb-gutter">
+<div class="flex items-center gap-md mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="manage_accounts">manage_accounts</span>
+<h3 class="text-h2 font-h2">Account</h3>
+</div>
+<div class="space-y-lg">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="space-y-xs">
+<label class="text-label-caps font-label-caps text-on-surface-variant">Email Address</label>
+<input class="w-full bg-background border border-outline-variant rounded p-base text-body-base font-body-base focus:border-primary focus:ring-0" type="email" value="coach.smith@procoach.ai"/>
+</div>
+<div class="space-y-xs">
+<label class="text-label-caps font-label-caps text-on-surface-variant">Phone Number</label>
+<input class="w-full bg-background border border-outline-variant rounded p-base text-body-base font-body-base focus:border-primary focus:ring-0" type="tel" value="+1 (555) 123-4567"/>
+</div>
+</div>
+<div class="pt-base">
+<button class="text-primary font-h3 text-h3 hover:underline flex items-center gap-xs">
+                                Change Password
+                                <span class="material-symbols-outlined text-[16px]" data-icon="open_in_new">open_in_new</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Payout & Billing Section -->
+<section class="col-span-12 md:col-span-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg mb-gutter">
+<div class="flex items-center gap-md mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+<h3 class="text-h2 font-h2">Payout &amp; Billing</h3>
+</div>
+<div class="space-y-md">
+<div class="p-md bg-background rounded-lg border border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="credit_card">credit_card</span>
+<div>
+<p class="text-body-base font-h3 font-h3">Bank account ending in 4421</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Standard Payout Schedule</p>
+</div>
+</div>
+<button class="text-primary material-symbols-outlined" data-icon="edit">edit</button>
+</div>
+<button class="w-full py-base border border-outline-variant rounded text-body-base font-h3 hover:bg-surface-container transition-colors">
+                            View Billing History
+                        </button>
+</div>
+</section>
+<!-- Notifications Section -->
+<section class="col-span-12 md:col-span-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg">
+<div class="flex items-center gap-md mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="notifications_active">notifications_active</span>
+<h3 class="text-h2 font-h2">Notifications</h3>
+</div>
+<div class="space-y-md">
+<div class="flex items-center justify-between py-base border-b border-outline-variant">
+<div>
+<p class="text-body-base font-h3 font-h3">Booking Requests</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Instant push and email for new sessions.</p>
+</div>
+<div class="w-10 h-6 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between py-base border-b border-outline-variant">
+<div>
+<p class="text-body-base font-h3 font-h3">Learner Messages</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Alerts for direct messages from students.</p>
+</div>
+<div class="w-10 h-6 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between py-base border-b border-outline-variant">
+<div>
+<p class="text-body-base font-h3 font-h3">Review Alerts</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Get notified when a learner leaves feedback.</p>
+</div>
+<div class="w-10 h-6 bg-surface-dim rounded-full relative cursor-pointer">
+<div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between py-base">
+<div>
+<p class="text-body-base font-h3 font-h3">AI Performance Tips</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Weekly summaries of AI-generated coach optimizations.</p>
+</div>
+<div class="w-10 h-6 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- AI Features Section -->
+<section class="col-span-12 md:col-span-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg relative overflow-hidden">
+<div class="absolute top-0 right-0 p-lg opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-[120px]" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div class="flex items-center gap-md mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="text-h2 font-h2">AI Features</h3>
+<span class="px-base py-xs bg-primary/10 text-primary rounded text-label-caps font-label-caps">Beta</span>
+</div>
+<div class="space-y-md">
+<div class="p-md bg-background rounded-lg border border-outline-variant">
+<div class="flex items-center justify-between mb-xs">
+<p class="text-body-base font-h3 font-h3">AI Draft Replies</p>
+<div class="w-10 h-6 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Automatically generate response drafts based on your previous coaching style.</p>
+</div>
+<div class="p-md bg-background rounded-lg border border-outline-variant">
+<div class="flex items-center justify-between mb-xs">
+<p class="text-body-base font-h3 font-h3">AI Learner Insights</p>
+<div class="w-10 h-6 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Receive deep-dive analysis on student performance patterns and potential hurdles.</p>
+</div>
+</div>
+</section>
+<!-- Subscription Section -->
+<section class="col-span-12 md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg">
+<div class="flex items-center gap-md mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="card_membership">card_membership</span>
+<h3 class="text-h2 font-h2">Subscription</h3>
+</div>
+<div class="flex flex-col md:flex-row items-center justify-between gap-xl">
+<div class="flex items-start gap-md">
+<div class="w-12 h-12 rounded bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="workspace_premium" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<div>
+<p class="text-h3 font-h3">Pro Coach Plus</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Renews on Oct 12, 2024 for $29/mo</p>
+</div>
+</div>
+<div class="flex gap-md">
+<button class="px-md py-base border border-outline-variant rounded text-body-base font-h3 hover:bg-surface-container transition-colors">Change Plan</button>
+<button class="px-md py-base border border-outline-variant rounded text-body-base font-h3 text-error hover:bg-error-container transition-colors">Cancel Subscription</button>
+</div>
+</div>
+</section>
+<!-- Danger Zone -->
+<section class="col-span-12 md:col-span-4 bg-surface-container-lowest border border-error/20 rounded-xl p-lg border-dashed">
+<div class="flex items-center gap-md mb-lg">
+<span class="material-symbols-outlined text-error" data-icon="report">report</span>
+<h3 class="text-h2 font-h2 text-error">Danger Zone</h3>
+</div>
+<div class="space-y-md">
+<p class="text-body-sm font-body-sm text-on-surface-variant">Once you delete your account, there is no going back. Please be certain.</p>
+<button class="w-full py-base border border-error/50 rounded text-error font-h3 hover:bg-error text-on-error transition-all cursor-pointer">
+                            Delete account
+                        </button>
+</div>
+</section>
+</div>
+<footer class="mt-xl pt-lg border-t border-outline-variant flex justify-end gap-md">
+<button class="px-xl py-base border border-outline-variant rounded text-body-base font-h3 hover:bg-surface-container transition-colors">Discard Changes</button>
+<button class="px-xl py-base bg-primary text-on-primary rounded text-body-base font-h3 hover:opacity-90 transition-all active:scale-95 shadow-sm">Save All Changes</button>
+</footer>
+</div>
+</main>
+</body></html>
