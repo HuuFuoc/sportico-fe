@@ -5,7 +5,8 @@
       "Bash(mkdir -p src)",
       "Bash(git mv *)",
       "Bash(npx tsc *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(npx eslint *)"
     ]
   }
 }

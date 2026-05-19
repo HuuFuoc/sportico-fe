@@ -13,6 +13,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ChartCard } from "@/components/common/ChartCard";
 import { StatCard } from "@/components/common/StatCard";
 import { AIInsightBanner } from "@/components/common/AIInsightBanner";
+import { ClientOnly } from "@/components/common/ClientOnly";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
 import {
@@ -88,7 +89,12 @@ export default function LearnerProgressPage() {
           }
         >
           <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ClientOnly
+              fallback={
+                <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
+              }
+            >
+              <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trend}
                 margin={{ left: -10, right: 6, top: 8, bottom: 0 }}
@@ -141,6 +147,7 @@ export default function LearnerProgressPage() {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            </ClientOnly>
           </div>
         </ChartCard>
 

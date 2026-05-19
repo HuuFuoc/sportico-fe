@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChartCard } from "@/components/common/ChartCard";
+import { ClientOnly } from "@/components/common/ClientOnly";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn, formatCurrency } from "@/lib/utils";
 import { mockEarnings, mockPayouts } from "@/lib/mock/earnings";
@@ -85,6 +86,11 @@ export default function AdminRevenuePage() {
             className="lg:col-span-8"
           >
             <div className="h-[300px]">
+              <ClientOnly
+                fallback={
+                  <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
+                }
+              >
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={series}
@@ -160,6 +166,7 @@ export default function AdminRevenuePage() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              </ClientOnly>
             </div>
           </ChartCard>
 
@@ -170,6 +177,11 @@ export default function AdminRevenuePage() {
             className="lg:col-span-4"
           >
             <div className="h-[300px]">
+              <ClientOnly
+                fallback={
+                  <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
+                }
+              >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={series}
@@ -213,6 +225,7 @@ export default function AdminRevenuePage() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+              </ClientOnly>
             </div>
           </ChartCard>
         </div>

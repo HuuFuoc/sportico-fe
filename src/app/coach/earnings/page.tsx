@@ -15,6 +15,7 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ChartCard } from "@/components/common/ChartCard";
 import { StatCard } from "@/components/common/StatCard";
+import { ClientOnly } from "@/components/common/ClientOnly";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn, formatCurrency } from "@/lib/utils";
 import { mockEarnings, mockPayouts } from "@/lib/mock/earnings";
@@ -92,6 +93,11 @@ export default function CoachEarningsPage() {
             className="lg:col-span-2"
           >
             <div className="h-[280px]">
+              <ClientOnly
+                fallback={
+                  <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
+                }
+              >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={mockEarnings}
@@ -143,6 +149,7 @@ export default function CoachEarningsPage() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+              </ClientOnly>
             </div>
             <div className="flex items-center gap-4 text-body-sm text-on-surface-variant mt-2">
               <span className="inline-flex items-center gap-1">
@@ -161,6 +168,11 @@ export default function CoachEarningsPage() {
             subtitle="Volume trend"
           >
             <div className="h-[280px]">
+              <ClientOnly
+                fallback={
+                  <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
+                }
+              >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={mockEarnings}
@@ -206,6 +218,7 @@ export default function CoachEarningsPage() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              </ClientOnly>
             </div>
           </ChartCard>
         </div>

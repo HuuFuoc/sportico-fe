@@ -14,6 +14,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChartCard } from "@/components/common/ChartCard";
 import { AIInsightBanner } from "@/components/common/AIInsightBanner";
+import { ClientOnly } from "@/components/common/ClientOnly";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { mockDailyActiveUsers } from "@/lib/mock/analytics";
@@ -100,6 +101,11 @@ export default function AdminDashboardPage() {
             }
           >
             <div className="h-[260px]">
+              <ClientOnly
+                fallback={
+                  <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
+                }
+              >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={dau}
@@ -150,6 +156,7 @@ export default function AdminDashboardPage() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              </ClientOnly>
             </div>
           </ChartCard>
 
