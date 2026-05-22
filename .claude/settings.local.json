@@ -23,7 +23,9 @@
       "Bash(curl -s 'https://images.unsplash.com/photo-__TRACKED_VAR__?w=480&q=70&auto=format&fit=crop' -o __TRACKED_VAR__.jpg)",
       "mcp__chrome-devtools__evaluate_script",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/learner/dashboard)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/learner/dashboard)",
+      "Bash(grep -c '\\\\.html$')",
+      "Bash(grep -cE '\\\\.\\(ts|tsx\\)$')"
     ]
   }
 }
