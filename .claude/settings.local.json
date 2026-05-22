@@ -6,7 +6,8 @@
       "Bash(git mv *)",
       "Bash(npx tsc *)",
       "Bash(npx next *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(git rm *)"
     ]
   }
 }
