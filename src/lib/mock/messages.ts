@@ -1,7 +1,8 @@
 import type { Message, MessageThread } from "@/types";
+import { NOW } from "./clock";
 
 function isoMinutesAgo(min: number) {
-  const d = new Date();
+  const d = new Date(NOW);
   d.setMinutes(d.getMinutes() - min);
   return d.toISOString();
 }

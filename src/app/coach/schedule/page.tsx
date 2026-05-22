@@ -2,7 +2,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { AIInsightBanner } from "@/components/common/AIInsightBanner";
-import { cn } from "@/lib/utils";
+import { cn, localDateKey } from "@/lib/utils";
+import { NOW } from "@/lib/mock/clock";
 import { getSessionsForCoach } from "@/lib/mock/sessions";
 import { getLearnerById } from "@/lib/mock/users";
 import { getInsightsForRole } from "@/lib/mock/insights";
@@ -23,7 +24,7 @@ export default function CoachSchedulePage() {
   const sessions = getSessionsForCoach(coachId);
   const insights = getInsightsForRole("coach");
 
-  const weekStart = startOfWeek(new Date());
+  const weekStart = startOfWeek(new Date(NOW));
   const weekDays = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
@@ -32,10 +33,10 @@ export default function CoachSchedulePage() {
 
   // Position each session in the grid by day + hour
   const sessionsByCell = (dayIdx: number, hour: number) => {
-    const day = weekDays[dayIdx].toISOString().slice(0, 10);
+    const day = localDateKey(weekDays[dayIdx]);
     return sessions.filter((s) => {
       const d = new Date(s.start);
-      return s.start.slice(0, 10) === day && d.getHours() === hour;
+      return localDateKey(d) === day && d.getHours() === hour;
     });
   };
 
@@ -134,7 +135,7 @@ export default function CoachSchedulePage() {
           <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-[var(--color-border-soft)]">
             <div className="border-r border-[var(--color-border-soft)]" />
             {weekDays.map((d, i) => {
-              const isToday = d.toDateString() === new Date().toDateString();
+              const isToday = d.toDateString() === NOW.toDateString();
               return (
                 <div
                   key={i}

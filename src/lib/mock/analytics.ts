@@ -1,10 +1,12 @@
 import type { AnalyticsDailyPoint, ProgressMetric, ProgressTrendPoint } from "@/types";
+import { NOW } from "./clock";
+import { localDateKey } from "@/lib/utils";
 
 function isoDate(daysAgo: number) {
-  const d = new Date();
+  const d = new Date(NOW);
   d.setDate(d.getDate() - daysAgo);
   d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
+  return localDateKey(d);
 }
 
 const seeded = (i: number) => {
@@ -48,7 +50,7 @@ export const mockProgressMetrics: ProgressMetric[] = [
     label: "Mobility Score",
     current: 78,
     target: 90,
-    unit: "/100",
+    unit: "pts",
   },
   {
     id: "pm-3",

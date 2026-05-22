@@ -60,11 +60,27 @@ export default function CoachEarningsPage() {
             >
               {formatCurrency(last.gross)}
             </p>
-            <p className="text-body-sm text-[#1f7a4d] mt-1 inline-flex items-center gap-1">
-              <MaterialIcon name="trending_up" size={14} />
-              +
-              {Math.round(((last.gross - prev.gross) / prev.gross) * 100)}% vs last
-            </p>
+            {(() => {
+              const deltaPct = Math.round(
+                ((last.gross - prev.gross) / prev.gross) * 100,
+              );
+              const down = deltaPct < 0;
+              return (
+                <p
+                  className={cn(
+                    "text-body-sm mt-1 inline-flex items-center gap-1",
+                    down ? "text-[#ba1a1a]" : "text-[#1f7a4d]",
+                  )}
+                >
+                  <MaterialIcon
+                    name={down ? "trending_down" : "trending_up"}
+                    size={14}
+                  />
+                  {deltaPct > 0 ? "+" : ""}
+                  {deltaPct}% vs last
+                </p>
+              );
+            })()}
           </div>
           <StatCard
             variant="compact"

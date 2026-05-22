@@ -4,7 +4,8 @@ import { SessionRow } from "@/components/common/SessionRow";
 import { EmptyState } from "@/components/common/EmptyState";
 import { AIInsightBanner } from "@/components/common/AIInsightBanner";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { cn } from "@/lib/utils";
+import { cn, localDateKey } from "@/lib/utils";
+import { NOW } from "@/lib/mock/clock";
 import { getSessionsForLearner } from "@/lib/mock/sessions";
 import { getInsightsForRole } from "@/lib/mock/insights";
 import { getCoachById } from "@/lib/mock/users";
@@ -25,7 +26,7 @@ export default function LearnerSchedulePage() {
   const insights = getInsightsForRole("learner");
 
   // Build week grid (current week)
-  const weekStart = startOfWeek(new Date());
+  const weekStart = startOfWeek(new Date(NOW));
   const weekDays = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
@@ -33,12 +34,12 @@ export default function LearnerSchedulePage() {
   });
 
   const dayBuckets = weekDays.map((d) => {
-    const day = d.toISOString().slice(0, 10);
-    return sessions.filter((s) => s.start.slice(0, 10) === day);
+    const day = localDateKey(d);
+    return sessions.filter((s) => localDateKey(new Date(s.start)) === day);
   });
 
   const upcoming = sessions
-    .filter((s) => new Date(s.start) >= new Date() && s.status !== "cancelled")
+    .filter((s) => new Date(s.start) >= NOW && s.status !== "cancelled")
     .slice(0, 6);
 
   return (
@@ -83,7 +84,7 @@ export default function LearnerSchedulePage() {
           <div className="grid grid-cols-7 border-b border-[var(--color-border-soft)]">
             {weekDays.map((d, i) => {
               const isToday =
-                d.toDateString() === new Date().toDateString();
+                d.toDateString() === NOW.toDateString();
               return (
                 <div
                   key={i}
@@ -117,7 +118,7 @@ export default function LearnerSchedulePage() {
           <div className="grid grid-cols-7 min-h-[280px]">
             {dayBuckets.map((items, i) => {
               const isToday =
-                weekDays[i].toDateString() === new Date().toDateString();
+                weekDays[i].toDateString() === NOW.toDateString();
               return (
                 <div
                   key={i}

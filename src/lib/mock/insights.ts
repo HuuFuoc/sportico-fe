@@ -1,4 +1,5 @@
 import type { AIInsight, NotificationItem, VerificationRequest } from "@/types";
+import { NOW } from "./clock";
 
 export const mockInsights: AIInsight[] = [
   {
@@ -8,7 +9,7 @@ export const mockInsights: AIInsight[] = [
     body: "Consistency is key! AI suggests a 15-minute mobility flow today.",
     cta: { label: "Start Mobility Flow", href: "/learner/schedule" },
     severity: "info",
-    createdAt: new Date().toISOString(),
+    createdAt: NOW.toISOString(),
   },
   {
     id: "ins-l-2",
@@ -17,7 +18,7 @@ export const mockInsights: AIInsight[] = [
     body: "Your HRV trend dropped 6% — consider an easy day before your next strength block.",
     cta: { label: "View Recovery Plan", href: "/learner/progress" },
     severity: "warning",
-    createdAt: new Date().toISOString(),
+    createdAt: NOW.toISOString(),
   },
   {
     id: "ins-c-1",
@@ -26,7 +27,7 @@ export const mockInsights: AIInsight[] = [
     body: "3 of your learners haven't booked in 2 weeks — consider sending a check-in message.",
     cta: { label: "Draft Message", href: "/coach/messages" },
     severity: "warning",
-    createdAt: new Date().toISOString(),
+    createdAt: NOW.toISOString(),
   },
   {
     id: "ins-c-2",
@@ -34,7 +35,7 @@ export const mockInsights: AIInsight[] = [
     title: "Performance Insight",
     body: "Your average response time improved by 18% this week — keep it up.",
     severity: "success",
-    createdAt: new Date().toISOString(),
+    createdAt: NOW.toISOString(),
   },
   {
     id: "ins-a-1",
@@ -43,7 +44,7 @@ export const mockInsights: AIInsight[] = [
     body: "AI matching accuracy is at 94.2% (+1.1% w/w). 4 coaches awaiting verification.",
     cta: { label: "Review Verifications", href: "/admin/verifications" },
     severity: "info",
-    createdAt: new Date().toISOString(),
+    createdAt: NOW.toISOString(),
   },
 ];
 
@@ -60,7 +61,7 @@ export const mockNotifications: NotificationItem[] = [
     id: "n-1",
     title: "New AI match",
     body: "Sarah Jenkins is a 99% match for your tennis goals.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    createdAt: new Date(NOW.getTime() - 1000 * 60 * 15).toISOString(),
     read: false,
     icon: "auto_awesome",
     href: "/learner/coaches/coach-1",
@@ -69,7 +70,7 @@ export const mockNotifications: NotificationItem[] = [
     id: "n-2",
     title: "Session confirmed",
     body: "Your 8am yoga session with Elena is confirmed.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    createdAt: new Date(NOW.getTime() - 1000 * 60 * 60 * 3).toISOString(),
     read: false,
     icon: "event_available",
     href: "/learner/schedule",
@@ -78,7 +79,7 @@ export const mockNotifications: NotificationItem[] = [
     id: "n-3",
     title: "Payment received",
     body: "Your monthly payout of $4,250 has been processed.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    createdAt: new Date(NOW.getTime() - 1000 * 60 * 60 * 24).toISOString(),
     read: true,
     icon: "payments",
     href: "/coach/earnings",

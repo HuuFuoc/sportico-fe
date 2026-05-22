@@ -39,7 +39,7 @@ export function RoleSwitcher() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-[60]">
+    <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end">
       {open && (
         <div className="mb-2 w-56 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] overflow-hidden">
           <div className="px-3 py-2 border-b border-[var(--color-border-soft)]">

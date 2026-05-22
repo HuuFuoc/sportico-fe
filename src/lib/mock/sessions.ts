@@ -1,7 +1,8 @@
 import type { Session } from "@/types";
+import { NOW } from "./clock";
 
 function isoDay(offsetDays: number, hour = 10, minute = 0) {
-  const d = new Date();
+  const d = new Date(NOW);
   d.setDate(d.getDate() + offsetDays);
   d.setHours(hour, minute, 0, 0);
   return d.toISOString();
@@ -299,7 +300,7 @@ export function getUpcomingSessions(filter?: {
   coachId?: string;
   learnerId?: string;
 }) {
-  const now = Date.now();
+  const now = NOW.getTime();
   return mockSessions
     .filter((s) => {
       if (new Date(s.start).getTime() < now) return false;

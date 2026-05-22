@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { getCoachById, getLearnerById, mockLearners } from "@/lib/mock/users";
 import { getUpcomingSessions } from "@/lib/mock/sessions";
+import { NOW } from "@/lib/mock/clock";
 import { getInsightsForRole } from "@/lib/mock/insights";
 import { formatCurrency, initials } from "@/lib/utils";
 
@@ -14,8 +15,7 @@ export default function CoachDashboardPage() {
   const todaySessions = getUpcomingSessions({ coachId: coach.id }).filter(
     (s) => {
       const d = new Date(s.start);
-      const today = new Date();
-      return d.toDateString() === today.toDateString();
+      return d.toDateString() === NOW.toDateString();
     },
   );
   const upcoming = getUpcomingSessions({ coachId: coach.id }).slice(0, 5);

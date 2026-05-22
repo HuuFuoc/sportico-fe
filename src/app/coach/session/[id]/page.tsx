@@ -154,7 +154,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
                   body: session.aiPlan,
                   cta: { label: "Apply to session", href: "#" },
                   severity: "info",
-                  createdAt: new Date().toISOString(),
+                  createdAt: "2026-05-22",
                 }}
               />
             )}

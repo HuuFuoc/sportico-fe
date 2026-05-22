@@ -39,7 +39,9 @@ export function MessagesView({ userId }: MessagesViewProps) {
               className="text-on-surface-variant"
             />
             <input
-              type="text"
+              type="search"
+              name="conversation-search"
+              aria-label="Search conversations"
               placeholder="Search conversations..."
               className="flex-1 ml-2 bg-transparent outline-none text-body-sm"
             />
@@ -195,6 +197,8 @@ export function MessagesView({ userId }: MessagesViewProps) {
                 </button>
                 <input
                   type="text"
+                  name="message"
+                  aria-label="Type a message"
                   value={composer}
                   onChange={(e) => setComposer(e.target.value)}
                   placeholder="Type a message..."

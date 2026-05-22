@@ -108,7 +108,8 @@ export default function VerificationsPage() {
                             </span>
                           </div>
                           <p className="text-body-sm text-on-surface-variant truncate">
-                            {v.sport} · {v.documents.length} docs
+                            {v.sport} · {v.documents.length} doc
+                            {v.documents.length !== 1 ? "s" : ""}
                           </p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span

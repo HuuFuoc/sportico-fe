@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { NOW } from "@/lib/mock/clock";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -30,8 +31,21 @@ export function avatarFor(seed: string | number) {
   return `https://i.pravatar.cc/200?u=${encodeURIComponent(String(seed))}`;
 }
 
+/**
+ * Local-timezone `YYYY-MM-DD` key. Use this — never `Date#toISOString()` —
+ * to compare calendar days: `toISOString()` is UTC and shifts the day in
+ * any non-UTC timezone (e.g. a local-midnight Date renders as the previous
+ * day in UTC+7), which silently misplaces calendar entries.
+ */
+export function localDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function relativeDay(date: Date) {
-  const today = new Date();
+  const today = new Date(NOW);
   today.setHours(0, 0, 0, 0);
   const target = new Date(date);
   target.setHours(0, 0, 0, 0);

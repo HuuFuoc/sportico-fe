@@ -60,7 +60,9 @@ export function TopBar({ role, title }: TopBarProps) {
             className="text-on-surface-variant"
           />
           <input
-            type="text"
+            type="search"
+            name="global-search"
+            aria-label={placeholder}
             placeholder={placeholder}
             className="bg-transparent border-none outline-none text-body-sm w-full ml-2 placeholder:text-on-surface-variant"
           />
