@@ -54,11 +54,16 @@ export function Footer() {
         {/* Top grid: brand + 4 link columns */}
         <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-primary text-on-primary">
-                <MaterialIcon name="rocket_launch" filled size={18} weight={500} />
-              </div>
-              <span className="text-h3 text-primary">ProCoach AI</span>
+            <Link
+              href="/"
+              aria-label="Sportico — home"
+              className="inline-flex items-center"
+            >
+              <img
+                src="/logo.png"
+                alt="Sportico"
+                className="h-10 w-auto rounded-[8px]"
+              />
             </Link>
             <p className="mt-3 max-w-[260px] text-body-sm text-on-surface-variant">
               AI-matched coaching that connects athletes with elite coaches —
@@ -89,12 +94,14 @@ export function Footer() {
 
         {/* Bottom row: logo + copyright + social */}
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[var(--color-border-soft)] pt-6 sm:flex-row">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-primary text-on-primary">
-              <MaterialIcon name="rocket_launch" filled size={14} weight={500} />
-            </div>
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/logo.png"
+              alt="Sportico"
+              className="h-6 w-auto rounded-[4px]"
+            />
             <p className="text-body-sm text-on-surface-variant">
-              © 2026 ProCoach AI. All rights reserved.
+              © 2026 Sportico. All rights reserved.
             </p>
           </div>
           <div className="flex items-center gap-1">

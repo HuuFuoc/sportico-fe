@@ -22,8 +22,8 @@ const NAV_LINKS = [
 ];
 
 // Demo routing — wire these to real auth once a backend exists.
-const LOGIN_HREF = "/learner/dashboard";
-const SIGNUP_HREF = "/learner/dashboard";
+const LOGIN_HREF = "/login";
+const SIGNUP_HREF = "/register";
 
 export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -59,33 +59,21 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
     >
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div
+        <Link
+          href="/"
+          aria-label="Sportico — home"
+          className="flex items-center"
+        >
+          <img
+            src="/logo.png"
+            alt="Sportico"
             className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-[8px]",
-              transparent ? "bg-white text-primary" : "bg-primary text-on-primary",
+              "h-9 w-auto rounded-[6px] transition-all",
+              transparent
+                ? "shadow-[0_4px_14px_-2px_rgba(53,37,205,0.55)] ring-1 ring-white/15"
+                : "",
             )}
-          >
-            <MaterialIcon name="rocket_launch" filled size={18} weight={500} />
-          </div>
-          <div>
-            <p
-              className={cn(
-                "text-h3 leading-none",
-                transparent ? "text-white" : "text-primary",
-              )}
-            >
-              ProCoach AI
-            </p>
-            <p
-              className={cn(
-                "mt-0.5 hidden text-[10px] uppercase tracking-[0.12em] sm:block",
-                transparent ? "text-white/70" : "text-on-surface-variant",
-              )}
-            >
-              Elite Performance
-            </p>
-          </div>
+          />
         </Link>
 
         {/* Center links — desktop only */}

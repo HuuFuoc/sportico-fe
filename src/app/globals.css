@@ -241,12 +241,58 @@ input[type="number"] {
   animation: dot-flash 1.3s ease-in-out infinite;
 }
 
+/* Moving gradient text — used on hero headline accents */
+@keyframes gradient-x {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+.animate-gradient-x {
+  animation: gradient-x 6s ease-in-out infinite;
+}
+
+/* Diagonal shimmer sweep — for CTA + progress bar */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.animate-shimmer {
+  animation: shimmer 2.6s linear infinite;
+}
+
+/* Slow pulse for ambient halos */
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 3.6s ease-in-out infinite;
+}
+
 /* Honour reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .animate-float-y,
   .animate-float-y-slow,
   .animate-rise-in,
-  .animate-dot-flash {
+  .animate-dot-flash,
+  .animate-gradient-x,
+  .animate-shimmer,
+  .animate-pulse-slow {
     animation: none;
   }
 }

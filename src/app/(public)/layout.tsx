@@ -15,7 +15,7 @@ export default function PublicLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-surface-container-lowest">
-      <PublicNavbar />
+      <PublicNavbar variant="transparent" />
       <main className="flex-1">{children}</main>
       <Footer />
     </div>

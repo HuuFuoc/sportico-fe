@@ -142,18 +142,16 @@ export function Sidebar({ role }: { role: AppRole }) {
       >
         {/* Logo */}
         <div className="px-5 pb-3 pt-5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-primary to-violet-500 text-on-primary shadow-[0_8px_18px_-8px_rgba(53,37,205,0.7)]">
-              <MaterialIcon name="rocket_launch" filled size={19} weight={500} />
-            </div>
-            <div>
-              <p className="text-[15px] font-semibold leading-none text-on-surface">
-                ProCoach AI
-              </p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-on-surface-variant">
-                Elite Performance
-              </p>
-            </div>
+          <Link
+            href="/"
+            aria-label="Sportico — home"
+            className="inline-flex items-center"
+          >
+            <img
+              src="/logo.png"
+              alt="Sportico"
+              className="h-10 w-auto rounded-[8px]"
+            />
           </Link>
         </div>
 

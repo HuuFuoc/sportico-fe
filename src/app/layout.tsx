@@ -10,9 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ProCoach AI — Smart Coach Hub",
+  title: "Sportico — Smart Coach Hub",
   description:
     "AI-powered coaching platform connecting learners and elite coaches.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

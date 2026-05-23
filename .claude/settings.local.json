@@ -27,7 +27,39 @@
       "Bash(grep -c '\\\\.html$')",
       "Bash(grep -cE '\\\\.\\(ts|tsx\\)$')",
       "Bash(pnpm run *)",
-      "Bash(echo \"===EXIT: $?===\")"
+      "Bash(echo \"===EXIT: $?===\")",
+      "Bash(grep -r \"from \\\\\"motion\\\\\"\" d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\src --include=\"*.tsx\" -l 2>nul | head -20)",
+      "Bash(ls \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\node_modules\\\\lucide-react\\\\dist\" 2>nul | head -10)",
+      "Bash(cat \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\node_modules\\\\lucide-react\\\\package.json\" 2>nul | head -40)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)",
+      "PowerShell(npx eslint src/components/common/MessagesView.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/learner/progress/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/learner/schedule/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/coach/dashboard/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/coach/schedule/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/coach/earnings/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/coach/profile/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/admin/dashboard/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/admin/users/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/admin/verifications/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/admin/revenue/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/admin/ai-settings/page.tsx 2>&1)",
+      "PowerShell(npx eslint src/app/\\(public\\)/page.tsx src/components/landing/HeroSection.tsx src/components/landing/HeroPreview.tsx 2>&1 | Select-Object -First 60)",
+      "PowerShell(npx eslint 'src/app/\\(public\\)/page.tsx' 'src/components/landing/HeroSection.tsx' 'src/components/landing/HeroPreview.tsx' 2>&1)",
+      "PowerShell(npx eslint 'src/app/\\(public\\)/page.tsx' 'src/components/ui/container-scroll-animation.tsx' 'src/components/landing/ProductReveal.tsx' 2>&1)",
+      "Bash(ls \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\assets\" 2>nul)",
+      "Bash(ls \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\src\\\\app\\\\\\(public\\)\\\\\" 2>nul; ls \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\public\\\\\" 2>nul)",
+      "Bash(cp \"d:/FPT-Ky8/EXE202/sportico/assets/mainimg.jpg\" \"d:/FPT-Ky8/EXE202/sportico/public/hero.jpg\" && ls -la \"d:/FPT-Ky8/EXE202/sportico/public/hero.jpg\")",
+      "PowerShell(Copy-Item \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\assets\\\\mainimg.jpg\" \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\public\\\\hero.jpg\")",
+      "PowerShell(\"---\")",
+      "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 'src/app/\\(public\\)/layout.tsx' 2>&1)",
+      "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 2>&1)",
+      "PowerShell(npx eslint 'src/components/layout/PublicNavbar.tsx' 'src/components/layout/Sidebar.tsx' 'src/components/layout/Footer.tsx' 2>&1)"
+    ],
+    "additionalDirectories": [
+      "d:\\FPT-Ky8\\EXE202\\sportico",
+      "D:\\FPT-Ky8\\EXE202\\sportico",
+      "d:\\FPT-Ky8\\EXE202\\sportico\\assets"
     ]
   }
 }

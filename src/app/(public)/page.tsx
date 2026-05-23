@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { AIBadge } from "@/components/common/AIBadge";
-import { HeroPreview } from "@/components/landing/HeroPreview";
+import { HeroSection } from "@/components/landing/HeroSection";
 import { MatchExplainer } from "@/components/landing/MatchExplainer";
 import { CoachShowcaseCard } from "@/components/landing/CoachShowcaseCard";
 import { DashboardPreview } from "@/components/landing/DashboardPreview";
@@ -12,13 +11,6 @@ import { getCoaches } from "@/lib/mock/users";
 import { avatarFor, cn } from "@/lib/utils";
 
 /* ----------------------------- page content ----------------------------- */
-
-const HERO_AVATARS = [
-  avatarFor("learner-11"),
-  avatarFor("learner-2"),
-  avatarFor("learner-6"),
-  avatarFor("learner-1"),
-];
 
 const STATS = [
   { value: 1200, suffix: "+", decimals: 0, label: "Verified elite coaches" },
@@ -110,107 +102,7 @@ export default function LandingPage() {
   return (
     <>
       {/* ===================== A — Hero ===================== */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
-        >
-          <div className="absolute inset-0 bg-grid-faint [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_35%,transparent_80%)]" />
-          <div className="absolute -left-32 -top-28 h-[480px] w-[480px] rounded-full bg-indigo-400/25 blur-[130px]" />
-          <div className="absolute -right-20 top-0 h-[440px] w-[440px] rounded-full bg-violet-400/20 blur-[130px]" />
-        </div>
-
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-28 lg:pt-16">
-          <div>
-            <Reveal>
-              <AIBadge label="AI-Powered Coach Matching" size="md" />
-            </Reveal>
-            <Reveal delay={0.07}>
-              <h1 className="mt-5 text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] text-on-surface sm:text-[54px] lg:text-[60px]">
-                Train smarter with{" "}
-                <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
-                  AI-matched coaches.
-                </span>
-              </h1>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mt-5 max-w-xl text-[17px] leading-[1.65] text-on-surface-variant sm:text-[18px]">
-                Stop scrolling endless directories. ProCoach AI reads your
-                goals, schedule and training style — then matches you with the
-                elite coach most likely to get you there.
-              </p>
-            </Reveal>
-            <Reveal delay={0.21}>
-              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-                <Link
-                  href="/learner/coaches"
-                  className="group inline-flex items-center gap-2 rounded-[8px] bg-primary px-6 py-3.5 text-[15px] font-semibold text-on-primary shadow-[0_12px_30px_-8px_rgba(53,37,205,0.55)] transition-all hover:bg-[#2d20b8] hover:shadow-[0_16px_38px_-8px_rgba(53,37,205,0.65)]"
-                >
-                  <MaterialIcon name="search" size={18} />
-                  Find your coach
-                  <MaterialIcon
-                    name="arrow_forward"
-                    size={16}
-                    className="transition-transform group-hover:translate-x-0.5"
-                  />
-                </Link>
-                <Link
-                  href="/coach/dashboard"
-                  className="group inline-flex items-center gap-1.5 text-[15px] font-semibold text-on-surface transition-colors hover:text-primary"
-                >
-                  Become a coach
-                  <MaterialIcon
-                    name="arrow_outward"
-                    size={16}
-                    className="text-on-surface-variant transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary"
-                  />
-                </Link>
-              </div>
-            </Reveal>
-            <Reveal delay={0.28}>
-              <div className="mt-9 flex flex-wrap items-center gap-x-7 gap-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-2.5">
-                    {HERO_AVATARS.map((src) => (
-                      <img
-                        key={src}
-                        src={src}
-                        alt=""
-                        className="h-8 w-8 rounded-full border-2 border-surface-container-lowest object-cover"
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[13px] text-on-surface-variant">
-                    <span className="font-semibold text-on-surface">
-                      2,000+ athletes
-                    </span>{" "}
-                    matched this season
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 text-[13px] text-on-surface-variant">
-                  <span className="flex">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <MaterialIcon
-                        key={i}
-                        name="star"
-                        filled
-                        size={15}
-                        className="text-amber-500"
-                      />
-                    ))}
-                  </span>
-                  <span className="font-semibold text-on-surface">4.9</span>
-                  average rating
-                </div>
-              </div>
-            </Reveal>
-          </div>
-
-          <Reveal delay={0.34} y={36} className="lg:pl-6">
-            <HeroPreview coach={heroCoach} />
-          </Reveal>
-        </div>
-      </section>
+      <HeroSection coach={heroCoach} />
 
       {/* ===================== B — Stat strip ===================== */}
       <section className="border-y border-[var(--color-border-soft)] bg-surface">

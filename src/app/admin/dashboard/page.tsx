@@ -1,25 +1,61 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { motion, useReducedMotion } from "motion/react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import Link from "next/link";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  ArrowUpRight,
+  Brain,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  Database,
+  DollarSign,
+  Download,
+  FileBarChart,
+  Filter,
+  Gauge,
+  RefreshCw,
+  Search,
+  Server,
+  ShieldCheck,
+  Sparkles,
+  Terminal,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { ChartCard } from "@/components/common/ChartCard";
-import { AIInsightBanner } from "@/components/common/AIInsightBanner";
 import { ClientOnly } from "@/components/common/ClientOnly";
-import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { mockDailyActiveUsers } from "@/lib/mock/analytics";
-import { getInsightsForRole, mockVerifications } from "@/lib/mock/insights";
+import { mockVerifications } from "@/lib/mock/insights";
+import type { VerificationRequest } from "@/types";
 import { mockCoaches, mockLearners } from "@/lib/mock/users";
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+const RANGE_OPTIONS = ["Today", "Week", "Month", "All"] as const;
+type Range = (typeof RANGE_OPTIONS)[number];
+const TAB_OPTIONS = ["Coaches", "Learners"] as const;
+type Tab = (typeof TAB_OPTIONS)[number];
 
 const TOTAL_USERS = 24_592;
 const ACTIVE_COACHES = 1_204;
@@ -27,306 +63,1593 @@ const SESSIONS_TODAY = 452;
 const PLATFORM_REVENUE_MTD = 842_000;
 const AI_ACCURACY = 94.2;
 
+function seedSpark(seed: number, base: number, jitter: number, len = 8) {
+  return Array.from({ length: len }, (_, i) => {
+    const noise = Math.sin(i * 1.4 + seed) * jitter;
+    return { i, v: Math.max(0, base + i * (jitter / 5) + noise) };
+  });
+}
+
+// Synthetic mock data
+const REVENUE_TREND = Array.from({ length: 12 }).map((_, i) => {
+  const month = new Date(2025, i, 1).toLocaleDateString("en-US", {
+    month: "short",
+  });
+  const base = 600_000 + i * 22_000;
+  const noise = Math.sin(i * 1.7) * 35_000;
+  return { month, v: Math.round(base + noise) };
+});
+
+const RETENTION = [
+  { week: "W1", value: 100 },
+  { week: "W2", value: 78 },
+  { week: "W3", value: 64 },
+  { week: "W4", value: 55 },
+  { week: "W5", value: 48 },
+  { week: "W6", value: 44 },
+  { week: "W7", value: 41 },
+  { week: "W8", value: 39 },
+];
+
+// Session heatmap: 7 days × 4 time buckets
+const HEATMAP_HOURS = ["6AM", "12PM", "6PM", "12AM"];
+const HEATMAP_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HEATMAP = HEATMAP_DAYS.map((d, i) =>
+  HEATMAP_HOURS.map((_, j) => {
+    const v = Math.abs(Math.sin(i * 1.3 + j * 0.7)) * 100;
+    return Math.round(v);
+  }),
+);
+
 export default function AdminDashboardPage() {
-  const insights = getInsightsForRole("admin");
+  const reduce = useReducedMotion();
+  const [range, setRange] = useState<Range>("Month");
+  const [tab, setTab] = useState<Tab>("Coaches");
+
   const dau = mockDailyActiveUsers;
   const todayDAU = dau[dau.length - 1].activeUsers;
-  const recentCoaches = mockCoaches.slice(0, 4);
-  const recentLearners = mockLearners.slice(0, 4);
+  const dauTotal = dau.reduce((s, d) => s + d.activeUsers, 0);
+  const recentCoaches = mockCoaches.slice(0, 5);
+  const recentLearners = mockLearners.slice(0, 5);
+  const pendingVerifications = mockVerifications.slice(0, 4);
+
+  // Verification with synthetic risk score
+  const verifications = useMemo<VerificationWithRisk[]>(
+    () =>
+      pendingVerifications.map((v, i) => ({
+        ...v,
+        risk: (i === 0
+          ? "low"
+          : i === 1
+            ? "high"
+            : i === 2
+              ? "med"
+              : "low") as RiskLevel,
+        score: 92 - i * 14,
+      })),
+    [pendingVerifications],
+  );
 
   return (
     <AppShell role="admin" title="Admin Dashboard">
-      <div className="space-y-5 max-w-[1500px]">
-        <header>
-          <h1 className="text-h1">Platform Overview</h1>
-          <p className="text-body-base text-on-surface-variant mt-1">
-            Real-time analytics across users, sessions and revenue.
-          </p>
-        </header>
+      <div className="max-w-[1440px] mx-auto space-y-6">
+        {/* ============ HEADER ============ */}
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduce ? 0 : 0.45, ease: EASE }}
+          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4"
+        >
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
+                <Terminal size={11} />
+                Command Center
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-semibold text-[#1f7a4d]">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                Live
+              </span>
+              <span className="text-[12px] text-on-surface-variant">
+                Updated{" "}
+                {new Date().toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+            <h1 className="text-[30px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
+              Platform Overview
+            </h1>
+            <p className="text-[14px] text-on-surface-variant mt-1.5">
+              Real-time analytics across users, sessions, and revenue.
+            </p>
+          </div>
 
-        {insights[0] && <AIInsightBanner insight={insights[0]} />}
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px]">
+              {RANGE_OPTIONS.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  className={cn(
+                    "relative px-3 h-8 text-[12.5px] font-medium rounded-[7px] transition-colors",
+                    range === r
+                      ? "text-on-surface"
+                      : "text-on-surface-variant hover:text-on-surface",
+                  )}
+                >
+                  {range === r && (
+                    <motion.span
+                      layoutId="adminRangePill"
+                      className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06),0_2px_6px_rgba(15,15,30,0.04)]"
+                      transition={{
+                        type: "spring",
+                        duration: reduce ? 0 : 0.4,
+                        bounce: 0.2,
+                      }}
+                    />
+                  )}
+                  <span className="relative">{r}</span>
+                </button>
+              ))}
+            </div>
+            <button className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
+              <Filter size={13} />
+              Region
+            </button>
+            <button
+              aria-label="Refresh"
+              className="w-10 h-10 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low active:scale-95 transition-all flex items-center justify-center"
+            >
+              <RefreshCw size={14} />
+            </button>
+            <button className="h-10 px-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <Download size={13} />
+              Export
+            </button>
+          </div>
+        </motion.header>
 
-        {/* KPI row */}
-        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <Kpi
+        {/* ============ HERO COMMAND CENTER ============ */}
+        <HeroCommand
+          revenue={PLATFORM_REVENUE_MTD}
+          users={TOTAL_USERS}
+          sessions={SESSIONS_TODAY}
+          coaches={ACTIVE_COACHES}
+          reduce={reduce ?? false}
+        />
+
+        {/* ============ KPI ROW ============ */}
+        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <KpiCard
+            icon={Users}
             label="Total Users"
             value={formatNumber(TOTAL_USERS)}
-            delta="+12% inc."
-            deltaColor="success"
-            icon="trending_up"
+            trend="+12%"
+            trendDir="up"
+            trendLabel="MoM growth"
+            accent="indigo"
+            spark={seedSpark(1, 18000, 2000)}
+            delay={0.05}
+            reduce={reduce ?? false}
           />
-          <Kpi
+          <KpiCard
+            icon={ShieldCheck}
             label="Active Coaches"
             value={formatNumber(ACTIVE_COACHES)}
-            delta="84 new this week"
-            deltaColor="primary"
-            icon="person_add"
+            trend="84 new"
+            trendDir="up"
+            trendLabel="this week"
+            accent="violet"
+            spark={seedSpark(2, 1100, 60)}
+            delay={0.1}
+            reduce={reduce ?? false}
           />
-          <Kpi
+          <KpiCard
+            icon={Activity}
             label="Sessions Today"
             value={formatNumber(SESSIONS_TODAY)}
-            delta="Peak: 14:00"
-            deltaColor="neutral"
-            icon="schedule"
+            trend="Peak 2pm"
+            trendDir="neutral"
+            trendLabel="live now"
+            accent="emerald"
+            spark={seedSpark(3, 380, 60)}
+            delay={0.15}
+            reduce={reduce ?? false}
           />
-          <Kpi
+          <KpiCard
+            icon={DollarSign}
             label="Revenue MTD"
             value={formatCurrency(PLATFORM_REVENUE_MTD)}
-            delta="+18% MoM"
-            deltaColor="success"
-            icon="payments"
+            trend="+18%"
+            trendDir="up"
+            trendLabel="MoM"
+            accent="amber"
+            spark={seedSpark(4, 700000, 60000)}
+            delay={0.2}
+            reduce={reduce ?? false}
           />
-          <Kpi
+          <KpiCard
+            icon={Brain}
             label="AI Match Accuracy"
             value={`${AI_ACCURACY}%`}
-            delta="+1.1% w/w"
-            deltaColor="primary"
-            icon="auto_awesome"
+            trend="+1.1%"
+            trendDir="up"
+            trendLabel="w/w"
+            accent="rose"
+            spark={seedSpark(5, 91, 2)}
+            delay={0.25}
+            reduce={reduce ?? false}
           />
         </section>
 
-        {/* Main chart + sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <ChartCard
-            title="Daily Active Users"
-            subtitle="Past 30 days · current day highlighted"
-            className="lg:col-span-8"
-            action={
-              <span className="text-body-sm text-on-surface-variant">
-                Today:{" "}
-                <span className="text-on-surface font-medium">
-                  {formatNumber(todayDAU)}
-                </span>
-              </span>
-            }
-          >
-            <div className="h-[260px]">
-              <ClientOnly
-                fallback={
-                  <div className="h-full w-full bg-surface-container-low rounded animate-pulse" />
-                }
-              >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={dau}
-                  margin={{ left: -10, right: 6, top: 8, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    vertical={false}
-                    stroke="#e8e8e5"
-                    strokeDasharray="3 3"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    stroke="#777587"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                    interval={3}
-                    tickFormatter={(v) =>
-                      new Date(v).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })
-                    }
-                  />
-                  <YAxis
-                    stroke="#777587"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${v / 1000}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#fff",
-                      border: "1px solid #e8e8e5",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    formatter={(v) => formatNumber(Number(v))}
-                  />
-                  <Bar dataKey="activeUsers" radius={[3, 3, 0, 0]}>
-                    {dau.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={i === dau.length - 1 ? "#3525cd" : "#c3c0ff"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              </ClientOnly>
+        {/* ============ 2-COLUMN ============ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5">
+          {/* ============ LEFT ============ */}
+          <div className="space-y-5 min-w-0">
+            {/* DAU + Revenue */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <DAUChart
+                data={dau}
+                today={todayDAU}
+                total={dauTotal}
+                reduce={reduce ?? false}
+              />
+              <RevenueChart data={REVENUE_TREND} reduce={reduce ?? false} />
             </div>
-          </ChartCard>
 
-          {/* Verification queue summary */}
-          <section className="lg:col-span-4 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px]">
-            <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-              <h3 className="text-h3">Pending Verifications</h3>
-              <Link
-                href="/admin/verifications"
-                className="text-body-sm text-primary hover:underline"
-              >
-                All →
-              </Link>
+            {/* Heatmap + Retention */}
+            <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-5">
+              <SessionHeatmap reduce={reduce ?? false} />
+              <RetentionChart data={RETENTION} reduce={reduce ?? false} />
             </div>
-            <ul className="divide-y divide-[var(--color-border-soft)]">
-              {mockVerifications.slice(0, 4).map((v) => (
-                <li
-                  key={v.id}
-                  className="px-4 py-3 flex items-center gap-3 hover:bg-surface-container-low transition-colors"
-                >
-                  <img
-                    src={v.coachAvatar}
-                    alt={v.coachName}
-                    className="w-9 h-9 rounded-full object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-base font-medium truncate">
-                      {v.coachName}
-                    </p>
-                    <p className="text-body-sm text-on-surface-variant truncate">
-                      {v.sport} · {v.documents.length} docs
-                    </p>
-                  </div>
-                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[10px] uppercase tracking-wider font-medium">
-                    Pending
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
 
-        {/* Recent activity row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RecentList
-            title="New Coaches"
-            href="/admin/users"
-            items={recentCoaches.map((c) => ({
-              id: c.id,
-              avatar: c.avatarUrl,
-              name: c.name,
-              sub: `${c.sport} · joined ${new Date(c.joinedAt).toLocaleDateString()}`,
-              badge: c.verified ? "Verified" : "Unverified",
-              badgeColor: c.verified ? "success" : "neutral",
-            }))}
-          />
-          <RecentList
-            title="New Learners"
-            href="/admin/users"
-            items={recentLearners.map((l) => ({
-              id: l.id,
-              avatar: l.avatarUrl,
-              name: l.name,
-              sub: `${l.preferredSports[0] ?? "—"} · joined ${new Date(l.joinedAt).toLocaleDateString()}`,
-              badge: `${l.totalHoursTrained}h`,
-              badgeColor: "primary",
-            }))}
-          />
+            {/* Verifications */}
+            <PendingVerifications
+              verifications={verifications}
+              reduce={reduce ?? false}
+            />
+
+            {/* Users with tabs */}
+            <RecentUsers
+              tab={tab}
+              setTab={setTab}
+              coaches={recentCoaches}
+              learners={recentLearners}
+              reduce={reduce ?? false}
+            />
+          </div>
+
+          {/* ============ RIGHT SIDEBAR ============ */}
+          <aside className="space-y-5">
+            <AIOpsCard reduce={reduce ?? false} />
+            <SystemHealth reduce={reduce ?? false} />
+            <QuickActions reduce={reduce ?? false} />
+          </aside>
         </div>
       </div>
     </AppShell>
   );
 }
 
-function Kpi({
+// ============================================================================
+// Hero Command Center
+// ============================================================================
+
+function HeroCommand({
+  revenue,
+  users,
+  sessions,
+  coaches,
+  reduce,
+}: {
+  revenue: number;
+  users: number;
+  sessions: number;
+  coaches: number;
+  reduce: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.55, delay: 0.05, ease: EASE }}
+      className="relative overflow-hidden rounded-[24px] border border-primary/15 bg-gradient-to-br from-primary/[0.08] via-surface-container-lowest to-[#7d6dff]/[0.08] p-6 sm:p-8 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_16px_36px_-18px_rgba(53,37,205,0.28)]"
+    >
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-gradient-to-br from-primary/25 via-primary/8 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 left-1/4 w-64 h-64 rounded-full bg-gradient-to-tr from-[#7d6dff]/20 to-transparent blur-3xl pointer-events-none" />
+
+      <div className="relative grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-end">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] uppercase tracking-wider font-bold text-primary">
+              Platform Revenue · Month-to-date
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-bold text-[#1f7a4d]">
+              <TrendingUp size={11} />
+              +18% this month
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className="text-[48px] sm:text-[64px] leading-[1] font-bold tracking-tight tabular-nums bg-gradient-to-br from-on-surface via-primary to-[#7d6dff] bg-clip-text text-transparent">
+              {formatCurrency(revenue)}
+            </span>
+            <span className="text-[14px] text-on-surface-variant">USD</span>
+          </div>
+
+          <p className="text-[13.5px] text-on-surface-variant mt-3 max-w-xl leading-relaxed">
+            On pace for a record month. AI matching efficiency is up{" "}
+            <span className="text-on-surface font-semibold">+1.1%</span>{" "}
+            week-over-week, driving session conversion.
+          </p>
+
+          <div className="flex items-center gap-2 mt-5 flex-wrap">
+            <button className="inline-flex items-center gap-1.5 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13.5px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <FileBarChart size={14} />
+              Full Report
+            </button>
+            <button className="inline-flex items-center gap-1.5 h-11 px-5 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-lowest hover:bg-surface-container-low text-[13.5px] font-medium transition-colors">
+              <Search size={14} />
+              Drill down
+            </button>
+          </div>
+        </div>
+
+        {/* Inline mini stats */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <HeroStat
+            icon={Users}
+            label="Total Users"
+            value={formatNumber(users)}
+          />
+          <HeroStat
+            icon={Activity}
+            label="Sessions Today"
+            value={formatNumber(sessions)}
+          />
+          <HeroStat
+            icon={ShieldCheck}
+            label="Active Coaches"
+            value={formatNumber(coaches)}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function HeroStat({
+  icon: Icon,
   label,
   value,
-  delta,
-  deltaColor,
-  icon,
 }: {
+  icon: typeof Users;
   label: string;
   value: string;
-  delta: string;
-  deltaColor: "success" | "primary" | "neutral";
-  icon: string;
 }) {
-  const color =
-    deltaColor === "success"
-      ? "text-[#1f7a4d]"
-      : deltaColor === "primary"
-        ? "text-primary"
-        : "text-on-surface-variant";
   return (
-    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4 flex flex-col gap-1">
-      <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-medium">
+    <div className="relative rounded-[16px] bg-surface-container-lowest/80 backdrop-blur-sm border border-[var(--color-border-soft)] p-3 shadow-[0_2px_8px_-4px_rgba(15,15,30,0.06)]">
+      <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary/15 to-primary/[0.04] border border-primary/15 flex items-center justify-center mb-2 text-primary">
+        <Icon size={14} strokeWidth={2.25} />
+      </div>
+      <p className="text-[10px] uppercase tracking-wider font-semibold text-on-surface-variant">
         {label}
       </p>
-      <p className="text-h1 mt-1" style={{ letterSpacing: "-0.02em" }}>
+      <p className="text-[18px] sm:text-[20px] font-bold tracking-tight tabular-nums mt-0.5 leading-none">
         {value}
-      </p>
-      <p
-        className={`text-body-sm mt-1 inline-flex items-center gap-1 ${color}`}
-      >
-        <MaterialIcon name={icon} size={14} />
-        {delta}
       </p>
     </div>
   );
 }
 
-function RecentList({
-  title,
-  href,
-  items,
+// ============================================================================
+// KPI Card
+// ============================================================================
+
+const KPI_ACCENTS = {
+  indigo: {
+    iconBg: "bg-gradient-to-br from-primary to-[#7d6dff]",
+    glow: "shadow-[0_4px_14px_-3px_rgba(53,37,205,0.4)]",
+    decor: "from-primary/15 to-primary/0",
+    stroke: "#4f46e5",
+    trend: "text-primary",
+  },
+  violet: {
+    iconBg: "bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]",
+    glow: "shadow-[0_4px_14px_-3px_rgba(139,92,246,0.4)]",
+    decor: "from-[#c084fc]/15 to-[#c084fc]/0",
+    stroke: "#8b5cf6",
+    trend: "text-[#7c3aed]",
+  },
+  emerald: {
+    iconBg: "bg-gradient-to-br from-[#10b981] to-[#34d399]",
+    glow: "shadow-[0_4px_14px_-3px_rgba(16,185,129,0.4)]",
+    decor: "from-[#34d399]/15 to-[#34d399]/0",
+    stroke: "#10b981",
+    trend: "text-[#1f7a4d]",
+  },
+  amber: {
+    iconBg: "bg-gradient-to-br from-[#f59e0b] to-[#fb923c]",
+    glow: "shadow-[0_4px_14px_-3px_rgba(245,158,11,0.4)]",
+    decor: "from-[#f59e0b]/15 to-[#f59e0b]/0",
+    stroke: "#f59e0b",
+    trend: "text-[#b45309]",
+  },
+  rose: {
+    iconBg: "bg-gradient-to-br from-[#f43f5e] to-[#fb7185]",
+    glow: "shadow-[0_4px_14px_-3px_rgba(244,63,94,0.35)]",
+    decor: "from-[#fb7185]/15 to-[#fb7185]/0",
+    stroke: "#f43f5e",
+    trend: "text-[#be123c]",
+  },
+} as const;
+
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  trend,
+  trendDir,
+  trendLabel,
+  accent,
+  spark,
+  delay,
+  reduce,
 }: {
-  title: string;
-  href: string;
-  items: {
-    id: string;
-    avatar: string;
-    name: string;
-    sub: string;
-    badge: string;
-    badgeColor: "success" | "primary" | "neutral";
-  }[];
+  icon: typeof Users;
+  label: string;
+  value: string;
+  trend?: string;
+  trendDir?: "up" | "down" | "neutral";
+  trendLabel?: string;
+  accent: keyof typeof KPI_ACCENTS;
+  spark: { i: number; v: number }[];
+  delay: number;
+  reduce: boolean;
+}) {
+  const a = KPI_ACCENTS[accent];
+  const trendColor =
+    trendDir === "up" || trendDir === "neutral"
+      ? a.trend
+      : "text-[#ba1a1a]";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay, ease: EASE }}
+      whileHover={reduce ? {} : { y: -3 }}
+      className="group relative overflow-hidden rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_20px_-12px_rgba(15,15,30,0.08)] hover:shadow-[0_2px_4px_rgba(15,15,30,0.04),0_16px_36px_-12px_rgba(15,15,30,0.14)] transition-shadow cursor-pointer"
+    >
+      <div
+        className={cn(
+          "absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br blur-2xl opacity-60 group-hover:opacity-100 transition-opacity",
+          a.decor,
+        )}
+      />
+      <div className="relative">
+        <div className="flex items-start justify-between mb-3">
+          <div
+            className={cn(
+              "w-10 h-10 rounded-[12px] flex items-center justify-center text-white transition-transform group-hover:scale-105",
+              a.iconBg,
+              a.glow,
+            )}
+          >
+            <Icon size={17} strokeWidth={2.25} />
+          </div>
+          <ArrowUpRight
+            size={15}
+            className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
+          />
+        </div>
+        <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant">
+          {label}
+        </p>
+        <p className="text-[22px] sm:text-[24px] leading-none font-bold tracking-tight tabular-nums mt-1">
+          {value}
+        </p>
+        <div className="h-7 mt-2.5 -mx-1">
+          <ClientOnly fallback={<div className="h-full" />}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={spark}
+                margin={{ top: 2, right: 4, bottom: 0, left: 4 }}
+              >
+                <Line
+                  type="monotone"
+                  dataKey="v"
+                  stroke={a.stroke}
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={!reduce}
+                  animationDuration={reduce ? 0 : 1100}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </ClientOnly>
+        </div>
+        <div className="flex items-center gap-1.5 mt-1 text-[11px]">
+          {trend && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 font-semibold",
+                trendColor,
+              )}
+            >
+              <TrendingUp size={10} />
+              {trend}
+            </span>
+          )}
+          {trendLabel && (
+            <span className="text-on-surface-variant">{trendLabel}</span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// DAU Chart
+// ============================================================================
+
+function DAUChart({
+  data,
+  today,
+  total,
+  reduce,
+}: {
+  data: typeof mockDailyActiveUsers;
+  today: number;
+  total: number;
+  reduce: boolean;
 }) {
   return (
-    <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px]">
-      <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-        <h3 className="text-h3">{title}</h3>
-        <Link href={href} className="text-body-sm text-primary hover:underline">
-          View all →
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.3, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 className="text-[17px] font-semibold tracking-tight">
+            Daily Active Users
+          </h3>
+          <p className="text-[12px] text-on-surface-variant mt-0.5">
+            Past 30 days · today highlighted
+          </p>
+          <div className="flex items-baseline gap-2 mt-3">
+            <span className="text-[28px] font-bold tracking-tight tabular-nums leading-none">
+              {formatNumber(today)}
+            </span>
+            <span className="text-[11.5px] text-on-surface-variant">
+              today · {formatNumber(total)} cumulative
+            </span>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
+          <TrendingUp size={10} />
+          +9% w/w
+        </span>
+      </div>
+      <div className="h-[200px] -mx-2">
+        <ClientOnly fallback={<div className="h-full" />}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{ left: -4, right: 8, top: 8, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="dauBar" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4f46e5" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#7d6dff" stopOpacity={0.4} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="#e8e8e5"
+                strokeDasharray="4 6"
+              />
+              <XAxis
+                dataKey="date"
+                stroke="#777587"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                interval={4}
+                tickFormatter={(v) =>
+                  new Date(v).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }
+              />
+              <YAxis
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                width={32}
+              />
+              <Tooltip
+                cursor={{ fill: "rgba(79, 70, 229, 0.06)" }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as {
+                    date: string;
+                    activeUsers: number;
+                    sessions: number;
+                  };
+                  return (
+                    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] px-3 py-2 shadow-[0_8px_20px_-8px_rgba(15,15,30,0.18)]">
+                      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
+                        {new Date(p.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </p>
+                      <p className="text-[14px] font-bold tabular-nums mt-0.5">
+                        {formatNumber(p.activeUsers)}
+                      </p>
+                      <p className="text-[10.5px] text-on-surface-variant tabular-nums">
+                        {p.sessions} sessions
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Bar
+                dataKey="activeUsers"
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={!reduce}
+                animationDuration={reduce ? 0 : 900}
+              >
+                {data.map((_, i) => (
+                  <Cell
+                    key={i}
+                    fill={
+                      i === data.length - 1 ? "#4f46e5" : "url(#dauBar)"
+                    }
+                    opacity={i === data.length - 1 ? 1 : 0.6}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ClientOnly>
+      </div>
+    </motion.section>
+  );
+}
+
+// ============================================================================
+// Revenue Chart
+// ============================================================================
+
+function RevenueChart({
+  data,
+  reduce,
+}: {
+  data: { month: string; v: number }[];
+  reduce: boolean;
+}) {
+  const last = data[data.length - 1].v;
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.35, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 className="text-[17px] font-semibold tracking-tight">
+            Revenue Trend
+          </h3>
+          <p className="text-[12px] text-on-surface-variant mt-0.5">
+            Last 12 months · gross
+          </p>
+          <p className="text-[28px] font-bold tracking-tight tabular-nums leading-none mt-3">
+            {formatCurrency(last)}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
+          <TrendingUp size={10} />
+          +18% MoM
+        </span>
+      </div>
+      <div className="h-[200px] -mx-2">
+        <ClientOnly fallback={<div className="h-full" />}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={data}
+              margin={{ left: -4, right: 8, top: 8, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="revAreaA" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="revStrokeA" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#34d399" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="#e8e8e5"
+                strokeDasharray="4 6"
+              />
+              <XAxis
+                dataKey="month"
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                dy={4}
+              />
+              <YAxis
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                width={42}
+              />
+              <Tooltip
+                cursor={{
+                  stroke: "#10b981",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as { month: string; v: number };
+                  return (
+                    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] px-3 py-2 shadow-[0_8px_20px_-8px_rgba(15,15,30,0.18)]">
+                      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
+                        {p.month}
+                      </p>
+                      <p className="text-[14px] font-bold tabular-nums mt-0.5">
+                        {formatCurrency(p.v)}
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="v"
+                stroke="url(#revStrokeA)"
+                strokeWidth={2.5}
+                fill="url(#revAreaA)"
+                activeDot={{
+                  r: 5,
+                  fill: "#fff",
+                  stroke: "#10b981",
+                  strokeWidth: 2.5,
+                }}
+                isAnimationActive={!reduce}
+                animationDuration={reduce ? 0 : 1100}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ClientOnly>
+      </div>
+    </motion.section>
+  );
+}
+
+// ============================================================================
+// Session Heatmap
+// ============================================================================
+
+function SessionHeatmap({ reduce }: { reduce: boolean }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.4, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 className="text-[17px] font-semibold tracking-tight">
+            Session Heatmap
+          </h3>
+          <p className="text-[12px] text-on-surface-variant mt-0.5">
+            Activity intensity · day × time bucket
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 text-[10.5px] text-on-surface-variant">
+          <span>Less</span>
+          {[0.15, 0.35, 0.55, 0.75, 0.95].map((o, i) => (
+            <span
+              key={i}
+              className="w-3 h-3 rounded-[3px]"
+              style={{ background: `rgba(79, 70, 229, ${o})` }}
+            />
+          ))}
+          <span>More</span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        {/* Header row */}
+        <div className="grid grid-cols-[36px_repeat(4,1fr)] gap-1.5">
+          <div />
+          {HEATMAP_HOURS.map((h) => (
+            <p
+              key={h}
+              className="text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant text-center"
+            >
+              {h}
+            </p>
+          ))}
+        </div>
+        {/* Rows */}
+        {HEATMAP.map((row, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: reduce ? 0 : 0.4,
+              delay: reduce ? 0 : 0.45 + i * 0.04,
+              ease: EASE,
+            }}
+            className="grid grid-cols-[36px_repeat(4,1fr)] gap-1.5"
+          >
+            <p className="text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant flex items-center">
+              {HEATMAP_DAYS[i]}
+            </p>
+            {row.map((v, j) => {
+              const intensity = v / 100;
+              return (
+                <motion.div
+                  key={j}
+                  whileHover={reduce ? {} : { scale: 1.08 }}
+                  className="group relative h-9 rounded-[8px] cursor-pointer flex items-center justify-center"
+                  style={{
+                    background: `rgba(79, 70, 229, ${
+                      0.08 + intensity * 0.75
+                    })`,
+                  }}
+                >
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold tabular-nums opacity-0 group-hover:opacity-100 transition-opacity",
+                      intensity > 0.5 ? "text-white" : "text-on-surface",
+                    )}
+                  >
+                    {Math.round(v * 5)}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        ))}
+      </div>
+    </motion.section>
+  );
+}
+
+// ============================================================================
+// Retention Chart
+// ============================================================================
+
+function RetentionChart({
+  data,
+  reduce,
+}: {
+  data: { week: string; value: number }[];
+  reduce: boolean;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.45, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="mb-2">
+        <h3 className="text-[17px] font-semibold tracking-tight">
+          Retention Curve
+        </h3>
+        <p className="text-[12px] text-on-surface-variant mt-0.5">
+          Cohort retention · 8 weeks
+        </p>
+        <div className="flex items-baseline gap-2 mt-3">
+          <span className="text-[28px] font-bold tracking-tight tabular-nums leading-none text-[#7c3aed]">
+            {data[data.length - 1].value}%
+          </span>
+          <span className="text-[11.5px] text-on-surface-variant">
+            week 8 retention
+          </span>
+        </div>
+      </div>
+
+      <div className="h-[160px] -mx-2 mt-2">
+        <ClientOnly fallback={<div className="h-full" />}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={data}
+              margin={{ left: -4, right: 8, top: 8, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="retGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="#e8e8e5"
+                strokeDasharray="4 6"
+              />
+              <XAxis
+                dataKey="week"
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                dy={4}
+              />
+              <YAxis
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                width={28}
+                tickFormatter={(v) => `${v}%`}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as {
+                    week: string;
+                    value: number;
+                  };
+                  return (
+                    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] px-3 py-2 shadow-[0_8px_20px_-8px_rgba(15,15,30,0.18)]">
+                      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
+                        {p.week}
+                      </p>
+                      <p className="text-[14px] font-bold tabular-nums mt-0.5 text-[#7c3aed]">
+                        {p.value}%
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#8b5cf6"
+                strokeWidth={2.5}
+                fill="url(#retGrad)"
+                activeDot={{
+                  r: 5,
+                  fill: "#fff",
+                  stroke: "#8b5cf6",
+                  strokeWidth: 2.5,
+                }}
+                isAnimationActive={!reduce}
+                animationDuration={reduce ? 0 : 1100}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ClientOnly>
+      </div>
+    </motion.section>
+  );
+}
+
+// ============================================================================
+// Pending Verifications
+// ============================================================================
+
+type RiskLevel = "low" | "med" | "high";
+type VerificationWithRisk = VerificationRequest & {
+  risk: RiskLevel;
+  score: number;
+};
+
+const RISK_META: Record<
+  RiskLevel,
+  { pill: string; dot: string; label: string }
+> = {
+  low: {
+    pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
+    dot: "bg-[#10b981]",
+    label: "Low risk",
+  },
+  med: {
+    pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
+    dot: "bg-[#f59e0b]",
+    label: "Medium risk",
+  },
+  high: {
+    pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
+    dot: "bg-[#ef4444]",
+    label: "High risk",
+  },
+};
+
+function PendingVerifications({
+  verifications,
+  reduce,
+}: {
+  verifications: VerificationWithRisk[];
+  reduce: boolean;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.5, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-[17px] font-semibold tracking-tight">
+              Pending Verifications
+            </h3>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff5d6] text-[#b95000] text-[10.5px] font-semibold border border-[#f4d68a]/60">
+              {verifications.length} new
+            </span>
+          </div>
+          <p className="text-[12px] text-on-surface-variant mt-0.5">
+            Sorted by AI risk score
+          </p>
+        </div>
+        <Link
+          href="/admin/verifications"
+          className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
+        >
+          Review queue
+          <ChevronRight size={13} />
         </Link>
       </div>
-      <ul className="divide-y divide-[var(--color-border-soft)]">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {verifications.map((v, i) => {
+          const meta = RISK_META[v.risk];
+          return (
+            <motion.article
+              key={v.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: reduce ? 0 : 0.4,
+                delay: reduce ? 0 : 0.55 + i * 0.05,
+                ease: EASE,
+              }}
+              whileHover={reduce ? {} : { y: -2 }}
+              className="group relative overflow-hidden rounded-[16px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest p-4 transition-all shadow-[0_1px_2px_rgba(15,15,30,0.03)] hover:shadow-[0_6px_18px_-6px_rgba(15,15,30,0.12)]"
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <img
+                  src={v.coachAvatar}
+                  alt={v.coachName}
+                  className="w-11 h-11 rounded-full object-cover shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[13.5px] font-semibold truncate">
+                      {v.coachName}
+                    </p>
+                    <span
+                      className={cn(
+                        "shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
+                        meta.pill,
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          meta.dot,
+                        )}
+                      />
+                      {meta.label}
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-on-surface-variant mt-0.5">
+                    {v.sport} · {v.documents.length} docs ·{" "}
+                    {new Date(v.submittedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                  {/* Risk score bar */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-1 rounded-full bg-surface-container-low overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${v.score}%` }}
+                        transition={{
+                          duration: reduce ? 0 : 0.8,
+                          delay: reduce ? 0 : 0.6 + i * 0.05,
+                        }}
+                        className={cn(
+                          "h-full rounded-full",
+                          v.risk === "high"
+                            ? "bg-[#ef4444]"
+                            : v.risk === "med"
+                              ? "bg-[#f59e0b]"
+                              : "bg-gradient-to-r from-[#10b981] to-[#34d399]",
+                        )}
+                      />
+                    </div>
+                    <span className="text-[10.5px] font-bold tabular-nums text-on-surface-variant">
+                      {v.score}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="flex-1 h-9 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
+                  Reject
+                </button>
+                <button className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-lg bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.55)] hover:scale-[1.02] transition-all">
+                  <CheckCircle2 size={13} />
+                  Approve
+                </button>
+              </div>
+            </motion.article>
+          );
+        })}
+      </div>
+    </motion.section>
+  );
+}
+
+// ============================================================================
+// Recent Users (tabbed)
+// ============================================================================
+
+function RecentUsers({
+  tab,
+  setTab,
+  coaches,
+  learners,
+  reduce,
+}: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  coaches: typeof mockCoaches;
+  learners: typeof mockLearners;
+  reduce: boolean;
+}) {
+  const items =
+    tab === "Coaches"
+      ? coaches.map((c) => ({
+          id: c.id,
+          avatar: c.avatarUrl,
+          name: c.name,
+          sub: `${c.sport} · joined ${new Date(c.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          badge: c.verified ? "Verified" : "Unverified",
+          tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
+        }))
+      : learners.map((l) => ({
+          id: l.id,
+          avatar: l.avatarUrl,
+          name: l.name,
+          sub: `${l.preferredSports[0] ?? "—"} · joined ${new Date(l.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          badge: `${l.totalHoursTrained}h`,
+          tone: "neutral" as const,
+        }));
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.55, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="text-[17px] font-semibold tracking-tight">
+            Recent Sign-ups
+          </h3>
+          <p className="text-[12px] text-on-surface-variant mt-0.5">
+            Latest users joining the platform
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px]">
+            {TAB_OPTIONS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={cn(
+                  "relative px-3 h-7 text-[12px] font-medium rounded-[7px] transition-colors",
+                  tab === t
+                    ? "text-on-surface"
+                    : "text-on-surface-variant hover:text-on-surface",
+                )}
+              >
+                {tab === t && (
+                  <motion.span
+                    layoutId="adminUserTab"
+                    className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
+                    transition={{
+                      type: "spring",
+                      duration: reduce ? 0 : 0.4,
+                      bounce: 0.2,
+                    }}
+                  />
+                )}
+                <span className="relative">{t}</span>
+              </button>
+            ))}
+          </div>
+          <Link
+            href="/admin/users"
+            className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
+          >
+            All
+            <ChevronRight size={12} />
+          </Link>
+        </div>
+      </div>
+      <ul className="px-3 pb-3 space-y-1">
+        {items.map((it, i) => (
+          <motion.li
+            key={it.id}
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: reduce ? 0 : 0.35,
+              delay: reduce ? 0 : i * 0.04,
+              ease: EASE,
+            }}
+            whileHover={reduce ? {} : { x: 2 }}
+            className="group flex items-center gap-3 px-3 py-2.5 rounded-[12px] hover:bg-surface-container-low/60 transition-colors cursor-pointer"
+          >
+            <img
+              src={it.avatar}
+              alt={it.name}
+              className="w-9 h-9 rounded-full object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold truncate">{it.name}</p>
+              <p className="text-[11.5px] text-on-surface-variant truncate">
+                {it.sub}
+              </p>
+            </div>
+            <span
+              className={cn(
+                "shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
+                it.tone === "good"
+                  ? "bg-success-container text-[#1f7a4d] border-[#bce8c8]"
+                  : "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
+              )}
+            >
+              {it.badge}
+            </span>
+            <ArrowRight
+              size={13}
+              className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
+            />
+          </motion.li>
+        ))}
+      </ul>
+    </motion.section>
+  );
+}
+
+// ============================================================================
+// AI Ops Card
+// ============================================================================
+
+function AIOpsCard({ reduce }: { reduce: boolean }) {
+  const ops = [
+    {
+      icon: ShieldCheck,
+      label: "Pending verifications",
+      value: "4",
+      tone: "warn" as const,
+    },
+    {
+      icon: Brain,
+      label: "Matching accuracy",
+      value: "94.2%",
+      tone: "good" as const,
+    },
+    {
+      icon: AlertTriangle,
+      label: "Payment anomalies",
+      value: "2",
+      tone: "danger" as const,
+    },
+  ];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.15, ease: EASE }}
+      className="relative overflow-hidden rounded-[20px] border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-surface-container-lowest to-[#7d6dff]/[0.06] p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_10px_28px_-16px_rgba(53,37,205,0.25)]"
+    >
+      <div className="absolute -top-14 -right-14 w-48 h-48 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full bg-gradient-to-br from-[#7d6dff]/15 to-transparent blur-3xl pointer-events-none" />
+
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary inline-flex items-center gap-1.5">
+            <Sparkles size={11} />
+            AI Operations
+          </span>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            Live
+          </span>
+        </div>
+
+        <div className="flex items-start gap-3 mb-4">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-[#7d6dff] blur-lg opacity-50" />
+            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] flex items-center justify-center shadow-[0_6px_16px_-3px_rgba(53,37,205,0.5)]">
+              <Sparkles size={18} className="text-on-primary" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] leading-snug font-semibold text-on-surface">
+              <span className="text-[#b95000]">4 coaches</span> awaiting
+              verification ·{" "}
+              <span className="text-[#ba1a1a]">2 payment anomalies</span>{" "}
+              detected.
+            </p>
+            <p className="text-[12px] text-on-surface-variant leading-relaxed mt-1">
+              Resolve high-risk items first to keep platform trust strong.
+            </p>
+          </div>
+        </div>
+
+        <ul className="space-y-2 mb-4">
+          {ops.map((op) => {
+            const tone =
+              op.tone === "good"
+                ? "text-[#1f7a4d]"
+                : op.tone === "warn"
+                  ? "text-[#b95000]"
+                  : "text-[#ba1a1a]";
+            return (
+              <li
+                key={op.label}
+                className="flex items-center justify-between px-3 py-2 rounded-[12px] bg-surface-container-lowest/80 backdrop-blur-sm border border-[var(--color-border-soft)]"
+              >
+                <span className="inline-flex items-center gap-2 text-[12px]">
+                  <op.icon size={13} className={tone} />
+                  <span className="text-on-surface-variant">{op.label}</span>
+                </span>
+                <span className={cn("text-[13.5px] font-bold tabular-nums", tone)}>
+                  {op.value}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <Link
+          href="/admin/verifications"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
+          Review Now
+          <ArrowRight size={13} />
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// System Health
+// ============================================================================
+
+function SystemHealth({ reduce }: { reduce: boolean }) {
+  const items = [
+    {
+      icon: Gauge,
+      label: "Uptime",
+      value: "99.98%",
+      tone: "good" as const,
+      hint: "30-day",
+    },
+    {
+      icon: Server,
+      label: "API latency",
+      value: "142ms",
+      tone: "good" as const,
+      hint: "p95",
+    },
+    {
+      icon: CreditCard,
+      label: "Failed payments",
+      value: "0.3%",
+      tone: "warn" as const,
+      hint: "24h",
+    },
+    {
+      icon: AlertTriangle,
+      label: "Open incidents",
+      value: "0",
+      tone: "good" as const,
+      hint: "all clear",
+    },
+  ];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.22, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-[16px] font-semibold tracking-tight">
+            System Health
+          </h3>
+          <p className="text-[11.5px] text-on-surface-variant mt-0.5">
+            All systems operational
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-semibold text-[#1f7a4d]">
+          <CheckCircle2 size={11} />
+          Healthy
+        </span>
+      </div>
+
+      <ul className="grid grid-cols-2 gap-2">
         {items.map((it) => {
-          const badgeStyle =
-            it.badgeColor === "success"
-              ? "bg-[#d1f4dd] text-[#1f7a4d]"
-              : it.badgeColor === "primary"
-                ? "bg-primary/10 text-primary"
-                : "bg-surface-container-high text-on-surface-variant";
+          const tone =
+            it.tone === "good"
+              ? "text-[#1f7a4d]"
+              : it.tone === "warn"
+                ? "text-[#b95000]"
+                : "text-[#ba1a1a]";
+          const bg =
+            it.tone === "good"
+              ? "bg-success-container/40 border-[#bce8c8]"
+              : it.tone === "warn"
+                ? "bg-[#fff5d6]/60 border-[#f4d68a]/60"
+                : "bg-[#ffdad6]/50 border-[#ffbbb3]";
           return (
             <li
-              key={it.id}
-              className="px-4 py-3 flex items-center gap-3 hover:bg-surface-container-low transition-colors"
+              key={it.label}
+              className={cn(
+                "rounded-[14px] p-3 border",
+                bg,
+              )}
             >
-              <img
-                src={it.avatar}
-                alt={it.name}
-                className="w-9 h-9 rounded-full object-cover"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-body-base font-medium truncate">
-                  {it.name}
-                </p>
-                <p className="text-body-sm text-on-surface-variant truncate">
-                  {it.sub}
-                </p>
+              <div className="flex items-center gap-1.5 text-[10.5px] text-on-surface-variant uppercase tracking-wider font-semibold">
+                <it.icon size={11} className={tone} />
+                {it.label}
               </div>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium ${badgeStyle}`}
+              <p
+                className={cn(
+                  "text-[18px] font-bold tabular-nums mt-1 leading-none",
+                  tone,
+                )}
               >
-                {it.badge}
-              </span>
+                {it.value}
+              </p>
+              <p className="text-[10px] text-on-surface-variant mt-1">
+                {it.hint}
+              </p>
             </li>
           );
         })}
       </ul>
-    </section>
+    </motion.div>
   );
 }
+
+// ============================================================================
+// Quick Actions
+// ============================================================================
+
+const QUICK_ACTIONS = [
+  {
+    icon: ShieldCheck,
+    label: "Review Verifications",
+    desc: "4 awaiting",
+    href: "/admin/verifications",
+    accent: "indigo" as const,
+  },
+  {
+    icon: FileBarChart,
+    label: "Export Analytics",
+    desc: "CSV + PDF",
+    href: "#",
+    accent: "violet" as const,
+  },
+  {
+    icon: Database,
+    label: "View Reports",
+    desc: "Saved dashboards",
+    href: "#",
+    accent: "emerald" as const,
+  },
+  {
+    icon: Terminal,
+    label: "System Logs",
+    desc: "Live tail",
+    href: "#",
+    accent: "amber" as const,
+  },
+];
+
+const QA_ACCENT = {
+  indigo: "from-primary to-[#7d6dff]",
+  violet: "from-[#8b5cf6] to-[#c084fc]",
+  emerald: "from-[#10b981] to-[#34d399]",
+  amber: "from-[#f59e0b] to-[#fb923c]",
+} as const;
+
+function QuickActions({ reduce }: { reduce: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.3, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <h3 className="text-[16px] font-semibold tracking-tight mb-3">
+        Quick Actions
+      </h3>
+      <div className="space-y-2">
+        {QUICK_ACTIONS.map((q, i) => {
+          const Icon = q.icon;
+          return (
+            <motion.div
+              key={q.label}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: reduce ? 0 : 0.35,
+                delay: reduce ? 0 : 0.35 + i * 0.05,
+                ease: EASE,
+              }}
+            >
+              <Link
+                href={q.href}
+                className="group flex items-center gap-3 p-3 rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-6px_rgba(15,15,30,0.12)]"
+              >
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-[10px] bg-gradient-to-br flex items-center justify-center text-white shadow-[0_3px_10px_-2px_rgba(15,15,30,0.18)] shrink-0 transition-transform group-hover:scale-105",
+                    QA_ACCENT[q.accent],
+                  )}
+                >
+                  <Icon size={15} strokeWidth={2.25} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold leading-tight">
+                    {q.label}
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    {q.desc}
+                  </p>
+                </div>
+                <ChevronRight
+                  size={13}
+                  className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
+                />
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// Silence unused-import warnings
+void Clock;
+void Zap;
