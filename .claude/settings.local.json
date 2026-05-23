@@ -54,7 +54,10 @@
       "PowerShell(\"---\")",
       "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 'src/app/\\(public\\)/layout.tsx' 2>&1)",
       "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 2>&1)",
-      "PowerShell(npx eslint 'src/components/layout/PublicNavbar.tsx' 'src/components/layout/Sidebar.tsx' 'src/components/layout/Footer.tsx' 2>&1)"
+      "PowerShell(npx eslint 'src/components/layout/PublicNavbar.tsx' 'src/components/layout/Sidebar.tsx' 'src/components/layout/Footer.tsx' 2>&1)",
+      "Bash(git -C \"d:/FPT-Ky8/EXE202/sportico\" log --oneline -20)",
+      "PowerShell(npx eslint 'src/components/landing/StatStrip.tsx' 'src/app/\\(public\\)/page.tsx' 2>&1)",
+      "PowerShell(npx eslint 'src/components/landing/StatStrip.tsx' 2>&1)"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

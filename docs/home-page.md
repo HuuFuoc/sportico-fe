@@ -12,8 +12,8 @@ Trang chủ là **landing page** giới thiệu sản phẩm "AI-powered coach m
 
 | # | Scene | Mục đích | Background |
 |---|---|---|---|
-| A | Hero | Hook + giá trị cốt lõi + CTA chính | Sáng + grid mờ + glow indigo/violet |
-| B | Stat strip | Tạo niềm tin bằng số liệu | Sáng (`surface`), border trên/dưới |
+| A | Hero | Hook visual mạnh + giá trị cốt lõi | **Tối** — full-bleed ảnh `/hero.webp` + overlay dark gradient (GRIND-style) |
+| B | Trust strip | Social proof + AI accuracy focal | Sáng (white) + 3 soft radial glow violet/cyan/fuchsia, không grid |
 | C | How it works | Giải thích flow 3 bước | Sáng (`surface-container-lowest`) |
 | D | AI deep-dive | Show off intelligence engine | **Tối** (`#0b0a1e`) |
 | E | Coach showcase | Chứng minh chất lượng marketplace | Sáng |
@@ -21,74 +21,174 @@ Trang chủ là **landing page** giới thiệu sản phẩm "AI-powered coach m
 | G | Testimonials | Social proof có metric | Sáng |
 | H | Final CTA | Conversion cuối | Gradient indigo → violet đậm |
 
-**Pattern thị giác:** sáng → sáng → tối → sáng → … → gradient. Đảo sáng/tối để tạo nhịp.
+**Pattern thị giác:** **TỐI** → sáng → sáng → **TỐI** → sáng → sáng → sáng → **GRADIENT**. Đảo sáng/tối để tạo nhịp; mở đầu bằng dark immersive hero để tạo ấn tượng mạnh tức thì.
 
 ---
 
-## Scene A — Hero
+## Scene A — Hero (GRIND-style dark immersive)
 
-**Vai trò:** Câu mở đầu — phải nói rõ sản phẩm là gì, dành cho ai, trong 3 giây.
+**File:** [src/components/landing/HeroSection.tsx](../src/components/landing/HeroSection.tsx)
+
+**Vai trò:** Hook hình ảnh + brand mood mạnh trong 2 giây đầu. Không phải nơi giải thích product — chỉ để gây ấn tượng cảm xúc và push scroll xuống Scene B.
 
 ### Layout
-- 2 cột (`grid-cols-[1.05fr_0.95fr]` ở desktop), 1 cột mobile.
-- Cột trái: copy + CTA + social proof.
-- Cột phải: `<HeroPreview />` (mock coach card preview).
+
+- **Full-bleed**: `h-[min(100vh,860px)]` với `-mt-16` để chui dưới `PublicNavbar` (navbar tự đổi `transparent` → `solid` khi scroll > 40px).
+- Nội dung text căn trái trong `max-w-7xl` container, không có cột phải (không còn HeroPreview như version cũ).
+- Mobile + desktop dùng cùng layout (không split 2-column nữa).
 
 ### Nội dung
 
-**AI badge (eyebrow):**
+**Pulsing badge (eyebrow):**
 ```
-AI-Powered Coach Matching
+● Live · AI-matched coaching   ✦
+```
+- Chấm xanh emerald `animate-ping`, sparkles icon violet, pill border `border-white/20` + bg `white/[0.06]`.
+
+**Headline (H1, 62–78px, uppercase font-black 2 dòng):**
+```
+COMMUNITY FIRST.
+{cycling word}
+```
+**Word cycling** ở dòng 2 — đổi mỗi 3s với blur-y fade qua `AnimatePresence`:
+1. `MENTAAL & FYSIEK`
+2. `FOCUS & FORM`
+3. `STRENGTH & FLOW`
+
+Mỗi word có gradient trắng → tím → trắng chạy ngang (`animate-gradient-x` 200% bg).
+
+**Sub copy ngắn (max-w-md):**
+```
+AI-matched elite coaches, a community that holds you accountable,
+and one calm place to grow mentally and physically.
 ```
 
-**Headline (H1, 60px desktop):**
-```
-Train smarter with AI-matched coaches.
-```
-> "AI-matched coaches" gradient indigo → violet.
+**Bottom-right corner — Members card pill** (`<MembersCard />`):
+- 3 avatar stack stagger scale-in.
+- CountUp `0 → 2,000+` trong 1.4s.
+- Featured coach avatar với ring violet + glow.
+- Pill bg `black/35`, backdrop-blur, rounded-full.
 
-**Sub-headline:**
-```
-Stop scrolling endless directories. ProCoach AI reads your goals,
-schedule and training style — then matches you with the elite coach
-most likely to get you there.
-```
+### Visual & motion
 
-**CTAs:**
-- Primary: `Find your coach` → `/learner/coaches` (icon: search)
-- Secondary text link: `Become a coach` → `/coach/dashboard`
+**Background image (parallax):**
+- `/hero.webp` (copy từ `assets/mainimg.webp` qua Bash sang `public/`).
+- `object-cover object-[center_20%]` để focus vào mặt model.
+- Mouse parallax: ảnh drift ngược chiều ±20px theo cursor (spring damping 20).
 
-**Social proof row:**
-- Avatar stack (4 athletes) + `2,000+ athletes matched this season`
-- 5 sao vàng + `4.9 average rating`
+**Overlay layers (theo thứ tự z):**
+1. Gradient trái → phải: `from-black/85 via-black/45 to-black/20` (cho text đọc rõ phía trái).
+2. Gradient top dark `from-black/70 to-transparent` h-40 (cho navbar).
+3. Gradient bottom dark `from-black to-transparent` h-72 (cho watermark + members card).
+4. Grid dark texture `opacity-30`.
+5. 14 **sparkle particles** trắng deterministic (SSR-safe), fade in/out + bay lên 30px, chu kỳ 5–10s.
+6. **Glow blobs**:
+   - Indigo `bg-indigo-600/30 blur-[140px]` ở `bottom-left` — pulse opacity 0.35 ↔ 0.55, scale 1 ↔ 1.1, 9s.
+   - Violet `bg-violet-600/25 blur-[130px]` ở `top-right` — pulse opacity 0.25 ↔ 0.5, 11s.
 
-### Visual elements
-- Grid texture mờ (`.bg-grid-faint`) masked radial.
-- 2 glow blob: indigo trái-trên, violet phải-trên.
-- HeroPreview cột phải (component riêng).
+**Brand watermark (giant bg text):**
+- `SPORTICO™` font-black 18vw, opacity 6%, `WebkitTextStroke 1px white/12`.
+- Parallax ngược chiều watermark (drift +30px).
+- Fade-up entrance delay 0.3s.
+
+**Scroll cue:**
+- Bottom-right corner, "SCROLL" uppercase 10px tracking-0.22em + arrow trượt lên xuống vô hạn (1.6s).
+
+### Files
+
+- Hero section: [src/components/landing/HeroSection.tsx](../src/components/landing/HeroSection.tsx)
+- Ảnh: [public/hero.webp](../public/hero.webp)
+- PublicNavbar `variant="transparent"` set trong [src/app/(public)/layout.tsx](../src/app/(public)/layout.tsx).
 
 ---
 
-## Scene B — Stat strip
+## Scene B — Trust strip (asymmetric premium)
 
-**Vai trò:** Củng cố niềm tin ngay sau hero bằng số liệu cứng.
+**File:** [src/components/landing/StatStrip.tsx](../src/components/landing/StatStrip.tsx)
 
-### Layout
-- Strip ngang, border-y, grid 4 cột (2 cột mobile).
-- Animated counter (`<AnimatedNumber />`) chạy khi vào viewport.
+**Vai trò:** Củng cố niềm tin ngay sau hero. Không còn là "4 ô số đều nhau" — giờ có **focal point AI engine 94%** + 3 stat phụ + eyebrow trust + testimonial proof. Kể câu chuyện theo flow: trust → AI → marketplace → proof.
 
-### Nội dung — 4 chỉ số
+### Layout — Asymmetric 60/40
 
-| Số | Hậu tố | Nhãn |
-|---|---|---|
-| 1,200 | + | Verified elite coaches |
-| 25 | k+ | Athletes coached since 2021 |
-| 94 | % | AI match accuracy |
-| 4.9 | /5 | Average coach rating |
+```
+┌─────────────────────────────────────────────────────────┐
+│  [avatar stack] Trusted by 25,000+ athletes from 60+ countries │ ← eyebrow
+│                                                          │
+│  ┌──────────────────┐   ┌─────────────────────────┐     │
+│  │ FEATURED          │   │ ─ 1,200+ Coaches        │     │
+│  │ AI Engine badge   │   ├─────────────────────────┤     │
+│  │ 94%               │   │ ─ 25k+ Athletes         │     │
+│  │ + sparkline       │   ├─────────────────────────┤     │
+│  │ + insight chip    │   │ ─ 4.9★ Rating           │     │
+│  └──────────────────┘   └─────────────────────────┘     │
+│                                                          │
+│  [avatar] "I cut 90 seconds off my 5K." — Mia Carter     │ ← testimonial
+└─────────────────────────────────────────────────────────┘
+```
 
-### Visual
-- Mỗi item có border-left ngăn cách (desktop).
-- Font 34px, weight 600, letter-spacing tight.
+- Container: `max-w-6xl` (không 7xl để đỡ stretch).
+- Padding: `py-20 sm:py-24`.
+- Grid: `lg:grid-cols-[1.15fr_1fr]` desktop, stack mobile.
+- Featured card chiếm bên trái, 3 supporting stacked phải.
+
+### Nội dung
+
+**Eyebrow trust row:**
+```
+[4 avatars] Trusted by 25,000+ athletes from 60+ countries
+```
+Số được bold `tabular-nums` text-slate-900.
+
+**Featured card (focal):**
+- Badge: `✦ AI ENGINE` (violet pill border + bg `violet-50`).
+- Subtitle: `Match accuracy · last 8 weeks`.
+- **Massive number**: `94%` (64–80px, font-weight 600, tracking `-0.04em`, dùng `ss01` font feature).
+- Body: `AI matching accuracy improving weekly — based on confirmed booking outcomes.`
+- **Sparkline** 220×56: data `[78, 81, 83, 85, 88, 90, 92, 94]`, path draw 1.2s, area fill gradient violet 0.18 → 0, end-point dot scale-in.
+- **Delta chip**: `▲ +16 pts` (emerald-50 bg, border emerald-200).
+- **Footer insight box**: bg `slate-50/70`, icon Sparkles violet trong tile trắng + "Every match sharpens the next recommendation."
+
+**Supporting cards (3 stacked rows):**
+
+| Icon | Số | Label | Hint |
+|---|---|---|---|
+| ShieldCheck | `1,200+` | Verified elite coaches | Across 13 sport disciplines |
+| Users | `25k+` | Athletes coached since 2021 | Across 6 continents |
+| Star | `4.9/5` + ★★★★★ | Average coach rating | From 18,420+ verified reviews |
+
+Mỗi card:
+- Icon tile **unified**: `bg-slate-50` + `text-violet-600`, hover → `bg-violet-50` + `text-violet-700`. **Bỏ 4 màu rực rỡ cũ**.
+- Số 30–34px tabular-nums, suffix (`+`, `k+`, `/5`) màu `slate-400`.
+- Label 13.5px slate-700, hint 12px slate-500.
+
+**Testimonial footer:**
+```
+[avatar Mia] "I cut 90 seconds off my 5K in two months." — Mia Carter, 5K runner
+```
+Quote text-slate-900, attribution text-slate-500. Center alignment.
+
+### Visual & motion
+
+**Background:**
+- White bg + 3 soft radial glow:
+  - Violet `rgba(124,58,237,0.06)` top-left
+  - Cyan `rgba(6,182,212,0.05)` bottom-right
+  - Fuchsia `rgba(236,72,153,0.03)` center
+- **Không còn grid, không sparkle particles, không border-y dày**. Chỉ `border-t border-slate-200/70` trên cùng.
+
+**Card design:**
+- Featured: white, slate-200 border, radius 24px, shadow 2-layer `0_1px_3px` + `0_18px_40px_-20px_rgba(15,23,42,0.12)`. Hover lift `-3px` + shadow tone-shift violet `0_28px_56px_-20px_rgba(124,58,237,0.18)`. Corner blob violet → fuchsia opacity 70 → 100.
+- Supporting: white, slate-200 border, radius 20px, soft shadow. Hover lift `-2px` + border slate-300 + shadow tăng. Icon tile transition `bg-slate-50 → bg-violet-50` (300ms).
+
+**Motion entrance (in-view trigger):**
+- Eyebrow row: fade-up 0.55s (avatars stagger 50ms).
+- Featured card: fade-up 0.7s, delay 0.15s.
+- Supporting cards: fade-from-right 0.55s, stagger 80ms (0.32 / 0.4 / 0.48).
+- **CountUp**: 1.6s ease custom `[0.16, 1, 0.3, 1]`.
+- **Sparkline**: path draw 1.2s (delay 0.55), area fade 0.8s (delay 0.8), end-point dot 0.35s (delay 1.7).
+- **Mini stars** (4.9): scale-in stagger 60ms (delay 0.7 base).
+- **Testimonial**: fade-up cuối (delay 0.65).
+- Tất cả respect `useReducedMotion()`.
 
 ---
 
@@ -286,9 +386,27 @@ Are you a coach? Grow your practice with AI-filled slots → /coach/dashboard
 |---|---|---|
 | Fade-up khi vào viewport | `<Reveal>` | `y: 28 → 0`, `opacity: 0 → 1`, ease custom |
 | Stagger children | `<RevealStagger>` + `<RevealItem>` | Stagger 0.09s mỗi item |
-| Animated number | `<AnimatedNumber>` | Đếm lên từ 0 đến giá trị cuối |
+| Word cycling (Scene A) | `AnimatePresence` + `motion.span` | Blur-y fade swap mỗi 3s |
+| Mouse parallax (Scene A) | `useMotionValue` + `useSpring` | Drift ±20–30px theo cursor |
+| Count-up (Scene A, B) | `animate()` từ `motion/react` | 0 → value, ease custom 1.4–1.8s |
+| SVG path draw (Scene B) | `motion.path` + `pathLength` | 1.2s ease, dùng cho sparkline |
+| In-view trigger (Scene B) | `useInView({ once: true })` | Một lần khi scroll vào |
 
 Tất cả respect `prefers-reduced-motion` — tắt animation nếu người dùng yêu cầu.
+
+### Custom keyframes (trong `globals.css`)
+
+| Class | Mô tả | Dùng ở |
+|---|---|---|
+| `.animate-gradient-x` | Gradient ngang chạy 200% bg 6s ease-in-out | Scene A headline cycling word |
+| `.animate-shimmer` | Diagonal sheen 2.6s linear | CTA / progress bars |
+| `.animate-pulse-slow` | Opacity + scale 3.6s | Halo / ambient |
+| `.animate-float-y` | Bay lên xuống 16px 7s | Floating chips |
+| `.animate-float-y-slow` | Bay 11s | Slower float variant |
+| `.animate-dot-flash` | Dot fade-pulse 1.3s | Typing indicator |
+| `.animate-rise-in` | Card entrance | Marketplace grid |
+| `.bg-grid-dark` | Dark grid texture lines | Scene A overlay (opacity 30%) |
+| `.bg-grid-faint` | Light grid texture | (deprecated cho Scene A — vẫn dùng nơi khác) |
 
 ---
 
@@ -296,15 +414,34 @@ Tất cả respect `prefers-reduced-motion` — tắt animation nếu người d
 
 | Component | Dùng ở Scene | File |
 |---|---|---|
-| `HeroPreview` | A | `src/components/landing/HeroPreview.tsx` |
-| `AnimatedNumber` | B | `src/components/landing/AnimatedNumber.tsx` |
-| `MatchExplainer` | D | `src/components/landing/MatchExplainer.tsx` |
-| `CoachShowcaseCard` | E | `src/components/landing/CoachShowcaseCard.tsx` |
-| `DashboardPreview` | F | `src/components/landing/DashboardPreview.tsx` |
-| `Reveal`, `RevealStagger`, `RevealItem` | All | `src/components/landing/Motion.tsx` |
-| `AIBadge` | A | `src/components/common/AIBadge.tsx` |
-| `MaterialIcon` | All | `src/components/icons/MaterialIcon.tsx` |
+| `HeroSection` | A | [`src/components/landing/HeroSection.tsx`](../src/components/landing/HeroSection.tsx) |
+| `HeroPreview` | — *(legacy, không còn render trong Scene A mới; vẫn export để reuse)* | [`src/components/landing/HeroPreview.tsx`](../src/components/landing/HeroPreview.tsx) |
+| `StatStrip` | B | [`src/components/landing/StatStrip.tsx`](../src/components/landing/StatStrip.tsx) |
+| `AnimatedNumber` | — *(không còn dùng ở Scene B mới — Scene B có `CountUp` nội bộ. Vẫn export để reuse.)* | [`src/components/landing/AnimatedNumber.tsx`](../src/components/landing/AnimatedNumber.tsx) |
+| `MatchExplainer` | D | [`src/components/landing/MatchExplainer.tsx`](../src/components/landing/MatchExplainer.tsx) |
+| `CoachShowcaseCard` | E | [`src/components/landing/CoachShowcaseCard.tsx`](../src/components/landing/CoachShowcaseCard.tsx) |
+| `DashboardPreview` | F | [`src/components/landing/DashboardPreview.tsx`](../src/components/landing/DashboardPreview.tsx) |
+| `Reveal`, `RevealStagger`, `RevealItem` | C, E, F, G, H | [`src/components/landing/Motion.tsx`](../src/components/landing/Motion.tsx) |
+| `AIBadge` | — *(legacy, Scene A mới dùng custom PulsingBadge inline)* | [`src/components/common/AIBadge.tsx`](../src/components/common/AIBadge.tsx) |
+| `MaterialIcon` | C, D, F, G, H | [`src/components/icons/MaterialIcon.tsx`](../src/components/icons/MaterialIcon.tsx) |
+| `lucide-react` icons | A, B | Trực tiếp từ `lucide-react` package |
 | `Eyebrow` (local) | C, E, F, G | Inline trong `page.tsx` |
+
+### Sub-components nội bộ
+
+**Trong `HeroSection.tsx`:**
+- `PulsingBadge` — top eyebrow với chấm xanh ping
+- `MembersCard` — pill avatar stack + count-up góc dưới phải
+- `CountUp` — counter helper
+- `ScrollCue` — "SCROLL" + arrow dưới
+- `FadeUp` — wrapper fade-up tránh dùng Reveal (Reveal là server-side wrapper)
+
+**Trong `StatStrip.tsx`:**
+- `FeaturedStat` — featured card với badge + 94% + sparkline + insight
+- `SupportingStat` — 1 row supporting với icon + count + label + hint
+- `CountUp` — counter helper
+- `Sparkline` — SVG animated path + gradient fill + end-point dot
+- `MiniStars` — 5 sao stagger scale-in
 
 ---
 
@@ -315,15 +452,22 @@ Tất cả respect `prefers-reduced-motion` — tắt animation nếu người d
 - **Số liệu:** Luôn cụ thể (`94%`, `0.8s`, `−90s`), không vague.
 - **Tránh:** "Game-changing", "revolutionary", "best-in-class" — sáo rỗng.
 - **Ưu tiên:** Outcome-driven ("Your next breakthrough", "−90s 5K time").
+- **Scene A đặc thù**: uppercase, font-black, ngắn gọn — copy như tagline brand chứ không phải product description.
+- **Scene B đặc thù**: số phải đi kèm 1 hint cụ thể (vd "Across 13 sport disciplines") — tránh bare numbers.
 
 ---
 
 ## Checklist khi cập nhật nội dung
 
-- [ ] Cập nhật `STATS` nếu số liệu thay đổi
-- [ ] Cập nhật `STEPS` nếu thay đổi onboarding flow
-- [ ] Cập nhật `AI_SIGNALS` nếu thuật toán matching đổi
-- [ ] Refresh `TESTIMONIALS` mỗi quý với learner mới
-- [ ] Kiểm tra link `/coach/dashboard`, `/learner/coaches`, `/learner/dashboard` còn đúng
-- [ ] Test responsive ở 360px, 768px, 1024px, 1440px
-- [ ] Kiểm tra `prefers-reduced-motion` — tắt animation đúng cách
+- [ ] Scene A — đổi `CYCLE_WORDS` trong [HeroSection.tsx](../src/components/landing/HeroSection.tsx) nếu đổi tagline.
+- [ ] Scene A — replace `/hero.webp` với ảnh brand mới (giữ `object-position` phù hợp).
+- [ ] Scene B — đổi 4 số (1200, 25, 94, 4.9) trong `STATS` array của [StatStrip.tsx](../src/components/landing/StatStrip.tsx).
+- [ ] Scene B — refresh `ACCURACY_TREND` sparkline data nếu accuracy thay đổi nhiều.
+- [ ] Scene B — đổi hints (`Across 13 sport disciplines`, `Across 6 continents`, `From 18,420+ verified reviews`).
+- [ ] Cập nhật `STEPS` nếu thay đổi onboarding flow (Scene C).
+- [ ] Cập nhật `AI_SIGNALS` nếu thuật toán matching đổi (Scene D).
+- [ ] Refresh `TESTIMONIALS` mỗi quý với learner mới (Scene G).
+- [ ] Kiểm tra link `/coach/dashboard`, `/learner/coaches`, `/learner/dashboard` còn đúng.
+- [ ] Test responsive ở 360px, 768px, 1024px, 1440px (đặc biệt Scene A full-bleed image — kiểm tra `object-position`).
+- [ ] Kiểm tra `prefers-reduced-motion` — tắt animation đúng cách.
+- [ ] Lint + type-check: `npx eslint <files>` + `npx tsc --noEmit`.

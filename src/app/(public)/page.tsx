@@ -5,19 +5,12 @@ import { HeroSection } from "@/components/landing/HeroSection";
 import { MatchExplainer } from "@/components/landing/MatchExplainer";
 import { CoachShowcaseCard } from "@/components/landing/CoachShowcaseCard";
 import { DashboardPreview } from "@/components/landing/DashboardPreview";
-import { AnimatedNumber } from "@/components/landing/AnimatedNumber";
+import { StatStrip } from "@/components/landing/StatStrip";
 import { Reveal, RevealStagger, RevealItem } from "@/components/landing/Motion";
 import { getCoaches } from "@/lib/mock/users";
 import { avatarFor, cn } from "@/lib/utils";
 
 /* ----------------------------- page content ----------------------------- */
-
-const STATS = [
-  { value: 1200, suffix: "+", decimals: 0, label: "Verified elite coaches" },
-  { value: 25, suffix: "k+", decimals: 0, label: "Athletes coached since 2021" },
-  { value: 94, suffix: "%", decimals: 0, label: "AI match accuracy" },
-  { value: 4.9, suffix: "/5", decimals: 1, label: "Average coach rating" },
-];
 
 const STEPS = [
   {
@@ -105,32 +98,7 @@ export default function LandingPage() {
       <HeroSection coach={heroCoach} />
 
       {/* ===================== B — Stat strip ===================== */}
-      <section className="border-y border-[var(--color-border-soft)] bg-surface">
-        <div className="mx-auto max-w-7xl px-6 py-10">
-          <RevealStagger className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-            {STATS.map((stat) => (
-              <RevealItem
-                key={stat.label}
-                className="sm:border-l sm:border-[var(--color-border-soft)] sm:pl-6 sm:first:border-l-0 sm:first:pl-0"
-              >
-                <p
-                  className="text-[30px] font-semibold leading-none text-on-surface sm:text-[34px]"
-                  style={{ letterSpacing: "-0.025em" }}
-                >
-                  <AnimatedNumber
-                    value={stat.value}
-                    decimals={stat.decimals}
-                    suffix={stat.suffix}
-                  />
-                </p>
-                <p className="mt-2.5 text-[13px] text-on-surface-variant">
-                  {stat.label}
-                </p>
-              </RevealItem>
-            ))}
-          </RevealStagger>
-        </div>
-      </section>
+      <StatStrip />
 
       {/* ===================== C — How it works ===================== */}
       <section className="bg-surface-container-lowest">
