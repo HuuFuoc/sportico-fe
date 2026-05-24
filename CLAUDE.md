@@ -282,6 +282,7 @@ Mock dùng `avatarFor(seed)` → pravatar URL. Khi swap sang ảnh thật, cần
 | 2026-05 | `/admin/revenue` | Marketing dashboard → Finance ops console (KPI strip với anomaly markers, dense payout table, AI alerts) |
 | 2026-05 | `/admin/ai-settings` | Sliders → AI Ops Control Center (env switcher prod/canary/staging/sandbox, signal weights explainability, ranking simulation, governance with compliance refs, deploy modal) |
 | 2026-05 | `/` (landing Scene A) | Light hero → GRIND-style dark full-bleed image hero |
+| 2026-05 | `/` (landing Scene B) | 4-tile symmetric stats → asymmetric 60/40 (featured AI 94% với sparkline + 3 supporting + eyebrow trust + testimonial footer); bỏ grid + sparkles bg, unified slate/violet icon palette — file [StatStrip.tsx](src/components/landing/StatStrip.tsx) |
 | 2026-05 | `/login`, `/register` | Dark cyberpunk → Light Stripe/Linear (auth UI redesign) |
 | 2026-05 | Whole brand | "ProCoach AI" + rocket icon → **"Sportico"** + custom logo PNG |
 

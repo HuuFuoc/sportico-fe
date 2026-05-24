@@ -57,7 +57,11 @@
       "PowerShell(npx eslint 'src/components/layout/PublicNavbar.tsx' 'src/components/layout/Sidebar.tsx' 'src/components/layout/Footer.tsx' 2>&1)",
       "Bash(git -C \"d:/FPT-Ky8/EXE202/sportico\" log --oneline -20)",
       "PowerShell(npx eslint 'src/components/landing/StatStrip.tsx' 'src/app/\\(public\\)/page.tsx' 2>&1)",
-      "PowerShell(npx eslint 'src/components/landing/StatStrip.tsx' 2>&1)"
+      "PowerShell(npx eslint 'src/components/landing/StatStrip.tsx' 2>&1)",
+      "PowerShell(npx eslint 'src/components/landing/AIDeepDiveSection.tsx' 'src/components/landing/CoachShowcaseSection.tsx' 'src/components/landing/ProductPreviewSection.tsx' 'src/components/landing/TestimonialsSection.tsx' 'src/components/landing/FinalCTASection.tsx' 'src/app/\\(public\\)/page.tsx' 2>&1)",
+      "PowerShell(pnpm build 2>&1)",
+      "PowerShell(pnpm lint 2>&1)",
+      "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 'src/components/landing/HeroPreview.tsx' 2>&1)"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

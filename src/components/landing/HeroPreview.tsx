@@ -18,10 +18,15 @@ const PREVIEW_MATCH = 98;
  */
 export function HeroPreview({ coach }: { coach: Coach }) {
   const reduce = useReducedMotion();
-  const [match, setMatch] = useState(reduce ? PREVIEW_MATCH : 0);
+  // Always start at 0 on SSR + first client render — `useReducedMotion()`
+  // returns null on the server which would otherwise mismatch the client.
+  const [match, setMatch] = useState(0);
 
   useEffect(() => {
-    if (reduce) return;
+    if (reduce) {
+      setMatch(PREVIEW_MATCH);
+      return;
+    }
     let raf = 0;
     const start = performance.now();
     const dur = 1500;

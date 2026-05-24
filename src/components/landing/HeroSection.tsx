@@ -325,9 +325,15 @@ function CountUp({
   suffix?: string;
 }) {
   const reduce = useReducedMotion();
-  const [value, setValue] = useState(reduce ? end : 0);
+  // Always start at 0 on both server + initial client render to avoid
+  // hydration mismatch — `useReducedMotion()` returns null on the server
+  // and a real boolean on the client.
+  const [value, setValue] = useState(0);
   useEffect(() => {
-    if (reduce) return;
+    if (reduce) {
+      setValue(end);
+      return;
+    }
     const start = 0;
     const startTime = performance.now();
     const duration = 1400;
@@ -406,7 +412,11 @@ function FadeUp({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: reduce ? 0 : y }}
+      // `initial` must be deterministic across SSR + first client render —
+      // do NOT make it depend on `useReducedMotion()` (returns null on SSR,
+      // boolean on client → hydration mismatch). Reduced-motion is honoured
+      // via the `transition` below, which doesn't affect SSR markup.
+      initial={{ opacity: 0, y }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
         duration: reduce ? 0 : 0.7,
