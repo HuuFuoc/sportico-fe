@@ -12,9 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sportico — Smart Coach Hub",
+  title: "Sportico — Nền tảng huấn luyện thông minh",
   description:
-    "AI-powered coaching platform connecting learners and elite coaches.",
+    "Nền tảng huấn luyện sử dụng AI để ghép nối học viên với HLV ưu tú.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

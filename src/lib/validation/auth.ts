@@ -13,12 +13,12 @@ import type {
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, "Email is required")
-    .email("Enter a valid email address"),
+    .min(1, "Vui lòng nhập email")
+    .email("Email không hợp lệ"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(72, "Password is too long"),
+    .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+    .max(72, "Mật khẩu quá dài"),
   remember: z.boolean().optional(),
 });
 export type LoginValues = z.infer<typeof loginSchema>;
@@ -27,27 +27,27 @@ export const registerSchema = z
   .object({
     name: z
       .string()
-      .min(2, "Name must be at least 2 characters")
-      .max(60, "Name is too long")
-      .regex(/^[\p{L}\s'-]+$/u, "Use letters, spaces, hyphens only"),
+      .min(2, "Họ tên phải có ít nhất 2 ký tự")
+      .max(60, "Họ tên quá dài")
+      .regex(/^[\p{L}\s'-]+$/u, "Chỉ dùng chữ cái, khoảng trắng và dấu nối"),
     email: z
       .string()
-      .min(1, "Email is required")
-      .email("Enter a valid email address"),
+      .min(1, "Vui lòng nhập email")
+      .email("Email không hợp lệ"),
     password: z
       .string()
-      .min(8, "At least 8 characters")
-      .max(72, "Password is too long")
-      .regex(/[A-Z]/, "Include at least one uppercase letter")
-      .regex(/[a-z]/, "Include at least one lowercase letter")
-      .regex(/[0-9]/, "Include at least one number"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
+      .min(8, "Ít nhất 8 ký tự")
+      .max(72, "Mật khẩu quá dài")
+      .regex(/[A-Z]/, "Cần ít nhất một chữ hoa")
+      .regex(/[a-z]/, "Cần ít nhất một chữ thường")
+      .regex(/[0-9]/, "Cần ít nhất một chữ số"),
+    confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
     terms: z
       .boolean()
-      .refine((v) => v === true, "You must agree to the terms"),
+      .refine((v) => v === true, "Bạn cần đồng ý với điều khoản"),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirmPassword"],
   });
 export type RegisterValues = z.infer<typeof registerSchema>;
@@ -59,27 +59,27 @@ export type RegisterValues = z.infer<typeof registerSchema>;
 export interface PasswordStrength {
   /** 0..4 — none → strong */
   score: 0 | 1 | 2 | 3 | 4;
-  label: "Empty" | "Weak" | "Fair" | "Good" | "Strong";
+  label: "Trống" | "Yếu" | "Trung bình" | "Tốt" | "Mạnh";
   checks: { id: string; label: string; passed: boolean }[];
 }
 
 export function evaluatePassword(pw: string): PasswordStrength {
   const checks = [
-    { id: "len", label: "8+ characters", passed: pw.length >= 8 },
-    { id: "upper", label: "Uppercase letter", passed: /[A-Z]/.test(pw) },
-    { id: "lower", label: "Lowercase letter", passed: /[a-z]/.test(pw) },
-    { id: "num", label: "Number", passed: /[0-9]/.test(pw) },
-    { id: "sym", label: "Symbol (optional)", passed: /[^A-Za-z0-9]/.test(pw) },
+    { id: "len", label: "Tối thiểu 8 ký tự", passed: pw.length >= 8 },
+    { id: "upper", label: "Có chữ hoa", passed: /[A-Z]/.test(pw) },
+    { id: "lower", label: "Có chữ thường", passed: /[a-z]/.test(pw) },
+    { id: "num", label: "Có chữ số", passed: /[0-9]/.test(pw) },
+    { id: "sym", label: "Có ký tự đặc biệt", passed: /[^A-Za-z0-9]/.test(pw) },
   ];
   if (pw.length === 0) {
-    return { score: 0, label: "Empty", checks };
+    return { score: 0, label: "Trống", checks };
   }
   const passed = checks.filter((c) => c.passed).length;
   // Map raw pass count → score 1..4
   const score: PasswordStrength["score"] =
     passed <= 1 ? 1 : passed === 2 ? 2 : passed === 3 ? 3 : 4;
   const label =
-    score === 1 ? "Weak" : score === 2 ? "Fair" : score === 3 ? "Good" : "Strong";
+    score === 1 ? "Yếu" : score === 2 ? "Trung bình" : score === 3 ? "Tốt" : "Mạnh";
   return { score, label, checks };
 }
 

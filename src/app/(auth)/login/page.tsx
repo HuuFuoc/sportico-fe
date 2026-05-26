@@ -42,7 +42,7 @@ export default function LoginPage() {
     await new Promise((r) => setTimeout(r, 1100));
     // Demo: pretend "wrong@example.com" returns an error
     if (values.email === "wrong@example.com") {
-      setServerError("Incorrect email or password. Please try again.");
+      setServerError("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
       return;
     }
     setSuccess(true);
@@ -53,35 +53,35 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      title="Welcome back"
+      title="Chào mừng trở lại"
       subtitle={
         <>
-          New to Sportico?{" "}
+          Mới biết đến Sportico?{" "}
           <Link
             href="/register"
             className="font-semibold text-violet-700 underline-offset-4 hover:underline"
           >
-            Create an account
+            Tạo tài khoản
           </Link>
         </>
       }
       footer={
         <span className="inline-flex items-center gap-1.5 text-slate-500">
           <Lock size={11} className="text-emerald-500" />
-          Protected by enterprise-grade encryption
+          Bảo vệ bằng mã hóa cấp doanh nghiệp
         </span>
       }
     >
       {/* Social */}
       <SocialButtons disabled={isSubmitting || success} />
 
-      <Divider>or continue with email</Divider>
+      <Divider>hoặc tiếp tục bằng email</Divider>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <AuthInput
           label="Email"
           type="email"
-          placeholder="you@company.com"
+          placeholder="ban@congty.com"
           autoComplete="email"
           inputMode="email"
           leadingIcon={<Mail size={15} />}
@@ -99,12 +99,12 @@ export default function LoginPage() {
 
         {/* Remember / Forgot */}
         <div className="flex items-center justify-between">
-          <Checkbox label="Remember me for 30 days" {...register("remember")} />
+          <Checkbox label="Ghi nhớ tôi trong 30 ngày" {...register("remember")} />
           <Link
             href="#"
             className="text-[12px] font-semibold text-violet-700 underline-offset-4 hover:underline"
           >
-            Forgot password?
+            Quên mật khẩu?
           </Link>
         </div>
 
@@ -133,7 +133,7 @@ export default function LoginPage() {
             success ? <CheckCircle2 size={15} /> : <ArrowRight size={15} />
           }
         >
-          {success ? "Signed in — redirecting…" : "Sign in"}
+          {success ? "Đăng nhập thành công — đang chuyển…" : "Đăng nhập"}
         </AuthButton>
       </form>
     </AuthCard>

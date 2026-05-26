@@ -19,71 +19,71 @@ interface NavGroup {
 
 const LEARNER_NAV: NavGroup[] = [
   {
-    label: "Overview",
+    label: "Tổng quan",
     items: [
-      { href: "/learner/dashboard", label: "Dashboard", icon: "space_dashboard" },
+      { href: "/learner/dashboard", label: "Bảng điều khiển", icon: "space_dashboard" },
     ],
   },
   {
-    label: "Train",
+    label: "Tập luyện",
     items: [
-      { href: "/learner/coaches", label: "Find Coaches", icon: "search" },
-      { href: "/learner/ai-match", label: "AI Match", icon: "auto_awesome" },
-      { href: "/learner/schedule", label: "My Schedule", icon: "calendar_today" },
+      { href: "/learner/coaches", label: "Tìm HLV", icon: "search" },
+      { href: "/learner/ai-match", label: "Ghép nối AI", icon: "auto_awesome" },
+      { href: "/learner/schedule", label: "Lịch tập", icon: "calendar_today" },
     ],
   },
   {
-    label: "Activity",
+    label: "Hoạt động",
     items: [
-      { href: "/learner/messages", label: "Messages", icon: "forum" },
-      { href: "/learner/progress", label: "Progress", icon: "monitoring" },
+      { href: "/learner/messages", label: "Tin nhắn", icon: "forum" },
+      { href: "/learner/progress", label: "Tiến độ", icon: "monitoring" },
     ],
   },
 ];
 
 const COACH_NAV: NavGroup[] = [
   {
-    label: "Overview",
+    label: "Tổng quan",
     items: [
-      { href: "/coach/dashboard", label: "Dashboard", icon: "space_dashboard" },
+      { href: "/coach/dashboard", label: "Bảng điều khiển", icon: "space_dashboard" },
     ],
   },
   {
-    label: "Coaching",
+    label: "Huấn luyện",
     items: [
-      { href: "/coach/learners", label: "My Learners", icon: "groups" },
-      { href: "/coach/schedule", label: "Schedule", icon: "calendar_today" },
-      { href: "/coach/messages", label: "Messages", icon: "forum" },
+      { href: "/coach/learners", label: "Học viên", icon: "groups" },
+      { href: "/coach/schedule", label: "Lịch", icon: "calendar_today" },
+      { href: "/coach/messages", label: "Tin nhắn", icon: "forum" },
     ],
   },
   {
-    label: "Business",
+    label: "Kinh doanh",
     items: [
-      { href: "/coach/earnings", label: "Earnings", icon: "payments" },
-      { href: "/coach/profile", label: "My Profile", icon: "account_circle" },
+      { href: "/coach/earnings", label: "Thu nhập", icon: "payments" },
+      { href: "/coach/profile", label: "Hồ sơ", icon: "account_circle" },
     ],
   },
 ];
 
 const ADMIN_NAV: NavGroup[] = [
   {
-    label: "Overview",
+    label: "Tổng quan",
     items: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: "space_dashboard" },
+      { href: "/admin/dashboard", label: "Bảng điều khiển", icon: "space_dashboard" },
     ],
   },
   {
-    label: "Manage",
+    label: "Quản lý",
     items: [
-      { href: "/admin/users", label: "Users", icon: "group" },
-      { href: "/admin/verifications", label: "Verifications", icon: "verified_user" },
+      { href: "/admin/users", label: "Người dùng", icon: "group" },
+      { href: "/admin/verifications", label: "Xác thực HLV", icon: "verified_user" },
     ],
   },
   {
-    label: "Platform",
+    label: "Nền tảng",
     items: [
-      { href: "/admin/revenue", label: "Revenue", icon: "payments" },
-      { href: "/admin/ai-settings", label: "AI Settings", icon: "auto_awesome" },
+      { href: "/admin/revenue", label: "Doanh thu", icon: "payments" },
+      { href: "/admin/ai-settings", label: "Cài đặt AI", icon: "auto_awesome" },
       { href: "/admin/console", label: "Console", icon: "terminal" },
     ],
   },
@@ -101,9 +101,9 @@ function navForRole(role: AppRole): NavGroup[] {
 }
 
 const ROLE_LABEL: Record<AppRole, string> = {
-  learner: "Learner",
-  coach: "Coach",
-  admin: "Admin",
+  learner: "Học viên",
+  coach: "Huấn luyện viên",
+  admin: "Quản trị",
 };
 
 export function Sidebar({ role }: { role: AppRole }) {
@@ -163,7 +163,7 @@ export function Sidebar({ role }: { role: AppRole }) {
               className="flex w-full items-center justify-center gap-1.5 rounded-[9px] bg-primary py-2.5 text-[13px] font-semibold text-on-primary shadow-[0_10px_22px_-12px_rgba(53,37,205,0.8)] transition-colors hover:bg-[#2d20b8]"
             >
               <MaterialIcon name="add" size={17} weight={500} />
-              New Session
+              Tạo buổi tập
             </Link>
           </div>
         )}
@@ -230,15 +230,15 @@ export function Sidebar({ role }: { role: AppRole }) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold text-on-surface">
-                {user?.name ?? "ProCoach user"}
+                {user?.name ?? "Người dùng Sportico"}
               </p>
               <p className="text-[11px] text-on-surface-variant">
-                {ROLE_LABEL[role]} · Online
+                {ROLE_LABEL[role]} · Trực tuyến
               </p>
             </div>
             <Link
               href={settingsHref}
-              aria-label="Settings"
+              aria-label="Cài đặt"
               className="flex h-8 w-8 items-center justify-center rounded-[8px] text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
             >
               <MaterialIcon name="settings" size={18} />
@@ -249,7 +249,7 @@ export function Sidebar({ role }: { role: AppRole }) {
             className="mt-1 flex w-full items-center gap-3 rounded-[9px] px-3 py-2 text-[13px] text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
           >
             <MaterialIcon name="logout" size={19} />
-            Log out
+            Đăng xuất
           </button>
         </div>
       </aside>

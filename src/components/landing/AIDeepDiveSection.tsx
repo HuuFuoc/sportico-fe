@@ -40,29 +40,29 @@ interface Signal {
 const SIGNALS: Signal[] = [
   {
     icon: Target,
-    title: "Goal-weighted ranking",
-    body: "Scored on your specific outcome — not just sport category.",
+    title: "Xếp hạng theo mục tiêu",
+    body: "Chấm điểm theo kết quả cụ thể của bạn — không chỉ theo bộ môn.",
     weight: 92,
     tone: "indigo",
   },
   {
     icon: CalendarClock,
-    title: "Schedule-aware matching",
-    body: "Surfaces coaches with real slots fitting your week.",
+    title: "Ghép nối theo lịch trống",
+    body: "Hiển thị huấn luyện viên có lịch trống thực sự phù hợp với tuần của bạn.",
     weight: 88,
     tone: "violet",
   },
   {
     icon: Cpu,
-    title: "Style calibration",
-    body: "Learns whether you want tough love or patient guidance.",
+    title: "Hiệu chỉnh phong cách",
+    body: "Học xem bạn cần huấn luyện cứng rắn hay hướng dẫn kiên nhẫn.",
     weight: 84,
     tone: "cyan",
   },
   {
     icon: RefreshCcw,
-    title: "Closed feedback loop",
-    body: "Every session result sharpens the next match.",
+    title: "Vòng lặp học hỏi liên tục",
+    body: "Kết quả từng buổi tập giúp lần ghép nối tiếp theo chính xác hơn.",
     weight: 96,
     tone: "fuchsia",
   },
@@ -130,7 +130,7 @@ export function AIDeepDiveSection() {
     <section
       ref={ref}
       onMouseMove={onMove}
-      aria-label="Matching intelligence engine"
+      aria-label="Bộ máy AI ghép nối thông minh"
       className="relative overflow-hidden bg-[#070718] text-white"
     >
       {/* ============ BACKGROUND ============ */}
@@ -238,7 +238,7 @@ export function AIDeepDiveSection() {
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               className="inline-block h-1.5 w-1.5 rounded-full bg-violet-300"
             />
-            The matching engine
+            Bộ máy ghép nối
           </motion.div>
 
           <motion.h2
@@ -247,9 +247,9 @@ export function AIDeepDiveSection() {
             transition={{ duration: reduce ? 0 : 0.6, delay: 0.08, ease: EASE }}
             className="mt-5 text-[36px] font-semibold leading-[1.06] tracking-[-0.025em] text-white sm:text-[48px]"
           >
-            Matching intelligence,{" "}
+            AI ghép nối thông minh,{" "}
             <span className="bg-[linear-gradient(110deg,#a78bfa_0%,#f0abfc_50%,#67e8f9_100%)] bg-clip-text text-transparent">
-              not another filter.
+              không phải bộ lọc thông thường.
             </span>
           </motion.h2>
 
@@ -259,9 +259,10 @@ export function AIDeepDiveSection() {
             transition={{ duration: reduce ? 0 : 0.6, delay: 0.14, ease: EASE }}
             className="mt-4 max-w-lg text-[15.5px] leading-relaxed text-white/55"
           >
-            Most marketplaces stop at a search bar. We score every coach on{" "}
-            <span className="text-white/85">four live signals</span> — and show
-            you the reasoning behind every match.
+            Hầu hết marketplace chỉ dừng ở thanh tìm kiếm. Chúng tôi chấm điểm
+            mọi HLV trên{" "}
+            <span className="text-white/85">bốn tín hiệu thời gian thực</span>{" "}
+            — và cho bạn thấy lý do đằng sau mỗi gợi ý.
           </motion.p>
         </div>
 
@@ -445,11 +446,11 @@ function EnginePanel({
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-semibold text-white">Alex Rivera</p>
             <p className="text-[10.5px] text-white/50">
-              Goal: <span className="text-violet-200">Marathon prep · sub-3:30</span>
+              Mục tiêu: <span className="text-violet-200">Marathon · dưới 3:30</span>
             </p>
           </div>
           <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9.5px] text-white/45">
-            input
+            đầu vào
           </span>
         </div>
 
@@ -457,11 +458,11 @@ function EnginePanel({
         <div className="relative mt-4 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-4">
           <div className="mb-2.5 flex items-center justify-between">
             <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/45">
-              Signal evaluation
+              Đánh giá tín hiệu
             </p>
             <span className="inline-flex items-center gap-1 text-[10px] text-white/45">
               <Activity size={9} />
-              scoring 1,247 coaches
+              đang chấm 1.247 HLV
             </span>
           </div>
 
@@ -494,10 +495,10 @@ function EnginePanel({
         <div className="mt-6 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/45">
-              Top matches · output
+              Kết quả · đầu ra
             </p>
             <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[9.5px] font-bold text-emerald-300">
-              ✓ 3 strong
+              ✓ 3 phù hợp
             </span>
           </div>
           <ul className="space-y-1.5">
@@ -526,22 +527,24 @@ function EnginePanel({
         >
           <span className="inline-flex items-center gap-1.5 text-white/55">
             <Sparkles size={11} className="text-violet-300" />
-            <span className="font-semibold text-white tabular-nums">0.74s</span>
-            <span>match time</span>
+            <span className="font-semibold text-white tabular-nums">0,74s</span>
+            <span>thời gian ghép</span>
           </span>
-          <span className="text-white/45 tabular-nums">94% accuracy · last 30d</span>
+          <span className="text-white/45 tabular-nums">
+            Độ chính xác 94% · 30 ngày qua
+          </span>
         </motion.div>
       </div>
 
       {/* Floating chips around panel */}
       <FloatingChip
-        text="HRV signal"
+        text="Tín hiệu HRV"
         cls="-left-3 top-12 hidden lg:flex"
         reduce={reduce}
         delay={1.6}
       />
       <FloatingChip
-        text="Adoption +12%"
+        text="Mức tiếp nhận +12%"
         cls="-right-2 top-32 hidden lg:flex"
         reduce={reduce}
         delay={1.8}

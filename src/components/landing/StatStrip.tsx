@@ -74,15 +74,15 @@ export function StatStrip() {
             ))}
           </div>
           <p className="text-[13px] text-slate-500 sm:text-[13.5px]">
-            Trusted by{" "}
+            Được tin dùng bởi{" "}
             <span className="font-semibold text-slate-900 tabular-nums">
-              25,000+
+              25.000+
             </span>{" "}
-            athletes from{" "}
+            vận động viên từ{" "}
             <span className="font-semibold text-slate-900 tabular-nums">
               60+
             </span>{" "}
-            countries
+            quốc gia
           </p>
         </motion.div>
 
@@ -98,8 +98,8 @@ export function StatStrip() {
               value={1200}
               decimals={0}
               suffix="+"
-              label="Verified elite coaches"
-              hint="Across 13 sport disciplines"
+              label="Huấn luyện viên ưu tú đã xác thực"
+              hint="Trên 13 bộ môn thể thao"
               inView={inView}
               reduce={reduce ?? false}
               delay={0.32}
@@ -109,8 +109,8 @@ export function StatStrip() {
               value={25}
               decimals={0}
               suffix="k+"
-              label="Athletes coached since 2021"
-              hint="Across 6 continents"
+              label="Vận động viên đã được huấn luyện từ 2021"
+              hint="Khắp 6 châu lục"
               inView={inView}
               reduce={reduce ?? false}
               delay={0.4}
@@ -120,8 +120,8 @@ export function StatStrip() {
               value={4.9}
               decimals={1}
               suffix="/5"
-              label="Average coach rating"
-              hint="From 18,420+ verified reviews"
+              label="Đánh giá trung bình của huấn luyện viên"
+              hint="Từ 18.420+ đánh giá đã xác thực"
               showStars
               inView={inView}
               reduce={reduce ?? false}
@@ -148,11 +148,11 @@ export function StatStrip() {
           />
           <blockquote className="text-[14px] text-slate-600 sm:text-[15px]">
             <span className="text-slate-900">
-              &ldquo;I cut <span className="font-semibold">90 seconds</span> off
-              my 5K in two months.&rdquo;
+              &ldquo;Tôi cải thiện <span className="font-semibold">90 giây</span>{" "}
+              cho thành tích 5K chỉ trong hai tháng.&rdquo;
             </span>{" "}
             <span className="text-slate-500">
-              — Mia Carter, 5K runner
+              — Mia Carter, vận động viên 5K
             </span>
           </blockquote>
         </motion.figure>
@@ -194,7 +194,7 @@ function FeaturedStat({
             AI Engine
           </span>
           <span className="text-[11.5px] text-slate-400">
-            Match accuracy · last 8 weeks
+            Độ chính xác ghép nối · 8 tuần qua
           </span>
         </div>
 
@@ -212,9 +212,9 @@ function FeaturedStat({
         </div>
 
         <p className="mt-3 text-[15px] leading-snug text-slate-600">
-          AI matching accuracy improving{" "}
-          <span className="font-semibold text-slate-900">weekly</span> — based
-          on confirmed booking outcomes.
+          Độ chính xác ghép nối của AI cải thiện{" "}
+          <span className="font-semibold text-slate-900">mỗi tuần</span> — dựa
+          trên kết quả đặt lịch thực tế.
         </p>
 
         {/* Sparkline + delta chip */}
@@ -239,7 +239,7 @@ function FeaturedStat({
                 fill="currentColor"
               />
             </svg>
-            +16 pts
+            +16 điểm
           </span>
         </div>
 
@@ -250,9 +250,9 @@ function FeaturedStat({
             </div>
             <p className="text-[12.5px] text-slate-600">
               <span className="font-semibold text-slate-900">
-                Every match
+                Mỗi lần ghép nối
               </span>{" "}
-              sharpens the next recommendation.
+              giúp đề xuất kế tiếp chính xác hơn.
             </p>
           </div>
         </div>

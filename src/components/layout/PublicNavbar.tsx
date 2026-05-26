@@ -15,10 +15,10 @@ interface PublicNavbarProps {
 }
 
 const NAV_LINKS = [
-  { label: "Find Coaches", href: "/learner/coaches" },
-  { label: "How it Works", href: "/#how-it-works" },
-  { label: "For Coaches", href: "/#for-coaches" },
-  { label: "Pricing", href: "#" },
+  { label: "Tìm HLV", href: "/learner/coaches" },
+  { label: "Cách hoạt động", href: "/#how-it-works" },
+  { label: "Dành cho HLV", href: "/#for-coaches" },
+  { label: "Bảng giá", href: "#" },
 ];
 
 // Demo routing — wire these to real auth once a backend exists.
@@ -61,7 +61,7 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
         {/* Logo */}
         <Link
           href="/"
-          aria-label="Sportico — home"
+          aria-label="Sportico — trang chủ"
           className="flex items-center"
         >
           <img
@@ -105,13 +105,13 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
                 : "border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface hover:bg-surface-container-low",
             )}
           >
-            Log In
+            Đăng nhập
           </Link>
           <Link
             href={SIGNUP_HREF}
             className="rounded-[6px] bg-primary px-3.5 py-2 text-body-base font-medium text-on-primary transition-colors hover:bg-[#2d20b8]"
           >
-            Get Started
+            Bắt đầu
           </Link>
         </div>
 
@@ -119,7 +119,7 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open menu"
+          aria-label="Mở menu"
           className={cn(
             "-mr-2 rounded-[6px] p-2 transition-colors md:hidden",
             transparent
@@ -155,11 +155,11 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
           )}
         >
           <div className="flex h-16 items-center justify-between border-b border-[var(--color-border-soft)] px-5">
-            <span className="text-h3 text-primary">ProCoach AI</span>
+            <span className="text-h3 text-primary">Sportico</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close menu"
+              aria-label="Đóng menu"
               className="-mr-2 rounded-[6px] p-2 text-on-surface hover:bg-surface-container-low"
             >
               <MaterialIcon name="close" size={22} />
@@ -185,14 +185,14 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
               onClick={() => setOpen(false)}
               className="rounded-[6px] border border-[var(--color-border-soft)] px-3.5 py-2.5 text-center text-body-base font-medium text-on-surface transition-colors hover:bg-surface-container-low"
             >
-              Log In
+              Đăng nhập
             </Link>
             <Link
               href={SIGNUP_HREF}
               onClick={() => setOpen(false)}
               className="rounded-[6px] bg-primary px-3.5 py-2.5 text-center text-body-base font-medium text-on-primary transition-colors hover:bg-[#2d20b8]"
             >
-              Get Started
+              Bắt đầu
             </Link>
           </div>
         </div>

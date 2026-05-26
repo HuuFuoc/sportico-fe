@@ -41,7 +41,7 @@ export function ScrollToTopButton({
           key="scroll-top"
           type="button"
           onClick={onClick}
-          aria-label="Scroll to top"
+          aria-label="Cuộn lên đầu trang"
           initial={{ opacity: 0, scale: 0.85, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.85, y: 8 }}

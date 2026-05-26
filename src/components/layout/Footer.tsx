@@ -3,38 +3,38 @@ import { MaterialIcon } from "@/components/icons/MaterialIcon";
 
 const COLUMNS = [
   {
-    title: "Product",
+    title: "Sản phẩm",
     links: [
-      { label: "Find Coaches", href: "/learner/coaches" },
-      { label: "AI Match", href: "/learner/ai-match" },
-      { label: "How it Works", href: "/#how-it-works" },
-      { label: "Pricing", href: "#" },
+      { label: "Tìm HLV", href: "/learner/coaches" },
+      { label: "Ghép nối AI", href: "/learner/ai-match" },
+      { label: "Cách hoạt động", href: "/#how-it-works" },
+      { label: "Bảng giá", href: "#" },
     ],
   },
   {
-    title: "For Coaches",
+    title: "Dành cho HLV",
     links: [
-      { label: "Become a Coach", href: "/coach/dashboard" },
-      { label: "Coach Earnings", href: "/coach/earnings" },
-      { label: "Resources", href: "#" },
-      { label: "Success Stories", href: "#" },
+      { label: "Trở thành HLV", href: "/coach/dashboard" },
+      { label: "Thu nhập HLV", href: "/coach/earnings" },
+      { label: "Tài nguyên", href: "#" },
+      { label: "Câu chuyện thành công", href: "#" },
     ],
   },
   {
-    title: "Company",
+    title: "Công ty",
     links: [
-      { label: "About", href: "#" },
-      { label: "Careers", href: "#" },
+      { label: "Giới thiệu", href: "#" },
+      { label: "Tuyển dụng", href: "#" },
       { label: "Blog", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Liên hệ", href: "#" },
     ],
   },
   {
-    title: "Legal",
+    title: "Pháp lý",
     links: [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "Security", href: "#" },
+      { label: "Bảo mật", href: "#" },
+      { label: "Điều khoản", href: "#" },
+      { label: "An ninh", href: "#" },
       { label: "Cookies", href: "#" },
     ],
   },
@@ -44,7 +44,7 @@ const SOCIALS = [
   { icon: "alternate_email", label: "X / Twitter" },
   { icon: "photo_camera", label: "Instagram" },
   { icon: "smart_display", label: "YouTube" },
-  { icon: "forum", label: "Community" },
+  { icon: "forum", label: "Cộng đồng" },
 ];
 
 export function Footer() {
@@ -56,7 +56,7 @@ export function Footer() {
           <div className="col-span-2">
             <Link
               href="/"
-              aria-label="Sportico — home"
+              aria-label="Sportico — trang chủ"
               className="inline-flex items-center"
             >
               <img
@@ -66,8 +66,8 @@ export function Footer() {
               />
             </Link>
             <p className="mt-3 max-w-[260px] text-body-sm text-on-surface-variant">
-              AI-matched coaching that connects athletes with elite coaches —
-              built for measurable performance gains.
+              Nền tảng huấn luyện AI kết nối vận động viên với HLV ưu tú — được
+              xây dựng để mang lại tiến bộ đo lường được.
             </p>
           </div>
 
@@ -101,7 +101,7 @@ export function Footer() {
               className="h-6 w-auto rounded-[4px]"
             />
             <p className="text-body-sm text-on-surface-variant">
-              © 2026 Sportico. All rights reserved.
+              © 2026 Sportico. Bảo lưu mọi quyền.
             </p>
           </div>
           <div className="flex items-center gap-1">

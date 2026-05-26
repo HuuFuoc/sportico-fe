@@ -39,32 +39,32 @@ interface TabDef {
 const TABS: TabDef[] = [
   {
     id: "progress",
-    label: "Progress",
+    label: "Tiến độ",
     icon: LineChartIcon,
     bullets: [
-      "Composite fitness score — mobility, strength, conditioning",
-      "AI recovery alerts from HRV trends",
-      "Streaks + achievements with tiered rewards",
+      "Điểm thể lực tổng hợp — vận động, sức mạnh, sức bền",
+      "Cảnh báo phục hồi từ chỉ số HRV",
+      "Chuỗi liên tục + thành tích theo cấp bậc",
     ],
   },
   {
     id: "schedule",
-    label: "Schedule",
+    label: "Lịch tập",
     icon: Calendar,
     bullets: [
-      "One calm calendar for booked, suggested and AI-guided",
-      "Smart reschedule on conflicts — no chat ping-pong",
-      "Live availability across every coach you follow",
+      "Một lịch duy nhất cho buổi đã đặt, gợi ý và AI hướng dẫn",
+      "Đổi lịch thông minh khi xung đột — không phải nhắn qua lại",
+      "Lịch trống cập nhật trực tiếp của mọi HLV bạn theo dõi",
     ],
   },
   {
     id: "messages",
-    label: "Messages",
+    label: "Tin nhắn",
     icon: MessageCircle,
     bullets: [
-      "Threaded chats with built-in coach + Ask AI",
-      "Inline workout cards, voice notes, video review",
-      "Auto-summary so you never miss what's next",
+      "Hộp thoại có cả HLV thật + Trợ lý AI",
+      "Thẻ bài tập, ghi âm, video review ngay trong tin nhắn",
+      "Tự động tóm tắt để bạn không bỏ lỡ điều quan trọng",
     ],
   },
 ];
@@ -80,7 +80,7 @@ export function ProductPreviewSection() {
   return (
     <section
       ref={ref}
-      aria-label="Inside the product"
+      aria-label="Bên trong sản phẩm"
       className="relative overflow-hidden border-y border-slate-200/70 bg-slate-50/60"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -97,7 +97,7 @@ export function ProductPreviewSection() {
             className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700"
           >
             <Sparkles size={11} />
-            Inside the product
+            Bên trong sản phẩm
           </motion.div>
 
           <motion.h2
@@ -106,9 +106,9 @@ export function ProductPreviewSection() {
             transition={{ duration: reduce ? 0 : 0.6, delay: 0.06, ease: EASE }}
             className="mt-5 text-[36px] font-semibold leading-[1.04] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
           >
-            Every session,{" "}
+            Mọi buổi tập đều được{" "}
             <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
-              measured and understood.
+              đo lường và thấu hiểu.
             </span>
           </motion.h2>
 
@@ -118,8 +118,8 @@ export function ProductPreviewSection() {
             transition={{ duration: reduce ? 0 : 0.6, delay: 0.12, ease: EASE }}
             className="mx-auto mt-4 max-w-lg text-[15.5px] leading-relaxed text-slate-500"
           >
-            Your dashboard turns training into signal. AI flags what to adjust
-            before it costs you progress.
+            Bảng điều khiển biến quá trình tập luyện thành dữ liệu. AI báo cho
+            bạn biết cần điều chỉnh gì trước khi nó cản trở tiến bộ.
           </motion.p>
         </div>
 
@@ -175,11 +175,11 @@ export function ProductPreviewSection() {
                 transition={{ duration: reduce ? 0 : 0.35, ease: EASE }}
               >
                 <h3 className="text-[22px] font-semibold tracking-tight text-slate-900">
-                  {current.label === "Progress"
-                    ? "Turn training into signal."
-                    : current.label === "Schedule"
-                      ? "One calm calendar."
-                      : "Coach + AI in one thread."}
+                  {current.id === "progress"
+                    ? "Biến tập luyện thành dữ liệu."
+                    : current.id === "schedule"
+                      ? "Một lịch duy nhất, gọn gàng."
+                      : "HLV + AI cùng một hộp thoại."}
                 </h3>
                 <ul className="mt-5 space-y-3">
                   {current.bullets.map((b, i) => (
@@ -207,7 +207,7 @@ export function ProductPreviewSection() {
                   href="/learner/dashboard"
                   className="group mt-7 inline-flex items-center gap-1.5 text-[14px] font-semibold text-violet-700"
                 >
-                  Explore the dashboard
+                  Khám phá bảng điều khiển
                   <ArrowRight
                     size={14}
                     className="transition-transform group-hover:translate-x-0.5"
@@ -232,19 +232,19 @@ export function ProductPreviewSection() {
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-emerald-600">
               <Check size={11} strokeWidth={3} />
             </span>
-            Apple Health + Strava sync
+            Đồng bộ Apple Health + Strava
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-emerald-600">
               <Check size={11} strokeWidth={3} />
             </span>
-            HRV-aware recovery flags
+            Cảnh báo phục hồi theo HRV
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-emerald-600">
               <Check size={11} strokeWidth={3} />
             </span>
-            Privacy-first by default
+            Bảo mật là ưu tiên mặc định
           </span>
         </motion.div>
       </div>
@@ -307,14 +307,14 @@ function DashboardMockup({
       {/* Floating chips */}
       <FloatingTag
         icon={Brain}
-        text="AI flagged"
+        text="AI cảnh báo"
         cls="-left-6 top-12 hidden lg:flex"
         delay={1.1}
         reduce={reduce}
       />
       <FloatingTag
         icon={Flame}
-        text="Streak +1"
+        text="Chuỗi +1"
         cls="-right-3 bottom-16 hidden lg:flex"
         delay={1.3}
         reduce={reduce}
@@ -341,7 +341,7 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[10.5px] uppercase tracking-[0.14em] text-slate-400">
-            Fitness Score
+            Điểm thể lực
           </p>
           <p className="mt-1 text-[28px] font-semibold leading-none tracking-tight text-slate-900 tabular-nums">
             78<span className="text-[14px] text-slate-400">/100</span>
@@ -349,7 +349,7 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">
           <TrendingUp size={11} />
-          +14% MoM
+          +14% so với tháng trước
         </span>
       </div>
 
@@ -401,8 +401,8 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
       {/* 3 mini metric rows */}
       <div className="grid grid-cols-3 gap-2">
         <MiniMetric icon={Heart} label="HRV" value="52" tone="violet" />
-        <MiniMetric icon={Activity} label="Load" value="71" tone="cyan" />
-        <MiniMetric icon={Flame} label="Streak" value="8d" tone="amber" />
+        <MiniMetric icon={Activity} label="Cường độ" value="71" tone="cyan" />
+        <MiniMetric icon={Flame} label="Chuỗi" value="8 ngày" tone="amber" />
       </div>
 
       {/* AI insight */}
@@ -416,9 +416,9 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
           <Sparkles size={11} />
         </span>
         <p className="text-[11.5px] leading-relaxed text-slate-700">
-          HRV dipped 6% — swap today's strength block for a{" "}
+          HRV giảm 6% — hôm nay nên đổi buổi sức mạnh sang{" "}
           <span className="font-semibold text-violet-700">
-            15-min mobility flow
+            chuỗi vận động 15 phút
           </span>
           .
         </p>
@@ -433,9 +433,9 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
 
 function ScheduleMock({ reduce }: { reduce: boolean }) {
   const sessions = [
-    { time: "07:00", title: "Tempo + Strides", coach: "Sarah Jenkins", tone: "violet" as const },
-    { time: "13:30", title: "Mobility Flow", coach: "Elena Voss", tone: "cyan" as const },
-    { time: "18:00", title: "AI-Guided Recovery", coach: "Engine", tone: "fuchsia" as const, ai: true },
+    { time: "07:00", title: "Chạy tempo + sải bước", coach: "Sarah Jenkins", tone: "violet" as const },
+    { time: "13:30", title: "Chuỗi vận động", coach: "Elena Voss", tone: "cyan" as const },
+    { time: "18:00", title: "Phục hồi AI hướng dẫn", coach: "Sportico AI", tone: "fuchsia" as const, ai: true },
   ];
   return (
     <motion.div
@@ -448,15 +448,15 @@ function ScheduleMock({ reduce }: { reduce: boolean }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[10.5px] uppercase tracking-[0.14em] text-slate-400">
-            Today · Friday
+            Hôm nay · Thứ Sáu
           </p>
           <p className="mt-1 text-[18px] font-semibold tracking-tight text-slate-900">
-            3 sessions scheduled
+            3 buổi đã lên lịch
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-[11px] font-bold text-violet-700">
           <Calendar size={11} />
-          On track
+          Đúng tiến độ
         </span>
       </div>
 
@@ -500,7 +500,7 @@ function ScheduleMock({ reduce }: { reduce: boolean }) {
                   {s.time}
                 </p>
                 <p className="text-[9.5px] uppercase tracking-[0.12em] text-slate-400">
-                  60m
+                  60p
                 </p>
               </div>
               <div className="flex-1 min-w-0">
@@ -508,7 +508,7 @@ function ScheduleMock({ reduce }: { reduce: boolean }) {
                   {s.title}
                 </p>
                 <p className="truncate text-[11px] text-slate-500">
-                  with {s.coach}
+                  cùng {s.coach}
                 </p>
               </div>
               {s.ai && (
@@ -549,7 +549,7 @@ function MessagesMock({ reduce }: { reduce: boolean }) {
           </p>
           <p className="text-[10.5px] text-emerald-600 inline-flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Coach assistant · Online
+            Trợ lý huấn luyện · Trực tuyến
           </p>
         </div>
       </div>
@@ -562,8 +562,8 @@ function MessagesMock({ reduce }: { reduce: boolean }) {
           transition={{ duration: 0.4, delay: 0.2, ease: EASE }}
           className="max-w-[80%] rounded-[14px] rounded-bl-[4px] bg-violet-50 px-3 py-2 text-[12px] text-slate-700"
         >
-          Hi Alex! HRV dipped 6% overnight. I&apos;d suggest a mobility-focused
-          plan today — keeps the streak alive without overloading.
+          Chào Alex! HRV của bạn giảm 6% qua đêm. Mình gợi ý đổi sang lịch tập
+          vận động hôm nay — giữ chuỗi mà không gây quá tải.
         </motion.div>
 
         <motion.div
@@ -572,7 +572,7 @@ function MessagesMock({ reduce }: { reduce: boolean }) {
           transition={{ duration: 0.4, delay: 0.4, ease: EASE }}
           className="ml-auto max-w-[70%] rounded-[14px] rounded-br-[4px] bg-gradient-to-br from-violet-600 to-fuchsia-500 px-3 py-2 text-[12px] text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.45)]"
         >
-          Yes please — schedule it.
+          Đồng ý — đặt lịch giúp mình nhé.
         </motion.div>
 
         {/* Typing indicator */}

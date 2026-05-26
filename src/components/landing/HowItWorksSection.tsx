@@ -38,7 +38,7 @@ export function HowItWorksSection() {
   return (
     <section
       ref={ref}
-      aria-label="How Sportico works"
+      aria-label="Sportico hoạt động như thế nào"
       className="relative overflow-hidden bg-white"
     >
       {/* ============ SOFT BG ============ */}
@@ -60,8 +60,8 @@ export function HowItWorksSection() {
             <SideStep
               num="01"
               icon={Target}
-              title="Map your ambition"
-              body="60 seconds, no endless forms. Tell us your sport, goal and schedule — that's it."
+              title="Xác định mục tiêu"
+              body="60 giây, không form dài dòng. Cho chúng tôi biết bộ môn, mục tiêu và lịch tập của bạn — chỉ vậy thôi."
               accent="left"
               inView={inView}
               reduce={reduce ?? false}
@@ -78,8 +78,8 @@ export function HowItWorksSection() {
             <SideStep
               num="03"
               icon={TrendingUp}
-              title="Train. Measure. Win."
-              body="Track every signal. The AI nudges you when to push, when to rest, what to fix."
+              title="Tập. Đo lường. Chiến thắng."
+              body="Theo dõi mọi chỉ số. AI sẽ nhắc bạn lúc nào nên đẩy mạnh, lúc nào nên nghỉ và cần điều chỉnh điều gì."
               accent="right"
               inView={inView}
               reduce={reduce ?? false}
@@ -109,7 +109,7 @@ function Header({ inView, reduce }: { inView: boolean; reduce: boolean }) {
         className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700"
       >
         <Sparkles size={11} />
-        How Sportico works
+        Sportico hoạt động như thế nào
       </motion.div>
 
       <motion.h2
@@ -118,9 +118,9 @@ function Header({ inView, reduce }: { inView: boolean; reduce: boolean }) {
         transition={{ duration: reduce ? 0 : 0.6, delay: 0.06, ease: EASE }}
         className="mt-5 text-[36px] font-semibold leading-[1.04] tracking-[-0.025em] text-slate-900 sm:text-[48px]"
       >
-        Three steps to the coach{" "}
+        Ba bước để gặp huấn luyện viên{" "}
         <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
-          built for you.
+          dành riêng cho bạn.
         </span>
       </motion.h2>
 
@@ -130,8 +130,8 @@ function Header({ inView, reduce }: { inView: boolean; reduce: boolean }) {
         transition={{ duration: reduce ? 0 : 0.6, delay: 0.12, ease: EASE }}
         className="mx-auto mt-4 max-w-lg text-[15.5px] leading-relaxed text-slate-500"
       >
-        No cold outreach. No DM roulette. An intelligent path from where you
-        are to where you want to be — in under a minute.
+        Không cần inbox lạnh lùng. Không phải dò DM. Một lộ trình thông minh từ
+        điểm bạn đang đứng đến nơi bạn muốn đến — chỉ trong chưa đầy một phút.
       </motion.p>
     </div>
   );
@@ -195,7 +195,7 @@ function SideStep({
       <div className="relative">
         {/* Step label */}
         <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-violet-600">
-          Step {num}
+          Bước {num}
         </span>
 
         {/* Icon tile */}
@@ -317,14 +317,14 @@ function FeaturedStep({
           {/* Label + LIVE chip */}
           <div className="flex items-center gap-2">
             <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-violet-700">
-              Step 02 · Featured
+              Bước 02 · Nổi bật
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-emerald-700">
               <span className="relative inline-flex h-1.5 w-1.5">
                 <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-80" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
               </span>
-              Live
+              Trực tiếp
             </span>
           </div>
 
@@ -336,14 +336,14 @@ function FeaturedStep({
 
           {/* Headline */}
           <h3 className="mt-4 max-w-md text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-slate-900 sm:text-[28px]">
-            We score every coach against your{" "}
+            Chúng tôi chấm điểm mọi huấn luyện viên theo{" "}
             <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
-              exact outcome.
+              mục tiêu cụ thể của bạn.
             </span>
           </h3>
           <p className="mt-2.5 max-w-md text-[14px] leading-relaxed text-slate-500">
-            And we show you the <span className="font-semibold text-slate-700">why</span>{" "}
-            behind every match — schedule fit, style, history.
+            Và cho bạn thấy <span className="font-semibold text-slate-700">lý do</span>{" "}
+            đằng sau mỗi gợi ý — phù hợp lịch tập, phong cách, lịch sử huấn luyện.
           </p>
 
           {/* AI Match visualization */}
@@ -372,9 +372,9 @@ function FeaturedStep({
 
           {/* Signals pill row */}
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            <SignalChip icon={Clock} label="Avg. match in 0.8s" />
-            <SignalChip icon={Brain} label="94% accuracy" />
-            <SignalChip icon={Flame} label="Closed feedback loop" />
+            <SignalChip icon={Clock} label="Ghép nối trung bình 0,8 giây" />
+            <SignalChip icon={Brain} label="Độ chính xác 94%" />
+            <SignalChip icon={Flame} label="Vòng lặp học hỏi liên tục" />
           </div>
         </div>
       </div>
@@ -440,7 +440,7 @@ function TopMatchCard({
       <div className="mt-4">
         <div className="flex items-baseline justify-between">
           <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
-            Compatibility
+            Độ tương thích
           </span>
           <span className="text-[24px] font-semibold leading-none tracking-[-0.02em] text-slate-900 tabular-nums">
             <CountUp value={top.score} start={inView} reduce={reduce} />%
@@ -469,9 +469,9 @@ function TopMatchCard({
       {/* Reasoning bullets */}
       <ul className="mt-4 space-y-1.5">
         {[
-          "Sport + style alignment",
-          "Open slots match your week",
-          "Outcome-history with similar goals",
+          "Hợp bộ môn + phong cách tập",
+          "Lịch trống khớp với tuần của bạn",
+          "Lịch sử huấn luyện cùng mục tiêu",
         ].map((reason, i) => (
           <motion.li
             key={reason}
@@ -522,14 +522,14 @@ function MatchingIndicator({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[11.5px] font-semibold text-slate-900">
-          Scanning <span className="tabular-nums">1,247</span> coaches…
+          Đang quét <span className="tabular-nums">1.247</span> huấn luyện viên…
         </p>
         <div className="mt-1 flex items-center gap-0.5">
           <PulseDot delay={0} reduce={reduce} />
           <PulseDot delay={0.18} reduce={reduce} />
           <PulseDot delay={0.36} reduce={reduce} />
           <span className="ml-1.5 text-[10px] text-slate-500">
-            3 strong matches found
+            Tìm thấy 3 lựa chọn phù hợp
           </span>
         </div>
       </div>
@@ -707,9 +707,9 @@ function SocialProofStrip({
   reduce: boolean;
 }) {
   const items = [
-    { icon: Clock, value: "0.8s", label: "Average match time" },
-    { icon: LineChart, value: "94%", label: "AI matching accuracy" },
-    { icon: Zap, value: "1,200+", label: "Verified elite coaches" },
+    { icon: Clock, value: "0,8s", label: "Thời gian ghép nối trung bình" },
+    { icon: LineChart, value: "94%", label: "Độ chính xác ghép nối AI" },
+    { icon: Zap, value: "1.200+", label: "HLV ưu tú đã xác thực" },
   ];
   return (
     <motion.div

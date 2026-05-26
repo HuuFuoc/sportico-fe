@@ -61,7 +61,8 @@
       "PowerShell(npx eslint 'src/components/landing/AIDeepDiveSection.tsx' 'src/components/landing/CoachShowcaseSection.tsx' 'src/components/landing/ProductPreviewSection.tsx' 'src/components/landing/TestimonialsSection.tsx' 'src/components/landing/FinalCTASection.tsx' 'src/app/\\(public\\)/page.tsx' 2>&1)",
       "PowerShell(pnpm build 2>&1)",
       "PowerShell(pnpm lint 2>&1)",
-      "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 'src/components/landing/HeroPreview.tsx' 2>&1)"
+      "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 'src/components/landing/HeroPreview.tsx' 2>&1)",
+      "Bash(grep -n 'aria-label\\\\|\"Start training\\\\|joined this week\\\\|Start free today\\\\|No card\\\\|breakthrough\\\\|one match away\\\\|Join thousands\\\\|Get started\\\\|Browse coaches\\\\|athletes ·\\\\|AI accuracy\\\\|SOC 2\\\\|encryption\\\\|0\\\\\\\\.8s\\\\|Cancel anytime\\\\|Are you a coach\\\\|Grow your practice' \"d:/FPT-Ky8/EXE202/sportico/src/components/landing/FinalCTASection.tsx\")"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

@@ -46,7 +46,7 @@ export default function RegisterPage() {
     setServerError(null);
     await new Promise((r) => setTimeout(r, 1200));
     if (values.email === "taken@example.com") {
-      setServerError("An account with this email already exists.");
+      setServerError("Email này đã được sử dụng cho một tài khoản khác.");
       return;
     }
     setSuccess(true);
@@ -57,35 +57,35 @@ export default function RegisterPage() {
 
   return (
     <AuthCard
-      title="Create your account"
+      title="Tạo tài khoản"
       subtitle={
         <>
-          Already have one?{" "}
+          Đã có tài khoản?{" "}
           <Link
             href="/login"
             className="font-semibold text-violet-700 underline-offset-4 hover:underline"
           >
-            Sign in
+            Đăng nhập
           </Link>
         </>
       }
       footer={
         <>
-          Protected by enterprise-grade encryption ·{" "}
+          Bảo vệ bằng mã hóa cấp doanh nghiệp ·{" "}
           <Link href="#" className="text-slate-700 hover:text-slate-900">
-            Privacy
+            Bảo mật
           </Link>
         </>
       }
     >
       <SocialButtons disabled={isSubmitting || success} />
 
-      <Divider>or sign up with email</Divider>
+      <Divider>hoặc đăng ký bằng email</Divider>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <AuthInput
-          label="Full name"
-          placeholder="Alex Rivera"
+          label="Họ và tên"
+          placeholder="Nguyễn Văn A"
           autoComplete="name"
           leadingIcon={<User size={15} />}
           error={errors.name?.message}
@@ -96,7 +96,7 @@ export default function RegisterPage() {
         <AuthInput
           label="Email"
           type="email"
-          placeholder="you@company.com"
+          placeholder="ban@congty.com"
           autoComplete="email"
           inputMode="email"
           leadingIcon={<Mail size={15} />}
@@ -107,9 +107,9 @@ export default function RegisterPage() {
 
         <div>
           <PasswordField
-            label="Password"
+            label="Mật khẩu"
             autoComplete="new-password"
-            placeholder="Create a strong password"
+            placeholder="Tạo mật khẩu mạnh"
             error={errors.password?.message}
             {...register("password")}
           />
@@ -117,9 +117,9 @@ export default function RegisterPage() {
         </div>
 
         <PasswordField
-          label="Confirm password"
+          label="Xác nhận mật khẩu"
           autoComplete="new-password"
-          placeholder="Repeat password"
+          placeholder="Nhập lại mật khẩu"
           error={errors.confirmPassword?.message}
           {...register("confirmPassword")}
         />
@@ -127,19 +127,19 @@ export default function RegisterPage() {
         <Checkbox
           label={
             <>
-              I agree to the{" "}
+              Tôi đồng ý với{" "}
               <Link
                 href="#"
                 className="font-semibold text-violet-700 underline-offset-4 hover:underline"
               >
-                Terms
+                Điều khoản
               </Link>{" "}
-              and{" "}
+              và{" "}
               <Link
                 href="#"
                 className="font-semibold text-violet-700 underline-offset-4 hover:underline"
               >
-                Privacy Policy
+                Chính sách bảo mật
               </Link>
               .
             </>
@@ -172,7 +172,7 @@ export default function RegisterPage() {
             success ? <CheckCircle2 size={15} /> : <ArrowRight size={15} />
           }
         >
-          {success ? "Account created — taking you in…" : "Create account"}
+          {success ? "Đã tạo tài khoản — đang đăng nhập…" : "Tạo tài khoản"}
         </AuthButton>
       </form>
     </AuthCard>

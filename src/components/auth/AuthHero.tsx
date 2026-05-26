@@ -28,7 +28,7 @@ export function AuthHero() {
       <div className="flex items-center justify-between">
         <Link
           href="/"
-          aria-label="Sportico — home"
+          aria-label="Sportico — trang chủ"
           className="inline-flex items-center"
         >
           <img
@@ -41,7 +41,7 @@ export function AuthHero() {
           href="/"
           className="group hidden items-center gap-1 text-[12.5px] font-medium text-slate-500 transition-colors hover:text-slate-900 sm:inline-flex"
         >
-          Back to site
+          Quay lại trang chủ
           <ArrowRight
             size={12}
             className="transition-transform group-hover:translate-x-0.5"
@@ -58,7 +58,7 @@ export function AuthHero() {
           className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-violet-700 backdrop-blur"
         >
           <Sparkles size={11} />
-          AI-native coaching
+          Huấn luyện AI native
         </motion.div>
 
         <motion.h2
@@ -67,9 +67,9 @@ export function AuthHero() {
           transition={{ duration: reduce ? 0 : 0.5, delay: 0.08, ease: EASE }}
           className="mt-5 text-[34px] font-semibold leading-[1.08] tracking-[-0.025em] text-slate-900 sm:text-[40px]"
         >
-          Train smarter with coaches{" "}
+          Tập luyện thông minh hơn với HLV{" "}
           <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
-            matched to you.
+            dành cho riêng bạn.
           </span>
         </motion.h2>
 
@@ -79,8 +79,8 @@ export function AuthHero() {
           transition={{ duration: reduce ? 0 : 0.5, delay: 0.14, ease: EASE }}
           className="mt-4 max-w-md text-[14.5px] leading-relaxed text-slate-500"
         >
-          Sportico reads your goals, schedule and training style — then matches
-          you with the right coach in under a minute.
+          Sportico phân tích mục tiêu, lịch tập và phong cách của bạn — rồi
+          ghép nối với HLV phù hợp trong chưa đầy một phút.
         </motion.p>
 
         {/* Single testimonial — quiet social proof */}
@@ -101,9 +101,9 @@ export function AuthHero() {
             ))}
           </div>
           <blockquote className="text-[14px] leading-relaxed text-slate-700">
-            &ldquo;The match nailed it on the first try. I&apos;ve cut 90
-            seconds off my 5K in two months — and I actually look forward to
-            every session now.&rdquo;
+            &ldquo;Ghép nối lần đầu đã chuẩn luôn. Tôi đã cải thiện 90 giây cho
+            thành tích 5K chỉ trong hai tháng — và giờ tôi thực sự mong đến từng
+            buổi tập.&rdquo;
           </blockquote>
           <figcaption className="mt-4 flex items-center gap-2.5">
             <img
@@ -116,7 +116,7 @@ export function AuthHero() {
                 Mia Carter
               </p>
               <p className="text-[11.5px] text-slate-500">
-                5K runner · Member since 2025
+                Vận động viên 5K · Thành viên từ 2025
               </p>
             </div>
           </figcaption>
@@ -142,13 +142,13 @@ export function AuthHero() {
             ))}
           </div>
           <span>
-            <span className="font-semibold text-slate-900">2,000+</span> athletes
-            joined this season
+            <span className="font-semibold text-slate-900">2.000+</span> vận
+            động viên tham gia mùa này
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <ShieldCheck size={13} className="text-emerald-500" />
-          <span>SOC 2 · GDPR ready</span>
+          <span>Đạt chuẩn SOC 2 · GDPR</span>
         </div>
       </motion.div>
     </div>

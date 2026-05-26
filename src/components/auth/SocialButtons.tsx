@@ -53,7 +53,7 @@ export function SocialButtons({ disabled }: { disabled?: boolean }) {
         disabled={disabled || busy !== null}
         onClick={() => handle("google")}
         leading={<GoogleIcon />}
-        aria-label="Continue with Google"
+        aria-label="Tiếp tục với Google"
       >
         Google
       </AuthButton>
@@ -64,7 +64,7 @@ export function SocialButtons({ disabled }: { disabled?: boolean }) {
         disabled={disabled || busy !== null}
         onClick={() => handle("github")}
         leading={<GithubIcon />}
-        aria-label="Continue with GitHub"
+        aria-label="Tiếp tục với GitHub"
       >
         GitHub
       </AuthButton>

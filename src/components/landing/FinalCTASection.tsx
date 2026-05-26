@@ -79,7 +79,7 @@ export function FinalCTASection() {
   return (
     <section
       ref={ref}
-      aria-label="Start training with Sportico"
+      aria-label="Bắt đầu tập luyện cùng Sportico"
       className="relative bg-white px-4 pb-24 pt-8 sm:px-6"
     >
       <motion.div
@@ -192,7 +192,7 @@ export function FinalCTASection() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
             </span>
             <span className="tabular-nums">{liveCount.toLocaleString()}</span>
-            <span className="text-white/75">athletes joined this week</span>
+            <span className="text-white/75">vận động viên tham gia tuần này</span>
           </motion.div>
 
           {/* Eyebrow badge */}
@@ -207,9 +207,9 @@ export function FinalCTASection() {
             className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur"
           >
             <Sparkles size={11} />
-            Start free today
+            Bắt đầu miễn phí
             <span className="ml-1 rounded-full bg-emerald-400 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-emerald-950">
-              No card
+              Không cần thẻ
             </span>
           </motion.div>
 
@@ -224,9 +224,9 @@ export function FinalCTASection() {
             }}
             className="mx-auto mt-6 max-w-3xl text-[36px] font-semibold leading-[1.04] tracking-[-0.03em] text-white sm:text-[56px]"
           >
-            Your next breakthrough{" "}
+            Bước đột phá tiếp theo của bạn{" "}
             <span className="bg-[linear-gradient(110deg,#fff_0%,#f0abfc_45%,#67e8f9_100%)] bg-clip-text text-transparent">
-              is one match away.
+              chỉ cách một cú ghép nối.
             </span>
           </motion.h2>
 
@@ -240,8 +240,8 @@ export function FinalCTASection() {
             }}
             className="mx-auto mt-5 max-w-lg text-[15.5px] leading-relaxed text-white/75 sm:text-[17px]"
           >
-            Join thousands of athletes training with AI-matched elite coaches.
-            Get matched in under a minute.
+            Tham gia cùng hàng nghìn vận động viên đang tập với HLV ưu tú do
+            AI ghép nối. Tìm HLV phù hợp trong chưa đầy một phút.
           </motion.p>
 
           {/* CTA cluster */}
@@ -278,7 +278,7 @@ export function FinalCTASection() {
                 className="relative text-violet-700"
                 strokeWidth={2.5}
               />
-              <span className="relative">Get started — it's free</span>
+              <span className="relative">Bắt đầu — Miễn phí</span>
               <ArrowRight
                 size={15}
                 className="relative text-violet-700 transition-transform group-hover:translate-x-1"
@@ -288,7 +288,7 @@ export function FinalCTASection() {
               href="/learner/coaches"
               className="inline-flex items-center gap-2 rounded-[12px] border border-white/30 bg-white/5 px-6 py-3.5 text-[14.5px] font-semibold text-white backdrop-blur transition-all hover:border-white/50 hover:bg-white/10"
             >
-              Browse coaches
+              Khám phá HLV
               <ArrowRight
                 size={15}
                 className="transition-transform group-hover:translate-x-0.5"
@@ -325,10 +325,10 @@ export function FinalCTASection() {
               ))}
             </div>
             <p className="text-[12.5px] text-white/85">
-              <span className="font-bold tabular-nums text-white">25,000+</span>{" "}
-              athletes ·{" "}
-              <span className="font-bold tabular-nums text-white">94%</span> AI
-              accuracy
+              <span className="font-bold tabular-nums text-white">25.000+</span>{" "}
+              vận động viên ·{" "}
+              <span className="font-bold tabular-nums text-white">94%</span> độ
+              chính xác AI
             </p>
           </motion.div>
 
@@ -342,10 +342,10 @@ export function FinalCTASection() {
             }}
             className="mx-auto mt-9 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/15 pt-7 text-[11.5px] text-white/65"
           >
-            <TrustItem icon={ShieldCheck} label="SOC 2 · GDPR ready" />
-            <TrustItem icon={Lock} label="Bank-grade encryption" />
-            <TrustItem icon={Zap} label="Match in 0.8s" />
-            <TrustItem icon={Users} label="Cancel anytime" />
+            <TrustItem icon={ShieldCheck} label="Đạt chuẩn SOC 2 · GDPR" />
+            <TrustItem icon={Lock} label="Mã hóa cấp ngân hàng" />
+            <TrustItem icon={Zap} label="Ghép nối trong 0,8 giây" />
+            <TrustItem icon={Users} label="Hủy bất cứ lúc nào" />
           </motion.div>
 
           {/* Are-you-a-coach link */}
@@ -355,12 +355,12 @@ export function FinalCTASection() {
             transition={{ duration: reduce ? 0 : 0.55, delay: 1.0 }}
             className="mx-auto mt-7 inline-flex items-center gap-2 text-[12.5px] text-white/65"
           >
-            <span>Are you a coach?</span>
+            <span>Bạn là huấn luyện viên?</span>
             <Link
               href="/coach/dashboard"
               className="group inline-flex items-center gap-1 font-semibold text-white underline-offset-4 hover:underline"
             >
-              Grow your practice with AI-filled slots
+              Phát triển sự nghiệp với học viên do AI ghép nối
               <ArrowRight
                 size={12}
                 className="transition-transform group-hover:translate-x-0.5"

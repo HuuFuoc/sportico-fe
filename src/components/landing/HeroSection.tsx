@@ -30,9 +30,9 @@ const HERO_AVATARS = [
 const FEATURED_AVATAR = avatarFor("coach-1");
 
 const CYCLE_WORDS = [
-  "MENTAAL & FYSIEK",
-  "FOCUS & FORM",
-  "STRENGTH & FLOW",
+  "THỂ CHẤT & TINH THẦN",
+  "TẬP TRUNG & KỶ LUẬT",
+  "SỨC MẠNH & BỀN BỈ",
 ] as const;
 
 // Deterministic sparkle positions (SSR-safe)
@@ -210,7 +210,7 @@ export function HeroSection({ coach }: { coach: Coach }) {
 
         <FadeUp delay={0.18}>
           <h1 className="mt-6 max-w-3xl text-[42px] font-black uppercase leading-[0.94] tracking-[-0.035em] text-white sm:text-[62px] lg:text-[78px]">
-            <span className="block">Community first.</span>
+            <span className="block">CỘNG ĐỒNG TRƯỚC TIÊN.</span>
             <span className="relative block">
               <AnimatePresence mode="wait">
                 <motion.span
@@ -230,9 +230,9 @@ export function HeroSection({ coach }: { coach: Coach }) {
 
         <FadeUp delay={0.26}>
           <p className="mt-6 max-w-md text-[15px] leading-relaxed text-white/70 sm:text-[16px]">
-            AI-matched elite coaches, a community that holds you accountable,
-            and one calm place to grow{" "}
-            <span className="text-white">mentally and physically</span>.
+            Huấn luyện viên ưu tú được AI ghép nối, cộng đồng giữ lửa cho bạn,
+            và một nơi yên tĩnh để phát triển{" "}
+            <span className="text-white">cả về thể chất lẫn tinh thần</span>.
           </p>
         </FadeUp>
 
@@ -261,7 +261,7 @@ function PulsingBadge() {
         <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-80" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
       </span>
-      Live · AI-matched coaching
+      Trực tiếp · Huấn luyện AI
       <span className="ml-1 text-white/40">|</span>
       <MaterialIcon name="auto_awesome" filled size={12} className="text-violet-300" />
     </span>
@@ -297,7 +297,7 @@ function MembersCard() {
           <CountUp end={2000} suffix="+" />
         </p>
         <p className="text-[10px] uppercase tracking-[0.12em] text-white/55">
-          Members
+          Thành viên
         </p>
       </div>
       <span className="mx-1 inline-block h-6 w-px bg-white/15" />
@@ -367,7 +367,7 @@ function ScrollCue({ reduce }: { reduce: boolean }) {
       transition={{ delay: 1.4, duration: 0.6 }}
       className="absolute bottom-4 right-6 hidden flex-col items-center gap-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 md:flex"
     >
-      <span>Scroll</span>
+      <span>Cuộn</span>
       <motion.span
         animate={
           reduce

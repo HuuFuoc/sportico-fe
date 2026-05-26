@@ -22,11 +22,11 @@ import { getCoaches } from "@/lib/mock/users";
 const EASE = [0.16, 1, 0.3, 1] as Easing;
 
 const FILTERS = [
-  { id: "all", label: "All" },
+  { id: "all", label: "Tất cả" },
   { id: "tennis", label: "Tennis" },
-  { id: "strength", label: "Strength" },
-  { id: "recovery", label: "Recovery" },
-  { id: "ai", label: "AI-Guided" },
+  { id: "strength", label: "Sức mạnh" },
+  { id: "recovery", label: "Phục hồi" },
+  { id: "ai", label: "AI hướng dẫn" },
 ] as const;
 
 type FilterId = (typeof FILTERS)[number]["id"];
@@ -42,7 +42,7 @@ export function CoachShowcaseSection() {
   return (
     <section
       ref={ref}
-      aria-label="Coach marketplace showcase"
+      aria-label="Sàn huấn luyện viên"
       className="relative overflow-hidden bg-white"
     >
       {/* Subtle gradients */}
@@ -61,7 +61,7 @@ export function CoachShowcaseSection() {
               className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700"
             >
               <BadgeCheck size={11} />
-              The marketplace
+              Sàn huấn luyện viên
             </motion.div>
 
             <motion.h2
@@ -74,9 +74,9 @@ export function CoachShowcaseSection() {
               }}
               className="mt-5 text-[36px] font-semibold leading-[1.04] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
             >
-              Coaches{" "}
+              Những huấn luyện viên{" "}
               <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
-                worth training with.
+                đáng để gửi gắm.
               </span>
             </motion.h2>
 
@@ -90,8 +90,8 @@ export function CoachShowcaseSection() {
               }}
               className="mt-4 text-[15.5px] leading-relaxed text-slate-500"
             >
-              Every profile is identity-verified and credential-checked before
-              it goes live — across 13 disciplines.
+              Mọi hồ sơ đều được xác minh danh tính và kiểm tra chứng chỉ trước
+              khi xuất hiện — trên 13 bộ môn.
             </motion.p>
           </div>
 
@@ -109,7 +109,7 @@ export function CoachShowcaseSection() {
               href="/learner/coaches"
               className="group inline-flex items-center gap-1.5 rounded-[12px] border border-slate-200 bg-white px-4 py-2.5 text-[13.5px] font-semibold text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-violet-300 hover:bg-violet-50/40 hover:text-violet-700 hover:shadow-[0_2px_8px_-2px_rgba(124,58,237,0.2)]"
             >
-              Browse all coaches
+              Xem tất cả HLV
               <ArrowRight
                 size={14}
                 className="transition-transform group-hover:translate-x-0.5"
@@ -163,7 +163,7 @@ export function CoachShowcaseSection() {
               <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            <span className="tabular-nums">247</span> available today
+            <span className="tabular-nums">247</span> đang trống hôm nay
           </span>
         </motion.div>
 
@@ -194,17 +194,17 @@ export function CoachShowcaseSection() {
         >
           <Sparkles size={14} className="text-violet-600" />
           <p className="text-[13.5px] text-slate-600">
+            Thêm{" "}
             <span className="font-semibold text-slate-900 tabular-nums">
-              1,247
+              1.247
             </span>{" "}
-            more verified coaches across{" "}
-            <span className="font-semibold text-slate-900">13 disciplines</span>{" "}
-            ·{" "}
+            HLV đã xác thực trên{" "}
+            <span className="font-semibold text-slate-900">13 bộ môn</span> ·{" "}
             <Link
               href="/learner/coaches"
               className="font-semibold text-violet-700 underline-offset-4 hover:underline"
             >
-              See the full marketplace →
+              Khám phá toàn bộ sàn →
             </Link>
           </p>
         </motion.div>
@@ -261,7 +261,7 @@ function CoachCard({
         <div className="absolute right-3 top-3 z-10">
           <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.5)]">
             <Sparkles size={9} />
-            Top match
+            Lựa chọn hàng đầu
           </span>
         </div>
       )}
@@ -286,7 +286,7 @@ function CoachCard({
         {/* Verified pill */}
         <div className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-semibold text-slate-900 backdrop-blur">
           <BadgeCheck size={11} className="text-emerald-600" />
-          Verified
+          Đã xác thực
         </div>
 
         {/* Rating top right */}
@@ -324,7 +324,7 @@ function CoachCard({
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-violet-700">
                 <Sparkles size={10} />
-                AI compatibility
+                Độ tương thích AI
               </span>
               <span className="text-[14px] font-semibold text-violet-700 tabular-nums">
                 96%
@@ -366,7 +366,7 @@ function CoachCard({
           <span className="inline-flex items-center gap-1 text-emerald-700">
             <Calendar size={11} />
             <span className="tabular-nums font-semibold">{slots}</span>
-            <span className="text-slate-500">slots / week</span>
+            <span className="text-slate-500">slot / tuần</span>
           </span>
         </div>
 
@@ -374,12 +374,12 @@ function CoachCard({
         <div className="mt-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              From
+              Từ
             </p>
             <p className="text-[16px] font-semibold leading-none text-slate-900">
               {formatCurrency(coach.hourlyRate, coach.currency)}
               <span className="text-[11.5px] font-normal text-slate-500">
-                /hr
+                /giờ
               </span>
             </p>
           </div>
@@ -387,7 +387,7 @@ function CoachCard({
             href={`/learner/coaches/${coach.id}`}
             className="group/cta inline-flex items-center gap-1 rounded-[10px] bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(15,23,42,0.3)] transition-all hover:bg-violet-600 hover:shadow-[0_6px_18px_-2px_rgba(124,58,237,0.5)]"
           >
-            View
+            Xem
             <ArrowRight
               size={12}
               className="transition-transform group-hover/cta:translate-x-0.5"

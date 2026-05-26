@@ -25,47 +25,47 @@ interface Testimonial {
 
 const FEATURED: Testimonial = {
   name: "Mia Carter",
-  role: "5K competitor",
+  role: "Vận động viên 5K",
   avatar: avatarFor("learner-11"),
-  metric: "−90s",
-  metricLabel: "5K time in 2 months",
+  metric: "−90 giây",
+  metricLabel: "thành tích 5K trong 2 tháng",
   quote:
-    "The match nailed it on the first try. I've cut 90 seconds off my 5K in two months — and I actually look forward to every session now.",
-  highlight: "cut 90 seconds off my 5K in two months",
-  sport: "Running",
+    "Lần ghép đầu tiên đã đúng người luôn. Tôi cải thiện 90 giây cho 5K chỉ trong hai tháng — và giờ tôi mong chờ mỗi buổi tập.",
+  highlight: "cải thiện 90 giây cho 5K chỉ trong hai tháng",
+  sport: "Chạy bộ",
 };
 
 const SUPPORTING: Testimonial[] = [
   {
     name: "Alex Rivera",
-    role: "Marathon runner",
+    role: "Vận động viên marathon",
     avatar: avatarFor("learner-1"),
-    metric: "+24h",
-    metricLabel: "trained · 12 weeks",
+    metric: "+24 giờ",
+    metricLabel: "đã tập · 12 tuần",
     quote:
-      "My coach understood my mobility goals before our first call. Booking, plans and progress finally all live in one calm place.",
-    highlight: "one calm place",
+      "HLV của tôi hiểu mục tiêu vận động ngay từ trước cuộc gọi đầu tiên. Đặt lịch, kế hoạch và tiến độ cuối cùng cũng nằm gọn ở một nơi.",
+    highlight: "một nơi gọn gàng",
     sport: "Marathon",
   },
   {
     name: "Daniel Wong",
-    role: "Amateur boxer",
+    role: "Boxer nghiệp dư",
     avatar: avatarFor("learner-6"),
-    metric: "4.9★",
-    metricLabel: "coach rating",
+    metric: "4,9★",
+    metricLabel: "đánh giá HLV",
     quote:
-      "I tried three platforms before this. The coach quality and the accuracy of the AI match are simply on another level.",
-    highlight: "another level",
+      "Tôi đã thử ba nền tảng trước khi đến đây. Chất lượng HLV và độ chính xác của AI ghép nối ở Sportico thực sự thuộc một đẳng cấp khác.",
+    highlight: "một đẳng cấp khác",
     sport: "Boxing",
   },
 ];
 
 const MARQUEE_QUOTES = [
-  { name: "Sara", role: "HIIT", quote: "Best 2 months of training I've had." },
-  { name: "Jordan", role: "Yoga", quote: "Finally a coach that gets me." },
-  { name: "Priya", role: "Cycling", quote: "FTP up 14% in 6 weeks." },
-  { name: "Mateo", role: "Strength", quote: "Form finally clicked." },
-  { name: "Aiko", role: "Swim", quote: "Felt heard from day one." },
+  { name: "Sara", role: "HIIT", quote: "Hai tháng tập tốt nhất từ trước đến nay." },
+  { name: "Jordan", role: "Yoga", quote: "Cuối cùng cũng có HLV thực sự hiểu mình." },
+  { name: "Priya", role: "Đạp xe", quote: "FTP tăng 14% chỉ trong 6 tuần." },
+  { name: "Mateo", role: "Sức mạnh", quote: "Cuối cùng kỹ thuật cũng đúng chuẩn." },
+  { name: "Aiko", role: "Bơi", quote: "Cảm thấy được lắng nghe ngay từ ngày đầu." },
 ];
 
 export function TestimonialsSection() {
@@ -76,7 +76,7 @@ export function TestimonialsSection() {
   return (
     <section
       ref={ref}
-      aria-label="Athletes who trained with intent"
+      aria-label="Vận động viên tập luyện có mục tiêu"
       className="relative overflow-hidden bg-slate-50/60"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -93,7 +93,7 @@ export function TestimonialsSection() {
             className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700"
           >
             <Sparkles size={11} />
-            Proof, not promises
+            Bằng chứng, không phải lời hứa
           </motion.div>
 
           <motion.h2
@@ -106,9 +106,9 @@ export function TestimonialsSection() {
             }}
             className="mt-5 text-[36px] font-semibold leading-[1.04] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
           >
-            Athletes who trained{" "}
+            Những vận động viên tập luyện{" "}
             <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
-              with intent.
+              có chủ đích.
             </span>
           </motion.h2>
 
@@ -122,8 +122,8 @@ export function TestimonialsSection() {
             }}
             className="mx-auto mt-4 max-w-lg text-[15.5px] leading-relaxed text-slate-500"
           >
-            Real outcomes from learners across the platform — measured, not
-            imagined.
+            Kết quả thật từ học viên trên nền tảng — được đo lường, không phải
+            tưởng tượng.
           </motion.p>
         </div>
 
@@ -232,7 +232,7 @@ function FeaturedQuote({
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-violet-200/60 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-700">
             <Sparkles size={9} />
-            Featured story
+            Câu chuyện nổi bật
           </span>
         </div>
 
