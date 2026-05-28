@@ -65,7 +65,7 @@ export const AuthButton = forwardRef<HTMLButtonElement, AuthButtonProps>(
         disabled={disabled || loading}
         {...rest}
         className={cn(
-          "group relative inline-flex h-11 items-center justify-center gap-2 overflow-hidden rounded-[12px] bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 text-[13.5px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.4),0_1px_2px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-px hover:shadow-[0_8px_22px_-4px_rgba(124,58,237,0.55)] active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
+          "group relative inline-flex h-11 items-center justify-center gap-2 overflow-hidden rounded-[12px] bg-gradient-to-r from-[#3525cd] via-indigo-600 to-violet-600 px-5 text-[13.5px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45),0_1px_2px_rgba(10,10,14,0.12)] transition-all hover:-translate-y-px hover:shadow-[0_8px_22px_-4px_rgba(99,102,241,0.6)] active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
           fullWidth && "w-full",
           className,
         )}
@@ -73,7 +73,7 @@ export const AuthButton = forwardRef<HTMLButtonElement, AuthButtonProps>(
         {/* Subtle hover wash */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-violet-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-violet-600 via-indigo-600 to-[#3525cd] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         />
         <span className="relative inline-flex items-center gap-2">
           {loading ? (

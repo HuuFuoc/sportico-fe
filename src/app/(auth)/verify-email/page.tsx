@@ -17,7 +17,7 @@ function VerifyEmailInner() {
   const [message, setMessage] = useState<string>(
     token
       ? ""
-      : "Verification token is missing. Please open the link from your email.",
+      : "Thiếu mã xác minh. Vui lòng mở liên kết từ email của bạn.",
   );
   // Guard against React's double-invoke in dev so we verify exactly once.
   const ran = useRef(false);
@@ -29,14 +29,14 @@ function VerifyEmailInner() {
     verifyEmail(token)
       .then(() => {
         setStatus("success");
-        setMessage("Email verified successfully. You can now log in.");
+        setMessage("Xác minh email thành công. Bạn có thể đăng nhập ngay bây giờ.");
       })
       .catch((err: unknown) => {
         setStatus("error");
         setMessage(
           err instanceof AuthError
             ? err.message
-            : "Invalid or expired verification token.",
+            : "Liên kết xác minh không hợp lệ hoặc đã hết hạn.",
         );
       });
   }, [token]);
@@ -44,14 +44,14 @@ function VerifyEmailInner() {
   if (status === "verifying") {
     return (
       <div className="flex flex-col items-center text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
           <Loader2 size={22} className="animate-spin" />
         </span>
         <h2 className="mt-4 text-[16px] font-semibold text-slate-900">
-          Verifying your email
+          Đang xác minh email
         </h2>
         <p className="mt-1.5 text-[13.5px] text-slate-500">
-          This only takes a moment…
+          Chỉ mất vài giây…
         </p>
       </div>
     );
@@ -68,16 +68,16 @@ function VerifyEmailInner() {
           <MailCheck size={22} />
         </span>
         <h2 className="mt-4 text-[16px] font-semibold text-slate-900">
-          Email verified
+          Đã xác minh email
         </h2>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-500">
           {message}
         </p>
         <Link
           href="/login"
-          className="mt-5 inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.4)] transition-transform hover:-translate-y-px"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#3525cd] via-indigo-600 to-violet-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] transition-transform hover:-translate-y-px"
         >
-          Go to login
+          Đến trang đăng nhập
           <ArrowRight size={15} />
         </Link>
       </motion.div>
@@ -94,7 +94,7 @@ function VerifyEmailInner() {
         <TriangleAlert size={22} />
       </span>
       <h2 className="mt-4 text-[16px] font-semibold text-slate-900">
-        Verification failed
+        Xác minh thất bại
       </h2>
       <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-500">
         {message}
@@ -103,7 +103,7 @@ function VerifyEmailInner() {
         href="/login"
         className="mt-5 inline-flex items-center gap-1.5 rounded-[12px] border border-slate-200 bg-white px-5 py-2.5 text-[13.5px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
       >
-        Back to login
+        Về trang đăng nhập
         <ArrowRight size={15} />
       </Link>
     </motion.div>
@@ -114,16 +114,16 @@ export default function VerifyEmailPage() {
   return (
     <div className="w-full max-w-[460px]">
       <AuthCard
-        title="Verify your email"
-        subtitle="Confirming your Sportico account."
+        title="Xác minh email"
+        subtitle="Đang xác nhận tài khoản Sportico của bạn."
       >
         <Suspense
           fallback={
             <div className="flex flex-col items-center text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
                 <Loader2 size={22} className="animate-spin" />
               </span>
-              <p className="mt-4 text-[13.5px] text-slate-500">Loading…</p>
+              <p className="mt-4 text-[13.5px] text-slate-500">Đang tải…</p>
             </div>
           }
         >
@@ -132,9 +132,9 @@ export default function VerifyEmailPage() {
       </AuthCard>
 
       <AuthSwitchLink
-        prompt="New to Sportico?"
+        prompt="Chưa có tài khoản?"
         href="/register"
-        cta="Create an account"
+        cta="Tạo tài khoản"
       />
     </div>
   );

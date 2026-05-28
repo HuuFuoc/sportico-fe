@@ -102,7 +102,7 @@ export async function login(payload: LoginPayload): Promise<AuthTokens> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Login failed. Please try again.",
+        "Đăng nhập thất bại. Vui lòng thử lại.",
       result.errorCode,
     );
   }
@@ -122,7 +122,7 @@ export async function login(payload: LoginPayload): Promise<AuthTokens> {
 export async function register(
   payload: RegisterPayload,
 ): Promise<RegisterResult> {
-  if (isMockMode()) return { message: "Registration successful" };
+  if (isMockMode()) return { message: "Đăng ký thành công" };
 
   const result = await request(endpoints.auth.register, {
     method: "POST",
@@ -137,18 +137,18 @@ export async function register(
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Registration failed. Please try again.",
+        "Đăng ký thất bại. Vui lòng thử lại.",
       result.errorCode,
     );
   }
-  return { message: result.message ?? "Registration successful" };
+  return { message: result.message ?? "Đăng ký thành công" };
 }
 
 // ---- Verify email (kept for future use; no UI yet) -------------------------
 
 /** Confirm an email verification token. Activates the user backend-side. */
 export async function verifyEmail(token: string): Promise<RegisterResult> {
-  if (isMockMode()) return { message: "Email verified successfully" };
+  if (isMockMode()) return { message: "Xác minh email thành công" };
 
   const result = await request(endpoints.auth.verifyEmail(token), {
     method: "GET",
@@ -158,11 +158,11 @@ export async function verifyEmail(token: string): Promise<RegisterResult> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Verification failed.",
+        "Xác minh email thất bại.",
       result.errorCode,
     );
   }
-  return { message: result.message ?? "Email verified successfully" };
+  return { message: result.message ?? "Xác minh email thành công" };
 }
 
 // ---- Refresh token ---------------------------------------------------------
@@ -178,13 +178,13 @@ export async function verifyEmail(token: string): Promise<RegisterResult> {
  */
 export async function refreshTokens(): Promise<AuthTokens> {
   if (isMockMode()) {
-    throw new AuthError("Token refresh is unavailable in mock mode.");
+    throw new AuthError("Làm mới phiên không khả dụng ở chế độ mock.");
   }
   const email = getAuthEmail();
   const refreshToken = getRefreshToken();
   if (!email || !refreshToken) {
     clearAuthTokens();
-    throw new AuthError("Your session has expired. Please log in again.");
+    throw new AuthError("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
   }
 
   let result: Result<AuthTokens>;
@@ -203,7 +203,7 @@ export async function refreshTokens(): Promise<AuthTokens> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Your session has expired. Please log in again.",
+        "Phiên đã hết hạn. Vui lòng đăng nhập lại.",
       result.errorCode,
     );
   }
@@ -230,7 +230,7 @@ export async function registerCoachProfile(
   payload: CoachOnboardingPayload,
 ): Promise<Result> {
   if (isMockMode()) {
-    throw new AuthError("Coach onboarding requires the live API.");
+    throw new AuthError("Đăng ký huấn luyện viên cần API thật.");
   }
   const result = await request(endpoints.coachOnboarding, {
     method: "POST",
@@ -240,7 +240,7 @@ export async function registerCoachProfile(
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Coach onboarding failed.",
+        "Đăng ký huấn luyện viên thất bại.",
       result.errorCode,
     );
   }
@@ -252,7 +252,7 @@ export async function registerCoachProfile(
 async function mockLogin(payload: LoginPayload): Promise<AuthTokens> {
   // Mirrors the documented demo test path (see CLAUDE.md §7).
   if (payload.email.trim().toLowerCase() === "wrong@example.com") {
-    throw new AuthError("Invalid email or password.");
+    throw new AuthError("Email hoặc mật khẩu không đúng.");
   }
   const tokens: AuthTokens = {
     accessToken: "mock-access-token",
@@ -299,7 +299,7 @@ function toAuthError(err: unknown): AuthError {
     const serverMsg = body ? pickString(body.message) : undefined;
     if (err.status === 0) {
       return new AuthError(
-        "Can't reach the server. Check your connection and try again.",
+        "Không thể kết nối đến máy chủ. Vui lòng thử lại.",
         code,
       );
     }
@@ -308,7 +308,7 @@ function toAuthError(err: unknown): AuthError {
       code,
     );
   }
-  return new AuthError("Something went wrong. Please try again.");
+  return new AuthError("Đã xảy ra lỗi. Vui lòng thử lại.");
 }
 
 /** Map a backend errorCode to friendly copy. Returns undefined for codes that
@@ -316,18 +316,18 @@ function toAuthError(err: unknown): AuthError {
 function messageForCode(code: string | undefined): string | undefined {
   switch (code) {
     case "AUTH_INVALID_CREDENTIALS":
-      return "Invalid email or password.";
+      return "Email hoặc mật khẩu không đúng.";
     case "COMMON_ACCOUNT_NOT_ACTIVE":
-      return "Please verify your email before logging in.";
+      return "Vui lòng xác minh email trước khi đăng nhập.";
     case "USER_EMAIL_ALREADY_EXISTS":
-      return "This email is already registered.";
+      return "Email này đã được đăng ký.";
     case "AUTH_INVALID_REFRESH_TOKEN":
     case "AUTH_REFRESH_TOKEN_EXPIRED":
-      return "Your session has expired. Please log in again.";
+      return "Phiên đã hết hạn. Vui lòng đăng nhập lại.";
     case "AUTH_INVALID_VERIFICATION_TOKEN":
-      return "This verification link is invalid or has expired.";
+      return "Liên kết xác minh không hợp lệ hoặc đã hết hạn.";
     case "COACH_PROFILE_ALREADY_EXISTS":
-      return "You already have a coach profile.";
+      return "Bạn đã có hồ sơ huấn luyện viên.";
     default:
       // COMMON_VALIDATION_ERROR, SPORT_INVALID, etc. → show backend message.
       return undefined;
@@ -335,9 +335,10 @@ function messageForCode(code: string | undefined): string | undefined {
 }
 
 function defaultForStatus(status: number): string {
-  if (status === 401 || status === 403) return "Invalid email or password.";
-  if (status >= 500) return "Something went wrong on our end. Please try again.";
-  return "Request failed. Please try again.";
+  if (status === 401 || status === 403)
+    return "Email hoặc mật khẩu không đúng.";
+  if (status >= 500) return "Máy chủ đang gặp sự cố. Vui lòng thử lại.";
+  return "Yêu cầu thất bại. Vui lòng thử lại.";
 }
 
 // ---- Small helpers ---------------------------------------------------------

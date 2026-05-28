@@ -28,6 +28,11 @@ export function AuthCard({
       className={cn("relative w-full max-w-[460px]", className)}
     >
       <div className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_-12px_rgba(15,23,42,0.08)] sm:p-9">
+        {/* Brand accent strip — matches landing-hero indigo→violet */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#3525cd] via-indigo-500 to-violet-500"
+        />
         <h1 className="text-[24px] font-semibold tracking-tight text-slate-900 sm:text-[26px]">
           {title}
         </h1>

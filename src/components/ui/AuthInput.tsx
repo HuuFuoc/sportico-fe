@@ -50,7 +50,7 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
             error
               ? "border-rose-400 ring-2 ring-rose-100"
               : focused
-                ? "border-violet-500 ring-2 ring-violet-100"
+                ? "border-indigo-500 ring-2 ring-indigo-100"
                 : "border-slate-200 hover:border-slate-300",
           )}
         >
@@ -61,7 +61,7 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
                 error
                   ? "text-rose-500"
                   : focused
-                    ? "text-violet-600"
+                    ? "text-indigo-600"
                     : "text-slate-400",
               )}
             >
