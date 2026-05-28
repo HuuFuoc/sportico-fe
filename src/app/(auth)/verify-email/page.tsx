@@ -12,18 +12,40 @@ import { verifyEmail, AuthError } from "@/lib/auth-api";
 type Status = "verifying" | "success" | "error";
 
 function VerifyEmailInner() {
-  const token = useSearchParams().get("token");
-  const [status, setStatus] = useState<Status>(token ? "verifying" : "error");
-  const [message, setMessage] = useState<string>(
-    token
+  const params = useSearchParams();
+  const token = params.get("token");
+  // The `/api/auth/verify-email` route handler verifies server-side and
+  // redirects here with a `status` (and optional `message`); in that case we
+  // just render the outcome. A bare `?token=` (direct visit) is verified
+  // client-side as a fallback.
+  const presetStatus = params.get("status");
+  const presetMessage = params.get("message");
+
+  const initialStatus: Status =
+    presetStatus === "success"
+      ? "success"
+      : presetStatus === "error"
+        ? "error"
+        : token
+          ? "verifying"
+          : "error";
+
+  const [status, setStatus] = useState<Status>(initialStatus);
+  const [message, setMessage] = useState<string>(() => {
+    if (presetStatus === "success")
+      return "Xác minh email thành công. Bạn có thể đăng nhập ngay bây giờ.";
+    if (presetStatus === "error")
+      return presetMessage ?? "Liên kết xác minh không hợp lệ hoặc đã hết hạn.";
+    return token
       ? ""
-      : "Thiếu mã xác minh. Vui lòng mở liên kết từ email của bạn.",
-  );
+      : "Thiếu mã xác minh. Vui lòng mở liên kết từ email của bạn.";
+  });
   // Guard against React's double-invoke in dev so we verify exactly once.
   const ran = useRef(false);
 
   useEffect(() => {
-    if (!token || ran.current) return;
+    // Skip the client-side call when the server already resolved the outcome.
+    if (presetStatus || !token || ran.current) return;
     ran.current = true;
 
     verifyEmail(token)
@@ -39,7 +61,7 @@ function VerifyEmailInner() {
             : "Liên kết xác minh không hợp lệ hoặc đã hết hạn.",
         );
       });
-  }, [token]);
+  }, [token, presetStatus]);
 
   if (status === "verifying") {
     return (

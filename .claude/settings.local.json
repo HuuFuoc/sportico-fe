@@ -70,12 +70,31 @@
       "Bash(node -e \"const d=require\\('./swagger_tmp.json'\\); for\\(const p in d.paths\\){for\\(const m in d.paths[p]\\){console.log\\(m.toUpperCase\\(\\),p\\)}}\")",
       "Bash(node -e ' *)",
       "Bash(rm -f swagger_tmp.json)",
-      "Bash(curl -s --max-time 40 \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o swagger_tmp.json -w \"HTTP %{http_code}, %{size_download} bytes\\\\n\")"
+      "Bash(curl -s --max-time 40 \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o swagger_tmp.json -w \"HTTP %{http_code}, %{size_download} bytes\\\\n\")",
+      "Bash(git add *)",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"=== EXIT tsc: $? ===\")",
+      "Bash(echo \"=== EXIT eslint: $? ===\")",
+      "Bash(tee /tmp/sportico-dev.log)",
+      "Bash(curl -s -o /dev/null http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"home HTTP %{http_code}\\\\n\" http://localhost:3000)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_snapshot",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__fill_form",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__click",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_network_requests",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_console_messages",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($conns\\) { $conns | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction Stop; \"killed PID $_\" } catch {} } } else { \"no listener on 3000\" })",
+      "Bash(pnpm dev > /tmp/sportico-dev2.log 2>&1 & *)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
+      "Bash(echo \"=== EXIT: $? ===\")"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",
       "D:\\FPT-Ky8\\EXE202\\sportico",
-      "d:\\FPT-Ky8\\EXE202\\sportico\\assets"
+      "d:\\FPT-Ky8\\EXE202\\sportico\\assets",
+      "\\tmp"
     ]
   }
 }

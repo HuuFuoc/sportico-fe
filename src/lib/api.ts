@@ -36,6 +36,7 @@ import type {
 } from "@/types";
 import { isMockMode } from "@/lib/api-client";
 import { backend } from "@/lib/backend/client";
+import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
 import * as map from "@/lib/backend/mappers";
 import { NOW } from "@/lib/mock/clock";
@@ -87,12 +88,31 @@ export interface EarningsTotal {
   sessions: number;
 }
 
-/** Run the live implementation when the backend is configured, else the mock. */
+/** Run the live implementation when the backend is configured, else the mock.
+ *  For PUBLIC endpoints. Falls back to the mock during SSR / static generation:
+ *  the browser reaches the backend through the same-origin `/api-proxy` rewrite,
+ *  but that relative URL cannot be fetched server-side (no origin), so Server
+ *  Components render deterministic demo data. Client Components fetch live. */
 function live<T>(
   liveFn: () => Promise<T>,
   mockFn: () => T | Promise<T>,
 ): Promise<T> {
-  return isMockMode() ? Promise.resolve(mockFn()) : liveFn();
+  return isMockMode() || typeof window === "undefined"
+    ? Promise.resolve(mockFn())
+    : liveFn();
+}
+
+/** Like {@link live} but for AUTHENTICATED endpoints. Falls back to the mock
+ *  whenever there is no Bearer token — i.e. during SSR / static generation
+ *  (no localStorage on the server) and for signed-out dev navigation. This
+ *  keeps every page renderable; real data appears once the user logs in. */
+function liveAuthed<T>(
+  liveFn: () => Promise<T>,
+  mockFn: () => T | Promise<T>,
+): Promise<T> {
+  return isMockMode() || !getAccessToken()
+    ? Promise.resolve(mockFn())
+    : liveFn();
 }
 
 /** Aggregate per-booking sessions into a flat, UI-shaped Session[]. */
@@ -147,7 +167,7 @@ export const api = {
 
   // ---- Sessions ----------------------------------------------------------
   fetchSessions: (): Promise<Session[]> =>
-    live(
+    liveAuthed(
       () => (getCurrentRole() === "coach" ? liveCoachSessions() : liveLearnerSessions()),
       () => getSessions(),
     ),
@@ -155,14 +175,14 @@ export const api = {
   fetchSession: (id: string): Promise<Session | undefined> =>
     Promise.resolve(getSessionById(id)),
   fetchSessionsForCoach: (id: string): Promise<Session[]> =>
-    live(liveCoachSessions, () => getSessionsForCoach(id)),
+    liveAuthed(liveCoachSessions, () => getSessionsForCoach(id)),
   fetchSessionsForLearner: (id: string): Promise<Session[]> =>
-    live(liveLearnerSessions, () => getSessionsForLearner(id)),
+    liveAuthed(liveLearnerSessions, () => getSessionsForLearner(id)),
   fetchUpcoming: (filter?: {
     coachId?: string;
     learnerId?: string;
   }): Promise<Session[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const all = filter?.coachId
         ? await liveCoachSessions()
         : filter?.learnerId
@@ -181,19 +201,19 @@ export const api = {
 
   // ---- Messages ----------------------------------------------------------
   fetchThreads: (userId: string): Promise<MessageThread[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const rooms = await backend.chatRooms();
       const me = getCurrentUserId();
       return rooms.map((r) => map.roomToThread(r, me));
     }, () => getThreadsForUser(userId)),
   fetchThread: (id: string): Promise<MessageThread | undefined> =>
-    live(async () => {
+    liveAuthed(async () => {
       const rooms = await backend.chatRooms();
       const room = rooms.find((r) => r.id === id);
       return room ? map.roomToThread(room, getCurrentUserId()) : undefined;
     }, () => getThreadById(id)),
   fetchMessages: (threadId: string): Promise<Message[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const page = await backend.roomMessages(threadId, { pageSize: 100 });
       return (page.items ?? [])
         .map(map.chatMessageToMessage)
@@ -202,17 +222,17 @@ export const api = {
 
   // ---- Earnings / payouts ------------------------------------------------
   fetchEarnings: (): Promise<EarningPoint[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const page = await backend.walletTransactions({ pageSize: 200 });
       return map.transactionsToEarnings(page.items ?? []);
     }, () => getEarnings()),
   fetchPayouts: (): Promise<Payout[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const page = await backend.myWithdrawals({ pageSize: 100 });
       return (page.items ?? []).map(map.withdrawalToPayout);
     }, () => getPayouts()),
   fetchEarningsTotal: (): Promise<EarningsTotal> =>
-    live(async () => {
+    liveAuthed(async () => {
       const wallet = await backend.wallet();
       return map.walletToTotal(wallet);
     }, () => getEarningsTotal()),
@@ -237,12 +257,12 @@ export const api = {
   fetchInsights: (audience: Role): Promise<AIInsight[]> =>
     Promise.resolve(getInsightsForRole(audience)),
   fetchNotifications: (): Promise<NotificationItem[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const page = await backend.notifications({ pageSize: 50 });
       return (page.items ?? []).map(map.notificationToItem);
     }, () => getNotifications()),
   fetchVerifications: (): Promise<VerificationRequest[]> =>
-    live(async () => {
+    liveAuthed(async () => {
       const [posts, packages, payouts] = await Promise.all([
         backend.pendingPosts({ pageSize: 50 }),
         backend.pendingTrainingPackages({ pageSize: 50 }),
