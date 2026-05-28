@@ -158,7 +158,7 @@ export async function verifyEmail(token: string): Promise<RegisterResult> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Xác minh thất bại.",
+        "Xác minh email thất bại.",
       result.errorCode,
     );
   }
@@ -184,7 +184,7 @@ export async function refreshTokens(): Promise<AuthTokens> {
   const refreshToken = getRefreshToken();
   if (!email || !refreshToken) {
     clearAuthTokens();
-    throw new AuthError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+    throw new AuthError("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
   }
 
   let result: Result<AuthTokens>;
@@ -203,7 +203,7 @@ export async function refreshTokens(): Promise<AuthTokens> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        "Phiên đã hết hạn. Vui lòng đăng nhập lại.",
       result.errorCode,
     );
   }
@@ -252,7 +252,7 @@ export async function registerCoachProfile(
 async function mockLogin(payload: LoginPayload): Promise<AuthTokens> {
   // Mirrors the documented demo test path (see CLAUDE.md §7).
   if (payload.email.trim().toLowerCase() === "wrong@example.com") {
-    throw new AuthError("Sai email hoặc mật khẩu.");
+    throw new AuthError("Email hoặc mật khẩu không đúng.");
   }
   const tokens: AuthTokens = {
     accessToken: "mock-access-token",
@@ -308,7 +308,7 @@ function toAuthError(err: unknown): AuthError {
       (body ? pickString(body.message) : undefined);
     if (err.status === 0) {
       return new AuthError(
-        "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.",
+        "Không thể kết nối đến máy chủ. Vui lòng thử lại.",
         code,
       );
     }
@@ -317,7 +317,7 @@ function toAuthError(err: unknown): AuthError {
       code,
     );
   }
-  return new AuthError("Đã có lỗi xảy ra. Vui lòng thử lại.");
+  return new AuthError("Đã xảy ra lỗi. Vui lòng thử lại.");
 }
 
 /** Map a backend errorCode to friendly copy. Returns undefined for codes that
@@ -325,14 +325,14 @@ function toAuthError(err: unknown): AuthError {
 function messageForCode(code: string | undefined): string | undefined {
   switch (code) {
     case "AUTH_INVALID_CREDENTIALS":
-      return "Sai email hoặc mật khẩu.";
+      return "Email hoặc mật khẩu không đúng.";
     case "COMMON_ACCOUNT_NOT_ACTIVE":
       return "Vui lòng xác minh email trước khi đăng nhập.";
     case "USER_EMAIL_ALREADY_EXISTS":
       return "Email này đã được đăng ký.";
     case "AUTH_INVALID_REFRESH_TOKEN":
     case "AUTH_REFRESH_TOKEN_EXPIRED":
-      return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+      return "Phiên đã hết hạn. Vui lòng đăng nhập lại.";
     case "AUTH_INVALID_VERIFICATION_TOKEN":
       return "Liên kết xác minh không hợp lệ hoặc đã hết hạn.";
     case "COACH_PROFILE_ALREADY_EXISTS":
@@ -344,8 +344,9 @@ function messageForCode(code: string | undefined): string | undefined {
 }
 
 function defaultForStatus(status: number): string {
-  if (status === 401 || status === 403) return "Sai email hoặc mật khẩu.";
-  if (status >= 500) return "Đã có lỗi từ phía máy chủ. Vui lòng thử lại.";
+  if (status === 401 || status === 403)
+    return "Email hoặc mật khẩu không đúng.";
+  if (status >= 500) return "Máy chủ đang gặp sự cố. Vui lòng thử lại.";
   return "Yêu cầu thất bại. Vui lòng thử lại.";
 }
 

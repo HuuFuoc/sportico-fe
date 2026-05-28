@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(pnpm lint *)",
+      "WebFetch(domain:stillmed.olympics.com)",
+      "WebFetch(domain:www.yonex.com)",
+      "WebFetch(domain:ss-i.thgim.com)",
+      "Bash(Remove-Item -Path \"d:\\\\sportico-fe\\\\src\\\\components\\\\auth\\\\FloatingStoryCard.tsx\" -Force)",
+      "PowerShell(Remove-Item -Path \"d:\\\\sportico-fe\\\\src\\\\components\\\\auth\\\\FloatingStoryCard.tsx\" -Force; if \\(-not \\(Test-Path \"d:\\\\sportico-fe\\\\src\\\\components\\\\auth\\\\FloatingStoryCard.tsx\"\\)\\) { Write-Output \"removed\" })",
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "WebFetch(domain:cdn.tatlerasia.com)",
+      "Bash(echo \"TSC=$?\")"
+    ]
+  }
+}

@@ -61,7 +61,7 @@ export default function LoginPage() {
       setServerError(
         err instanceof AuthError
           ? err.message
-          : "Đã có lỗi xảy ra. Vui lòng thử lại.",
+          : "Đã xảy ra lỗi. Vui lòng thử lại.",
       );
     }
   };
@@ -69,12 +69,12 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-[460px]">
       <AuthCard
-        title="Log in to Sportico"
-        subtitle="Welcome back — pick up right where you left off."
+        title="Đăng nhập Sportico"
+        subtitle="Tiếp tục kế hoạch tập luyện và kết nối lại với huấn luyện viên của bạn."
         footer={
           <span className="inline-flex items-center gap-1.5 text-slate-500">
             <Lock size={11} className="text-emerald-500" />
-            Protected with enterprise-grade encryption
+            Bảo vệ bằng mã hoá cấp doanh nghiệp
           </span>
         }
       >
@@ -82,7 +82,7 @@ export default function LoginPage() {
           <AuthInput
             label="Email"
             type="email"
-            placeholder="you@company.com"
+            placeholder="email@example.com"
             autoComplete="email"
             inputMode="email"
             leadingIcon={<Mail size={15} />}
@@ -92,19 +92,23 @@ export default function LoginPage() {
           />
 
           <PasswordField
+            label="Mật khẩu"
             autoComplete="current-password"
-            placeholder="••••••••"
+            placeholder="Nhập mật khẩu"
             error={errors.password?.message}
             {...register("password")}
           />
 
           <div className="flex items-center justify-between">
-            <Checkbox label="Remember me for 30 days" {...register("remember")} />
+            <Checkbox
+              label="Ghi nhớ đăng nhập trong 30 ngày"
+              {...register("remember")}
+            />
             <Link
               href="/login"
-              className="text-[12px] font-semibold text-violet-700 underline-offset-4 hover:underline"
+              className="text-[12px] font-semibold text-indigo-700 underline-offset-4 hover:underline"
             >
-              Forgot password?
+              Quên mật khẩu?
             </Link>
           </div>
 
@@ -130,15 +134,15 @@ export default function LoginPage() {
             disabled={success}
             trailing={success ? <CheckCircle2 size={15} /> : <ArrowRight size={15} />}
           >
-            {success ? "Signed in — redirecting…" : "Log in"}
+            {success ? "Đăng nhập thành công – đang chuyển hướng…" : "Đăng nhập"}
           </AuthButton>
         </form>
       </AuthCard>
 
       <AuthSwitchLink
-        prompt="New to Sportico?"
+        prompt="Chưa có tài khoản?"
         href="/register"
-        cta="Create an account"
+        cta="Tạo tài khoản"
       />
     </div>
   );

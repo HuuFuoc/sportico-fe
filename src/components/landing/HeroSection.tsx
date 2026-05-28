@@ -106,8 +106,9 @@ export function HeroSection({ coach }: { coach: Coach }) {
 
       {/* ============ OVERLAYS / GRADIENTS ============ */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        {/* Left-to-right dark fade for headline legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/20" />
+        {/* Left-to-right dark fade for headline legibility — darker on the
+            left so the headline never competes with the athlete or watermark. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/92 via-black/55 to-black/15" />
         {/* Top fade so nav reads cleanly */}
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
         {/* Bottom fade for watermark + cards */}
@@ -181,19 +182,22 @@ export function HeroSection({ coach }: { coach: Coach }) {
         />
       </div>
 
-      {/* ============ BRAND WATERMARK (huge bg text) ============ */}
+      {/* ============ BRAND WATERMARK (decorative, pushed to bottom edge) ============
+          Sized smaller (12vw) and pushed further off the bottom so it stays a
+          purely decorative footer band, never competing vertically with the
+          headline or members card. Opacity dropped to 4% as well. */}
       <motion.div
         aria-hidden
         style={{ x: watermarkX }}
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.1, ease: EASE, delay: 0.3 }}
-        className="pointer-events-none absolute inset-x-0 bottom-[-2vw] flex justify-center"
+        className="pointer-events-none absolute inset-x-0 bottom-[-3.5vw] flex justify-center"
       >
         <span
-          className="select-none whitespace-nowrap text-[18vw] font-black leading-none tracking-[-0.04em] text-white/[0.06]"
+          className="select-none whitespace-nowrap text-[12vw] font-black leading-none tracking-[-0.04em] text-white/[0.04]"
           style={{
-            WebkitTextStroke: "1px rgba(255,255,255,0.12)",
+            WebkitTextStroke: "1px rgba(255,255,255,0.08)",
             fontFamily: "var(--font-sans)",
           }}
         >
@@ -209,7 +213,18 @@ export function HeroSection({ coach }: { coach: Coach }) {
         </FadeUp>
 
         <FadeUp delay={0.18}>
-          <h1 className="mt-6 max-w-3xl text-[42px] font-black uppercase leading-[0.94] tracking-[-0.035em] text-white sm:text-[62px] lg:text-[78px]">
+          {/* Headline is sized with `clamp` so it never blows past the dark-
+              gradient safe zone on the left. Upper bound caps at ~68px so the
+              longest Vietnamese cycling word ("THỂ CHẤT & TINH THẦN", 20 chars
+              in Inter Black) still fits in a single line inside the container.
+              Leading is bumped to 1.02 to give diacritics breathing room. */}
+          <h1
+            className="mt-6 max-w-[820px] font-black uppercase tracking-[-0.035em] text-white"
+            style={{
+              fontSize: "clamp(38px, 6.2vw, 68px)",
+              lineHeight: 1.02,
+            }}
+          >
             <span className="block">CỘNG ĐỒNG TRƯỚC TIÊN.</span>
             <span className="relative block">
               <AnimatePresence mode="wait">

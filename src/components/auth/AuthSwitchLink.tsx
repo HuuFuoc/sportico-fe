@@ -18,7 +18,7 @@ export function AuthSwitchLink({
       {prompt}{" "}
       <Link
         href={href}
-        className="font-semibold text-violet-700 underline-offset-4 hover:underline"
+        className="font-semibold text-indigo-700 underline-offset-4 hover:underline"
       >
         {cta}
       </Link>

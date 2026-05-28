@@ -34,9 +34,9 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             className={cn(
               "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition-all",
               "border-slate-300 bg-white group-hover:border-slate-400",
-              "peer-checked:border-violet-600 peer-checked:bg-gradient-to-br peer-checked:from-violet-600 peer-checked:to-fuchsia-500 peer-checked:shadow-[0_2px_8px_-2px_rgba(124,58,237,0.4)]",
+              "peer-checked:border-indigo-600 peer-checked:bg-gradient-to-br peer-checked:from-[#3525cd] peer-checked:to-violet-600 peer-checked:shadow-[0_2px_8px_-2px_rgba(53,37,205,0.45)]",
               "peer-checked:[&_svg]:opacity-100",
-              "peer-focus-visible:ring-2 peer-focus-visible:ring-violet-300 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-white",
+              "peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-300 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-white",
               error && "border-rose-400",
             )}
           >

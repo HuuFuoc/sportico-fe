@@ -63,7 +63,7 @@ export default function RegisterPage() {
       setServerError(
         err instanceof AuthError
           ? err.message
-          : "Đã có lỗi xảy ra. Vui lòng thử lại.",
+          : "Đã xảy ra lỗi. Vui lòng thử lại.",
       );
     }
   };
@@ -71,17 +71,17 @@ export default function RegisterPage() {
   return (
     <div className="w-full max-w-[460px]">
       <AuthCard
-        title="Create your account"
-        subtitle="Join Sportico and start training with the right people."
+        title="Tạo tài khoản Sportico"
+        subtitle="Xác minh email để bắt đầu tập luyện với huấn luyện viên đã được xác thực."
         footer={
           <>
-            By continuing you agree to our{" "}
+            Khi tiếp tục, bạn đồng ý với{" "}
             <Link href="/register" className="text-slate-700 hover:text-slate-900">
-              Terms
+              Điều khoản
             </Link>{" "}
-            and{" "}
+            và{" "}
             <Link href="/register" className="text-slate-700 hover:text-slate-900">
-              Privacy Policy
+              Chính sách bảo mật
             </Link>
             .
           </>
@@ -97,24 +97,24 @@ export default function RegisterPage() {
               <MailCheck size={22} />
             </span>
             <h2 className="mt-4 text-[16px] font-semibold text-slate-900">
-              Registration successful
+              Đăng ký thành công
             </h2>
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-500">
-              Please check your email to verify your account before logging in.
+              Vui lòng kiểm tra email để xác minh tài khoản trước khi đăng nhập.
             </p>
             <Link
               href="/login"
-              className="mt-5 inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.4)] transition-transform hover:-translate-y-px"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#3525cd] via-indigo-600 to-violet-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] transition-transform hover:-translate-y-px"
             >
-              Go to login
+              Đến trang đăng nhập
               <ArrowRight size={15} />
             </Link>
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <AuthInput
-              label="Full name"
-              placeholder="Jordan Pike"
+              label="Họ và tên"
+              placeholder="Nguyễn Văn A"
               autoComplete="name"
               leadingIcon={<User size={15} />}
               error={errors.name?.message}
@@ -125,7 +125,7 @@ export default function RegisterPage() {
             <AuthInput
               label="Email"
               type="email"
-              placeholder="you@company.com"
+              placeholder="email@example.com"
               autoComplete="email"
               inputMode="email"
               leadingIcon={<Mail size={15} />}
@@ -136,9 +136,9 @@ export default function RegisterPage() {
 
             <div>
               <PasswordField
-                label="Password"
+                label="Mật khẩu"
                 autoComplete="new-password"
-                placeholder="Create a strong password"
+                placeholder="Tạo mật khẩu mạnh"
                 error={errors.password?.message}
                 {...register("password")}
               />
@@ -146,9 +146,9 @@ export default function RegisterPage() {
             </div>
 
             <PasswordField
-              label="Confirm password"
+              label="Xác nhận mật khẩu"
               autoComplete="new-password"
-              placeholder="Re-enter your password"
+              placeholder="Nhập lại mật khẩu"
               error={errors.confirmPassword?.message}
               {...register("confirmPassword")}
             />
@@ -156,19 +156,19 @@ export default function RegisterPage() {
             <Checkbox
               label={
                 <>
-                  I agree to the{" "}
+                  Tôi đồng ý với{" "}
                   <Link
                     href="/register"
-                    className="font-semibold text-violet-700 underline-offset-4 hover:underline"
+                    className="font-semibold text-indigo-700 underline-offset-4 hover:underline"
                   >
-                    Terms
+                    Điều khoản
                   </Link>{" "}
-                  and{" "}
+                  và{" "}
                   <Link
                     href="/register"
-                    className="font-semibold text-violet-700 underline-offset-4 hover:underline"
+                    className="font-semibold text-indigo-700 underline-offset-4 hover:underline"
                   >
-                    Privacy Policy
+                    Chính sách bảo mật
                   </Link>
                   .
                 </>
@@ -198,16 +198,16 @@ export default function RegisterPage() {
               loading={isSubmitting}
               trailing={<ArrowRight size={15} />}
             >
-              Create account
+              Tạo tài khoản
             </AuthButton>
           </form>
         )}
       </AuthCard>
 
       <AuthSwitchLink
-        prompt="Already have an account?"
+        prompt="Đã có tài khoản?"
         href="/login"
-        cta="Log in"
+        cta="Đăng nhập"
       />
     </div>
   );

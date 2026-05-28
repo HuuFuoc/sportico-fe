@@ -3,13 +3,12 @@
 import { motion, useReducedMotion } from "motion/react";
 
 /**
- * Minimal, bright background — Stripe / Linear style.
+ * Right-panel ambient wash for the auth split.
  *
- * - Base: very light slate-50 / white wash
- * - 2 soft orbs (violet + cyan), low opacity, slow drift
- * - No animated grid, no sparkles, no conic rings
- *
- * Pointer-events disabled so it never blocks the form.
+ * The left panel paints its own opaque athlete-hero scene, so this layer
+ * only governs the slate backdrop the form sits on. Palette is brand-aligned
+ * (indigo/violet) to match the landing hero glow blobs. Pointer-events
+ * disabled so it never blocks the form.
  */
 export function AuthBackground() {
   const reduce = useReducedMotion();
@@ -18,40 +17,40 @@ export function AuthBackground() {
       aria-hidden
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
-      {/* Base wash — very subtle pastel */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_-10%,#EEF2FF_0%,transparent_60%),radial-gradient(ellipse_60%_50%_at_85%_100%,#E0F2FE_0%,transparent_55%)]" />
+      {/* Base wash — slate with subtle brand-tint on the right half */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_95%_-5%,#EEF2FF_0%,transparent_55%),radial-gradient(ellipse_55%_45%_at_100%_100%,#F5F3FF_0%,transparent_55%)]" />
 
-      {/* Soft violet orb — top-left, gentle float */}
+      {/* Soft indigo orb — top-right */}
       <motion.div
         animate={
           reduce
             ? {}
             : {
-                x: [0, 24, -12, 0],
-                y: [0, -12, 16, 0],
+                x: [0, -18, 12, 0],
+                y: [0, -14, 10, 0],
               }
         }
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute -left-40 top-[8%] h-[440px] w-[440px] rounded-full bg-violet-300/30 blur-[160px]"
+        transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -right-40 top-[6%] h-[440px] w-[440px] rounded-full bg-indigo-200/45 blur-[160px]"
       />
 
-      {/* Soft cyan orb — bottom-right, drift */}
+      {/* Soft violet orb — bottom-right */}
       <motion.div
         animate={
           reduce
             ? {}
             : {
-                x: [0, -20, 10, 0],
-                y: [0, 16, -10, 0],
+                x: [0, 18, -10, 0],
+                y: [0, 14, -8, 0],
               }
         }
         transition={{
-          duration: 26,
+          duration: 28,
           repeat: Infinity,
           ease: "easeInOut",
           delay: 1.5,
         }}
-        className="absolute -right-32 bottom-[5%] h-[420px] w-[420px] rounded-full bg-cyan-200/40 blur-[160px]"
+        className="absolute -right-32 bottom-[6%] h-[420px] w-[420px] rounded-full bg-violet-200/40 blur-[160px]"
       />
     </div>
   );

@@ -18,7 +18,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="relative flex min-h-screen items-center justify-center px-5 pb-12 pt-24 sm:px-8 lg:py-12">
           {/* Mobile brand bar */}
           <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 py-5 lg:hidden">
-            <Link href="/" aria-label="Sportico — home" className="inline-flex">
+            <Link
+              href="/"
+              aria-label="Sportico — trang chủ"
+              className="inline-flex"
+            >
               <img
                 src="/logo.png"
                 alt="Sportico"
@@ -29,7 +33,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               href="/"
               className="text-[12px] font-medium text-slate-500 hover:text-slate-900"
             >
-              Back to home
+              Về trang chủ
             </Link>
           </div>
 
