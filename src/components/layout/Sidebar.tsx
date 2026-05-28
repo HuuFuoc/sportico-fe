@@ -36,6 +36,7 @@ const LEARNER_NAV: NavGroup[] = [
   {
     label: "Hoạt động",
     items: [
+      { href: "/learner/plan", label: "Lộ trình", icon: "fitness_center" },
       { href: "/learner/messages", label: "Tin nhắn", icon: "forum" },
       { href: "/learner/progress", label: "Tiến độ", icon: "monitoring" },
     ],
@@ -60,6 +61,7 @@ const COACH_NAV: NavGroup[] = [
   {
     label: "Kinh doanh",
     items: [
+      { href: "/coach/packages", label: "Gói & bài đăng", icon: "inventory_2" },
       { href: "/coach/earnings", label: "Thu nhập", icon: "payments" },
       { href: "/coach/profile", label: "Hồ sơ", icon: "account_circle" },
     ],
@@ -84,6 +86,7 @@ const ADMIN_NAV: NavGroup[] = [
     label: "Nền tảng",
     items: [
       { href: "/admin/revenue", label: "Doanh thu", icon: "payments" },
+      { href: "/admin/withdrawals", label: "Rút tiền", icon: "account_balance_wallet" },
       { href: "/admin/ai-settings", label: "Cài đặt AI", icon: "auto_awesome" },
       { href: "/admin/console", label: "Console", icon: "terminal" },
     ],
@@ -169,6 +172,19 @@ export function Sidebar({ role }: { role: AppRole }) {
             >
               <MaterialIcon name="add" size={17} weight={500} />
               Tạo buổi tập
+            </Link>
+          </div>
+        )}
+
+        {/* Learner CTA — become a coach */}
+        {role === "learner" && (
+          <div className="px-3 pb-1 pt-1">
+            <Link
+              href="/coach/onboarding"
+              className="flex w-full items-center justify-center gap-1.5 rounded-[9px] border border-primary/30 bg-primary/[0.06] py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/[0.1]"
+            >
+              <MaterialIcon name="workspace_premium" size={17} weight={500} />
+              Trở thành HLV
             </Link>
           </div>
         )}

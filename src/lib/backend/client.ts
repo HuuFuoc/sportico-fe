@@ -17,10 +17,12 @@ import type {
   CoachPayoutAccountResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
+  LearnerAssessmentResponse,
   NotificationResponse,
   PagedResult,
   PostResponse,
   ProgressCheckInResponse,
+  PurchasePayOsResponse,
   Result,
   TrainingPackageResponse,
   TrainingPlanResponse,
@@ -68,6 +70,21 @@ function qs(params: Record<string, unknown>): string {
   }
   const s = sp.toString();
   return s ? `?${s}` : "";
+}
+
+export interface AssessmentBody {
+  goalType?: string;
+  goalDescription?: string;
+  heightCm?: number;
+  weightKg?: number;
+  bodyFatPercent?: number;
+  currentLevel?: string;
+  healthNotes?: string;
+  injuryNotes?: string;
+  trainingHistory?: string;
+  availableDaysPerWeek?: string;
+  preferredSessionDurationMinutes?: number;
+  equipmentAvailable?: string;
 }
 
 export interface ListParams {
@@ -140,6 +157,16 @@ export const backend = {
   async booking(id: string) {
     return unwrap(await GET<BookingResponse>(ep.bookingById(id)));
   },
+  async purchaseManual(trainingPackageId: string) {
+    return unwrap(
+      await POST<BookingResponse>(ep.purchaseManual, { trainingPackageId }),
+    );
+  },
+  async purchasePayos(trainingPackageId: string) {
+    return unwrap(
+      await POST<PurchasePayOsResponse>(ep.purchasePayos, { trainingPackageId }),
+    );
+  },
 
   // ---- Sessions / plan / progress (per booking) -------------------------
   async bookingSessions(
@@ -168,6 +195,46 @@ export const backend = {
     return unwrapPage(
       await GET<PagedResult<ProgressCheckInResponse>>(
         ep.bookingProgressCheckIns(bookingId) + listQuery(p),
+      ),
+    );
+  },
+  async createProgressCheckIn(
+    bookingId: string,
+    body: {
+      checkInDate: string;
+      weightKg?: number;
+      bodyFatPercent?: number;
+      waistCm?: number;
+      energyLevel?: string;
+      sleepQuality?: string;
+      learnerNote?: string;
+    },
+  ) {
+    return unwrap(
+      await POST<ProgressCheckInResponse>(
+        ep.bookingProgressCheckIns(bookingId),
+        body,
+      ),
+    );
+  },
+  async bookingAssessment(bookingId: string) {
+    return unwrap(
+      await GET<LearnerAssessmentResponse>(ep.bookingAssessment(bookingId)),
+    );
+  },
+  async createBookingAssessment(bookingId: string, body: AssessmentBody) {
+    return unwrap(
+      await POST<LearnerAssessmentResponse>(
+        ep.bookingAssessment(bookingId),
+        body,
+      ),
+    );
+  },
+  async updateBookingAssessment(bookingId: string, body: AssessmentBody) {
+    return unwrap(
+      await PUT<LearnerAssessmentResponse>(
+        ep.bookingAssessment(bookingId),
+        body,
       ),
     );
   },
@@ -303,11 +370,35 @@ export const backend = {
       ),
     );
   },
+  async verifyPayoutAccount(id: string) {
+    return unwrap(
+      await PUT<CoachPayoutAccountResponse>(ep.adminVerifyPayoutAccount(id)),
+    );
+  },
+  async rejectPayoutAccount(id: string, note: string) {
+    return unwrap(
+      await PUT<CoachPayoutAccountResponse>(ep.adminRejectPayoutAccount(id), {
+        note,
+      }),
+    );
+  },
   async pendingWithdrawals(p?: ListParams) {
     return unwrapPage(
       await GET<PagedResult<WithdrawalRequestResponse>>(
         ep.adminPendingWithdrawals + listQuery(p),
       ),
+    );
+  },
+  async approveWithdrawal(id: string) {
+    return unwrap(
+      await PUT<WithdrawalRequestResponse>(ep.adminApproveWithdrawal(id)),
+    );
+  },
+  async rejectWithdrawal(id: string, adminNote: string) {
+    return unwrap(
+      await PUT<WithdrawalRequestResponse>(ep.adminRejectWithdrawal(id), {
+        adminNote,
+      }),
     );
   },
 };

@@ -20,22 +20,30 @@ import type {
   AIInsight,
   AnalyticsDailyPoint,
   AnyUser,
+  Booking,
   Coach,
+  CoachPost,
   EarningPoint,
   Learner,
+  LearnerAssessment,
+  ProgressCheckIn,
+  TrainingPlan,
   Message,
   MessageThread,
   NotificationItem,
   Payout,
+  PayoutAccount,
   ProgressMetric,
   ProgressTrendPoint,
   Role,
   Session,
   Sport,
+  TrainingPackage,
   VerificationRequest,
 } from "@/types";
 import { isMockMode } from "@/lib/api-client";
 import { backend } from "@/lib/backend/client";
+import type { AssessmentBody } from "@/lib/backend/client";
 import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
 import * as map from "@/lib/backend/mappers";
@@ -87,6 +95,9 @@ export interface EarningsTotal {
   net: number;
   sessions: number;
 }
+
+/** Moderation entity kind, taken from a verification's document type. */
+export type VerificationKind = "post" | "training-package" | "payout-account";
 
 /** Run the live implementation when the backend is configured, else the mock.
  *  For PUBLIC endpoints. Falls back to the mock during SSR / static generation:
@@ -155,6 +166,18 @@ export const api = {
       return first ? map.packageToCoach(first) : undefined;
     }, () => getCoachById(id)),
 
+  // ---- Coach's own listings ---------------------------------------------
+  fetchMyPackages: (): Promise<TrainingPackage[]> =>
+    liveAuthed(async () => {
+      const page = await backend.myTrainingPackages({ pageSize: 100 });
+      return (page.items ?? []).map(map.packageToUi);
+    }, () => []),
+  fetchMyPosts: (): Promise<CoachPost[]> =>
+    liveAuthed(async () => {
+      const page = await backend.myPosts({ pageSize: 100 });
+      return (page.items ?? []).map(map.postToUi);
+    }, () => []),
+
   // No backend endpoints → always mock.
   fetchLearners: (): Promise<Learner[]> => Promise.resolve(getLearners()),
   fetchLearner: (id: string): Promise<Learner | undefined> =>
@@ -164,6 +187,24 @@ export const api = {
     Promise.resolve(getAdminById(id)),
   fetchUser: (id: string): Promise<AnyUser | undefined> =>
     Promise.resolve(getUserById(id)),
+
+  // ---- Bookings / purchase ----------------------------------------------
+  // Buy a training package. Live mode starts a real PayOS checkout and returns
+  // the URL to redirect to; mock mode simulates an instant booking so the demo
+  // flow still completes.
+  purchasePackage: (
+    trainingPackageId: string,
+  ): Promise<{ checkoutUrl: string } | { booked: true }> =>
+    liveAuthed<{ checkoutUrl: string } | { booked: true }>(
+      async () => {
+        const r = await backend.purchasePayos(trainingPackageId);
+        if (!r.checkoutUrl) {
+          throw new Error("Không nhận được liên kết thanh toán từ PayOS.");
+        }
+        return { checkoutUrl: r.checkoutUrl };
+      },
+      () => ({ booked: true }),
+    ),
 
   // ---- Sessions ----------------------------------------------------------
   fetchSessions: (): Promise<Session[]> =>
@@ -199,6 +240,71 @@ export const api = {
         .sort((a, b) => +new Date(a.start) - +new Date(b.start));
     }, () => getUpcomingSessions(filter)),
 
+  // ---- Bookings detail / plan / progress / assessment -------------------
+  fetchMyBookings: (): Promise<Booking[]> =>
+    liveAuthed(async () => {
+      const page = await backend.myBookings({ pageSize: 50 });
+      return (page.items ?? []).map(map.bookingToUi);
+    }, () => []),
+  fetchTrainingPlan: (bookingId: string): Promise<TrainingPlan | null> =>
+    liveAuthed<TrainingPlan | null>(
+      () =>
+        backend
+          .bookingTrainingPlan(bookingId)
+          .then(map.trainingPlanToUi)
+          .catch(() => null),
+      () => null,
+    ),
+  fetchProgressCheckIns: (bookingId: string): Promise<ProgressCheckIn[]> =>
+    liveAuthed(async () => {
+      const page = await backend.bookingProgressCheckIns(bookingId, {
+        pageSize: 100,
+      });
+      return (page.items ?? []).map(map.progressCheckInToUi);
+    }, () => []),
+  createProgressCheckIn: (
+    bookingId: string,
+    body: {
+      checkInDate: string;
+      weightKg?: number;
+      bodyFatPercent?: number;
+      waistCm?: number;
+      energyLevel?: string;
+      sleepQuality?: string;
+      learnerNote?: string;
+    },
+  ): Promise<ProgressCheckIn> =>
+    liveAuthed(
+      async () =>
+        map.progressCheckInToUi(
+          await backend.createProgressCheckIn(bookingId, body),
+        ),
+      () => ({ id: `ci-${Date.now()}`, ...body }),
+    ),
+  fetchAssessment: (bookingId: string): Promise<LearnerAssessment | null> =>
+    liveAuthed<LearnerAssessment | null>(
+      () =>
+        backend
+          .bookingAssessment(bookingId)
+          .then(map.assessmentToUi)
+          .catch(() => null),
+      () => null,
+    ),
+  saveAssessment: (
+    bookingId: string,
+    body: AssessmentBody,
+    exists: boolean,
+  ): Promise<LearnerAssessment> =>
+    liveAuthed(
+      async () =>
+        map.assessmentToUi(
+          exists
+            ? await backend.updateBookingAssessment(bookingId, body)
+            : await backend.createBookingAssessment(bookingId, body),
+        ),
+      () => ({ ...body }),
+    ),
+
   // ---- Messages ----------------------------------------------------------
   fetchThreads: (userId: string): Promise<MessageThread[]> =>
     liveAuthed(async () => {
@@ -219,6 +325,17 @@ export const api = {
         .map(map.chatMessageToMessage)
         .sort((a, b) => +new Date(a.sentAt) - +new Date(b.sentAt));
     }, () => getMessagesForThread(threadId)),
+  sendMessage: (threadId: string, content: string): Promise<Message> =>
+    liveAuthed(
+      async () => map.chatMessageToMessage(await backend.sendMessage(threadId, content)),
+      () => ({
+        id: `local-${Date.now()}`,
+        threadId,
+        senderId: getCurrentUserId() ?? "",
+        text: content,
+        sentAt: new Date().toISOString(),
+      }),
+    ),
 
   // ---- Earnings / payouts ------------------------------------------------
   fetchEarnings: (): Promise<EarningPoint[]> =>
@@ -231,11 +348,52 @@ export const api = {
       const page = await backend.myWithdrawals({ pageSize: 100 });
       return (page.items ?? []).map(map.withdrawalToPayout);
     }, () => getPayouts()),
+  fetchPendingWithdrawals: (): Promise<Payout[]> =>
+    liveAuthed(async () => {
+      const page = await backend.pendingWithdrawals({ pageSize: 100 });
+      return (page.items ?? []).map(map.withdrawalToPayout);
+    }, () => getPayouts().filter((p) => p.status !== "paid")),
+  approveWithdrawal: (id: string): Promise<void> =>
+    liveAuthed<void>(async () => {
+      await backend.approveWithdrawal(id);
+    }, () => undefined),
+  rejectWithdrawal: (id: string, note: string): Promise<void> =>
+    liveAuthed<void>(async () => {
+      await backend.rejectWithdrawal(id, note);
+    }, () => undefined),
   fetchEarningsTotal: (): Promise<EarningsTotal> =>
     liveAuthed(async () => {
       const wallet = await backend.wallet();
       return map.walletToTotal(wallet);
     }, () => getEarningsTotal()),
+  createWithdrawal: (amount: number): Promise<Payout> =>
+    liveAuthed(
+      async () => map.withdrawalToPayout(await backend.createWithdrawal(amount)),
+      () => ({
+        id: `wd-${Date.now()}`,
+        coachId: getCurrentUserId() ?? "",
+        amount,
+        currency: "VND",
+        status: "pending",
+        date: new Date().toISOString(),
+        method: "Chuyển khoản ngân hàng",
+      }),
+    ),
+  fetchPayoutAccount: (): Promise<PayoutAccount | null> =>
+    liveAuthed<PayoutAccount | null>(
+      () => backend.payoutAccount().then(map.payoutAccountToUi).catch(() => null),
+      () => null,
+    ),
+  upsertPayoutAccount: (body: {
+    payoutMethod?: string;
+    bankName?: string;
+    bankAccountNumber?: string;
+    bankAccountHolder?: string;
+  }): Promise<PayoutAccount> =>
+    liveAuthed(
+      async () => map.payoutAccountToUi(await backend.upsertPayoutAccount(body)),
+      () => ({ id: "mock-payout", ...body, status: "Pending" }),
+    ),
 
   // ---- Analytics / progress (no backend) → mock --------------------------
   fetchDailyActiveUsers: (): Promise<AnalyticsDailyPoint[]> =>
@@ -261,6 +419,28 @@ export const api = {
       const page = await backend.notifications({ pageSize: 50 });
       return (page.items ?? []).map(map.notificationToItem);
     }, () => getNotifications()),
+  markNotificationRead: (id: string): Promise<void> =>
+    liveAuthed<void>(() => backend.markNotificationRead(id), () => undefined),
+  markAllNotificationsRead: (): Promise<void> =>
+    liveAuthed<void>(() => backend.markAllNotificationsRead(), () => undefined),
+  approveVerification: (id: string, kind: VerificationKind): Promise<void> =>
+    liveAuthed<void>(async () => {
+      if (kind === "post") await backend.approvePost(id);
+      else if (kind === "training-package")
+        await backend.approveTrainingPackage(id);
+      else await backend.verifyPayoutAccount(id);
+    }, () => undefined),
+  rejectVerification: (
+    id: string,
+    kind: VerificationKind,
+    reason: string,
+  ): Promise<void> =>
+    liveAuthed<void>(async () => {
+      if (kind === "post") await backend.rejectPost(id, reason);
+      else if (kind === "training-package")
+        await backend.rejectTrainingPackage(id, reason);
+      else await backend.rejectPayoutAccount(id, reason);
+    }, () => undefined),
   fetchVerifications: (): Promise<VerificationRequest[]> =>
     liveAuthed(async () => {
       const [posts, packages, payouts] = await Promise.all([

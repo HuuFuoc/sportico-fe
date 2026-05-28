@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { AIBadge } from "@/components/common/AIBadge";
+import { BookSessionButton } from "@/components/common/BookSessionButton";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
@@ -37,27 +38,6 @@ const MOCK_REVIEWS = [
     when: "1 month ago",
     text: "Patient and detailed. Great at adapting drills to my level.",
     avatar: "https://i.pravatar.cc/120?u=review-3",
-  },
-];
-
-const PRICING = [
-  {
-    label: "Consultation",
-    price: 120,
-    description: "Single 60min technical review.",
-    highlight: false,
-  },
-  {
-    label: "Monthly Elite",
-    price: 450,
-    description: "Full plan + weekly video calls.",
-    highlight: true,
-  },
-  {
-    label: "Season Prep",
-    price: 1200,
-    description: "12-week customized program.",
-    highlight: false,
   },
 ];
 
@@ -132,9 +112,7 @@ export default async function CoachProfilePage({ params }: PageProps) {
             <button className="px-5 py-2.5 border border-[var(--color-border-soft)] rounded-[6px] text-body-base font-medium hover:bg-surface-container-low transition-colors">
               Message
             </button>
-            <button className="px-5 py-2.5 bg-primary text-on-primary rounded-[6px] text-body-base font-medium hover:bg-[#2d20b8] transition-colors">
-              Book a Session
-            </button>
+            <BookSessionButton coachId={id} packageId={coach.packageId} />
           </div>
         </section>
 
@@ -289,38 +267,32 @@ export default async function CoachProfilePage({ params }: PageProps) {
                 </p>
               </div>
 
-              {/* Pricing tiers */}
-              <div className="space-y-2">
-                {PRICING.map((tier) => (
-                  <button
-                    key={tier.label}
-                    className={`w-full text-left p-4 rounded-[10px] border transition-colors relative ${
-                      tier.highlight
-                        ? "border-primary bg-primary/5"
-                        : "border-[var(--color-border-soft)] bg-surface-container-lowest hover:border-primary"
-                    }`}
-                  >
-                    {tier.highlight && (
-                      <span className="absolute -top-2.5 right-4 bg-primary text-on-primary text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded">
-                        Best Value
-                      </span>
-                    )}
-                    <div className="flex items-baseline justify-between mb-1">
-                      <span className="text-h3 text-on-surface">
-                        {tier.label}
-                      </span>
-                      <span
-                        className="text-h2 text-primary"
-                        style={{ letterSpacing: "-0.01em" }}
-                      >
-                        {formatCurrency(tier.price, coach.currency)}
-                      </span>
-                    </div>
-                    <p className="text-body-sm text-on-surface-variant">
-                      {tier.description}
-                    </p>
-                  </button>
-                ))}
+              {/* Real package + booking CTA */}
+              <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[12px] p-5 space-y-4">
+                <div>
+                  <p className="text-h3 text-on-surface mb-1">
+                    {coach.headline}
+                  </p>
+                  <div className="flex items-baseline gap-1">
+                    <span
+                      className="text-h1 text-primary"
+                      style={{ letterSpacing: "-0.02em" }}
+                    >
+                      {formatCurrency(coach.hourlyRate, coach.currency)}
+                    </span>
+                    <span className="text-body-sm text-on-surface-variant">
+                      / buổi
+                    </span>
+                  </div>
+                </div>
+                <BookSessionButton
+                  coachId={id}
+                  packageId={coach.packageId}
+                  className="w-full"
+                />
+                <p className="text-body-sm text-on-surface-variant text-center">
+                  Thanh toán an toàn qua PayOS
+                </p>
               </div>
             </div>
           </aside>

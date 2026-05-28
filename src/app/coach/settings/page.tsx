@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
 
 const TABS = [
   { id: "account", label: "Account", icon: "lock" },
@@ -188,69 +190,7 @@ export default function CoachSettingsPage() {
               </Tab>
             )}
 
-            {tab === "payments" && (
-              <Tab
-                title="Payments"
-                description="Payout method and tax info."
-              >
-                <div className="p-4 border border-[var(--color-border-soft)] rounded-[10px] flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-[8px] bg-surface-container-high flex items-center justify-center">
-                    <MaterialIcon
-                      name="account_balance"
-                      size={20}
-                      className="text-primary"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-base font-medium">
-                      Chase Bank ending in 4521
-                    </p>
-                    <p className="text-body-sm text-on-surface-variant">
-                      Default payout • Settles in 1-2 business days
-                    </p>
-                  </div>
-                  <button className="text-body-sm text-primary hover:underline">
-                    Replace
-                  </button>
-                </div>
-                <Field label="Payout schedule">
-                  <div className="flex gap-2">
-                    {["Weekly", "Bi-weekly", "Monthly"].map((s, i) => (
-                      <button
-                        key={s}
-                        className={cn(
-                          "px-3 py-1.5 rounded-[6px] text-body-sm border",
-                          i === 0
-                            ? "border-primary bg-primary/5 text-primary font-medium"
-                            : "border-[var(--color-border-soft)] hover:border-primary",
-                        )}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-                <Field
-                  label="Tax form on file"
-                  hint="Required for payouts over $600/year."
-                >
-                  <div className="flex items-center justify-between p-3 border border-[var(--color-border-soft)] rounded-[6px]">
-                    <span className="inline-flex items-center gap-2 text-body-base">
-                      <MaterialIcon
-                        name="check_circle"
-                        filled
-                        size={16}
-                        className="text-[#1f7a4d]"
-                      />
-                      W-9 submitted Jan 2026
-                    </span>
-                    <button className="text-body-sm text-primary hover:underline">
-                      Update
-                    </button>
-                  </div>
-                </Field>
-              </Tab>
-            )}
+            {tab === "payments" && <PaymentsTab />}
 
             {tab === "policies" && (
               <Tab
@@ -296,6 +236,166 @@ export default function CoachSettingsPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function PaymentsTab() {
+  const { data: account, loading, refetch } = useApiResource(
+    () => api.fetchPayoutAccount(),
+    [],
+  );
+  const [editing, setEditing] = useState(false);
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountHolder, setAccountHolder] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (account) {
+      setBankName(account.bankName ?? "");
+      setAccountNumber(account.bankAccountNumber ?? "");
+      setAccountHolder(account.bankAccountHolder ?? "");
+    }
+  }, [account]);
+
+  const hasAccount = !!account?.bankAccountNumber;
+
+  const save = async () => {
+    if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
+      setError("Vui lòng nhập đủ thông tin ngân hàng.");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      await api.upsertPayoutAccount({
+        payoutMethod: "BankTransfer",
+        bankName: bankName.trim(),
+        bankAccountNumber: accountNumber.trim(),
+        bankAccountHolder: accountHolder.trim(),
+      });
+      refetch();
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không lưu được tài khoản.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Tab title="Payments" description="Payout method and tax info.">
+      {!editing ? (
+        <div className="p-4 border border-[var(--color-border-soft)] rounded-[10px] flex items-center gap-4">
+          <div className="w-10 h-10 rounded-[8px] bg-surface-container-high flex items-center justify-center shrink-0">
+            <MaterialIcon
+              name="account_balance"
+              size={20}
+              className="text-primary"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <p className="text-body-sm text-on-surface-variant">Đang tải…</p>
+            ) : hasAccount ? (
+              <>
+                <p className="text-body-base font-medium">
+                  {account?.bankName} ••••{" "}
+                  {(account?.bankAccountNumber ?? "").slice(-4)}
+                </p>
+                <p className="text-body-sm text-on-surface-variant">
+                  {account?.bankAccountHolder}
+                  {account?.status ? ` • ${account.status}` : ""}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-body-base font-medium">
+                  Chưa có tài khoản nhận tiền
+                </p>
+                <p className="text-body-sm text-on-surface-variant">
+                  Thêm tài khoản ngân hàng để nhận payout
+                </p>
+              </>
+            )}
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-body-sm text-primary hover:underline shrink-0"
+          >
+            {hasAccount ? "Replace" : "Add"}
+          </button>
+        </div>
+      ) : (
+        <div className="p-4 border border-[var(--color-border-soft)] rounded-[10px] space-y-3">
+          <Field label="Tên ngân hàng">
+            <Input
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              placeholder="Vietcombank"
+            />
+          </Field>
+          <Field label="Số tài khoản">
+            <Input
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder="0123456789"
+              inputMode="numeric"
+            />
+          </Field>
+          <Field label="Chủ tài khoản">
+            <Input
+              value={accountHolder}
+              onChange={(e) => setAccountHolder(e.target.value)}
+              placeholder="NGUYEN VAN A"
+            />
+          </Field>
+          {error && (
+            <p className="text-body-sm text-[#ba1a1a]" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => {
+                setEditing(false);
+                setError(null);
+              }}
+              disabled={saving}
+              className="px-4 py-2 text-body-sm text-on-surface-variant hover:text-on-surface disabled:opacity-50"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={() => void save()}
+              disabled={saving}
+              className="px-4 py-2 bg-primary text-on-primary rounded-[6px] text-body-sm font-medium hover:bg-[#2d20b8] disabled:opacity-60"
+            >
+              {saving ? "Đang lưu…" : "Lưu tài khoản"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Field label="Payout schedule">
+        <div className="flex gap-2">
+          {["Weekly", "Bi-weekly", "Monthly"].map((s, i) => (
+            <button
+              key={s}
+              className={cn(
+                "px-3 py-1.5 rounded-[6px] text-body-sm border",
+                i === 0
+                  ? "border-primary bg-primary/5 text-primary font-medium"
+                  : "border-[var(--color-border-soft)] hover:border-primary",
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </Field>
+    </Tab>
   );
 }
 

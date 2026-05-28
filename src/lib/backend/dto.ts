@@ -94,6 +94,15 @@ export interface BookingResponse {
   updatedAt: string;
 }
 
+export interface PurchasePayOsResponse {
+  bookingId: string;
+  paymentId: string;
+  orderCode: number;
+  checkoutUrl?: string | null;
+  status?: string | null;
+  expiredAt?: string | null;
+}
+
 export interface TrainingSessionResponse {
   id: string;
   bookingId: string;
@@ -272,6 +281,27 @@ export interface TrainingPlanResponse {
   createdAt: string;
   updatedAt: string;
   weeks?: TrainingPlanWeekResponse[] | null;
+}
+
+export interface LearnerAssessmentResponse {
+  id: string;
+  bookingId: string;
+  learnerId: string;
+  coachId: string;
+  goalType?: string | null;
+  goalDescription?: string | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  bodyFatPercent?: number | null;
+  currentLevel?: string | null;
+  healthNotes?: string | null;
+  injuryNotes?: string | null;
+  trainingHistory?: string | null;
+  availableDaysPerWeek?: string | null;
+  preferredSessionDurationMinutes?: number | null;
+  equipmentAvailable?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProgressCheckInResponse {

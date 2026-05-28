@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
+import { WithdrawModal } from "@/components/coach/WithdrawModal";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { devUserIdForRole } from "@/lib/auth";
@@ -104,14 +105,17 @@ export default function CoachEarningsPage() {
         api.fetchEarnings(),
         api.fetchPayouts(),
         api.fetchCoach(coachId),
+        api.fetchEarningsTotal(),
       ]),
     [coachId],
   );
   const earnings = useMemo(() => data?.[0] ?? [], [data]);
   const payouts = useMemo(() => data?.[1] ?? [], [data]);
   const coach = data?.[2];
+  const earningsTotal = data?.[3];
 
   const reduce = useReducedMotion();
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [range, setRange] = useState<Range>("1Y");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Payout["status"] | "all">(
@@ -233,6 +237,7 @@ export default function CoachEarningsPage() {
           value={last.gross}
           deltaPct={deltaPct}
           trend={earnings.slice(-6)}
+          onWithdraw={() => setWithdrawOpen(true)}
           reduce={reduce ?? false}
         />
 
@@ -491,6 +496,7 @@ export default function CoachEarningsPage() {
           <RevenueBreakdownCard
             breakdown={breakdown}
             gross={grossThisMonth}
+            onWithdraw={() => setWithdrawOpen(true)}
             reduce={reduce ?? false}
           />
         </div>
@@ -505,9 +511,19 @@ export default function CoachEarningsPage() {
             setStatusFilter={setStatusFilter}
             reduce={reduce ?? false}
           />
-          <QuickActionsPanel reduce={reduce ?? false} />
+          <QuickActionsPanel
+            onWithdraw={() => setWithdrawOpen(true)}
+            reduce={reduce ?? false}
+          />
         </div>
       </div>
+
+      <WithdrawModal
+        open={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+        available={earningsTotal?.net ?? netPayout}
+        onSuccess={refetch}
+      />
     </AppShell>
   );
 }
@@ -520,11 +536,13 @@ function HeroEarnings({
   value,
   deltaPct,
   trend,
+  onWithdraw,
   reduce,
 }: {
   value: number;
   deltaPct: number;
   trend: EarningPoint[];
+  onWithdraw: () => void;
   reduce: boolean;
 }) {
   const up = deltaPct >= 0;
@@ -576,7 +594,10 @@ function HeroEarnings({
 
           {/* CTAs */}
           <div className="flex items-center gap-2 mt-5 flex-wrap">
-            <button className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+            <button
+              onClick={onWithdraw}
+              className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
               <ArrowDownToLine size={15} strokeWidth={2.5} />
               Withdraw Funds
             </button>
@@ -983,10 +1004,12 @@ function SessionsCard({
 function RevenueBreakdownCard({
   breakdown,
   gross,
+  onWithdraw,
   reduce,
 }: {
   breakdown: { name: string; value: number; color: string }[];
   gross: number;
+  onWithdraw: () => void;
   reduce: boolean;
 }) {
   const netPayout = breakdown[0].value;
@@ -1079,7 +1102,10 @@ function RevenueBreakdownCard({
             {formatCurrency(netPayout)}
           </p>
         </div>
-        <button className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] transition-all">
+        <button
+          onClick={onWithdraw}
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] transition-all"
+        >
           <ArrowDownToLine size={13} />
           Withdraw
         </button>
@@ -1402,7 +1428,13 @@ const QA_ACCENT = {
   amber: "from-[#f59e0b] to-[#fb923c]",
 } as const;
 
-function QuickActionsPanel({ reduce }: { reduce: boolean }) {
+function QuickActionsPanel({
+  onWithdraw,
+  reduce,
+}: {
+  onWithdraw: () => void;
+  reduce: boolean;
+}) {
   return (
     <motion.aside
       initial={{ opacity: 0, y: 10 }}
@@ -1419,6 +1451,7 @@ function QuickActionsPanel({ reduce }: { reduce: boolean }) {
           return (
             <motion.button
               key={q.label}
+              onClick={q.label === "Withdraw Funds" ? onWithdraw : undefined}
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{

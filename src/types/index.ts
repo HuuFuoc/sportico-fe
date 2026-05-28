@@ -55,6 +55,7 @@ export interface Coach extends UserBase {
   matchPercent?: number; // computed for current learner
   activeLearners: number;
   totalEarningsThisMonth?: number;
+  packageId?: string; // backend training-package id this card derives from
 }
 
 export interface Admin extends UserBase {
@@ -91,6 +92,87 @@ export interface Session {
 }
 
 // ============================================================================
+// Bookings / training plan / progress / assessment
+// ============================================================================
+
+export interface Booking {
+  id: string;
+  title: string;
+  coachId: string;
+  totalSessions: number;
+  completedSessions: number;
+  status: string;
+  totalAmount: number;
+  createdAt: string;
+}
+
+export interface PlanExercise {
+  id: string;
+  name: string;
+  sets?: number;
+  reps?: string;
+  intensity?: string;
+  restSeconds?: number;
+  notes?: string;
+}
+
+export interface PlanDay {
+  id: string;
+  dayNumber: number;
+  title?: string;
+  notes?: string;
+  exercises: PlanExercise[];
+}
+
+export interface PlanWeek {
+  id: string;
+  weekNumber: number;
+  focus?: string;
+  notes?: string;
+  days: PlanDay[];
+}
+
+export interface TrainingPlan {
+  id: string;
+  title?: string;
+  goalType?: string;
+  overview?: string;
+  startDate: string;
+  endDate: string;
+  totalWeeks: number;
+  status?: string;
+  weeks: PlanWeek[];
+}
+
+export interface ProgressCheckIn {
+  id: string;
+  checkInDate: string;
+  weightKg?: number;
+  bodyFatPercent?: number;
+  waistCm?: number;
+  energyLevel?: string;
+  sleepQuality?: string;
+  learnerNote?: string;
+  coachFeedback?: string;
+}
+
+export interface LearnerAssessment {
+  id?: string;
+  goalType?: string;
+  goalDescription?: string;
+  heightCm?: number;
+  weightKg?: number;
+  bodyFatPercent?: number;
+  currentLevel?: string;
+  healthNotes?: string;
+  injuryNotes?: string;
+  trainingHistory?: string;
+  availableDaysPerWeek?: string;
+  preferredSessionDurationMinutes?: number;
+  equipmentAvailable?: string;
+}
+
+// ============================================================================
 // Messages
 // ============================================================================
 
@@ -113,6 +195,37 @@ export interface Message {
 }
 
 // ============================================================================
+// Coach listings (training packages + posts)
+// ============================================================================
+
+export interface TrainingPackage {
+  id: string;
+  title: string;
+  description?: string;
+  price: number;
+  sessionCount: number;
+  durationDays: number;
+  sport: Sport;
+  level?: string;
+  goalType?: string;
+  status: string; // Draft / Pending / Approved / Active / Rejected
+  isOnline: boolean;
+  createdAt: string;
+}
+
+export interface CoachPost {
+  id: string;
+  title: string;
+  description?: string;
+  price: number;
+  sport: Sport;
+  status: string;
+  isOnline: boolean;
+  createdAt: string;
+  imageUrls?: string[];
+}
+
+// ============================================================================
 // Earnings / Analytics
 // ============================================================================
 
@@ -131,6 +244,15 @@ export interface Payout {
   status: "paid" | "pending" | "processing" | "failed";
   date: string; // ISO
   method: string;
+}
+
+export interface PayoutAccount {
+  id: string;
+  payoutMethod?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountHolder?: string;
+  status?: string; // backend verification status (Pending / Verified / Rejected)
 }
 
 export interface AnalyticsDailyPoint {

@@ -7,15 +7,22 @@
 // ============================================================================
 
 import type {
+  Booking,
   Coach,
+  CoachPost,
   EarningPoint,
+  LearnerAssessment,
   Message,
   MessageThread,
   NotificationItem,
   Payout,
+  PayoutAccount,
+  ProgressCheckIn,
   Session,
   SessionStatus,
   Sport,
+  TrainingPackage,
+  TrainingPlan,
   VerificationRequest,
 } from "@/types";
 import type {
@@ -25,9 +32,12 @@ import type {
   CoachPayoutAccountResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
+  LearnerAssessmentResponse,
   NotificationResponse,
   PostResponse,
+  ProgressCheckInResponse,
   TrainingPackageResponse,
+  TrainingPlanResponse,
   TrainingSessionResponse,
   WithdrawalRequestResponse,
 } from "@/lib/backend/dto";
@@ -68,6 +78,7 @@ export function packageToCoach(p: TrainingPackageResponse): Coach {
   const perSession = p.sessionCount > 0 ? p.price / p.sessionCount : p.price;
   return {
     id: p.coachId,
+    packageId: p.id,
     name: coachDisplayName(p.coachId),
     avatarUrl: avatarFor(p.coachId),
     email: "",
@@ -85,6 +96,121 @@ export function packageToCoach(p: TrainingPackageResponse): Coach {
     verified: p.status === "Approved" || p.status === "Active",
     location: p.location ?? (p.isOnline ? "Online" : ""),
     activeLearners: 0,
+  };
+}
+
+// ---- Booking → UI ----------------------------------------------------------
+export function bookingToUi(b: BookingResponse): Booking {
+  return {
+    id: b.id,
+    title: b.trainingPackageTitle ?? "Gói huấn luyện",
+    coachId: b.coachId,
+    totalSessions: b.totalSessions,
+    completedSessions: b.completedSessions,
+    status: b.status ?? "Active",
+    totalAmount: b.totalAmount,
+    createdAt: b.createdAt,
+  };
+}
+
+// ---- Training plan → UI ----------------------------------------------------
+export function trainingPlanToUi(p: TrainingPlanResponse): TrainingPlan {
+  return {
+    id: p.id,
+    title: p.title ?? undefined,
+    goalType: p.goalType ?? undefined,
+    overview: p.overview ?? undefined,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    totalWeeks: p.totalWeeks,
+    status: p.status ?? undefined,
+    weeks: (p.weeks ?? []).map((w) => ({
+      id: w.id,
+      weekNumber: w.weekNumber,
+      focus: w.focus ?? undefined,
+      notes: w.notes ?? undefined,
+      days: (w.days ?? []).map((d) => ({
+        id: d.id,
+        dayNumber: d.dayNumber,
+        title: d.title ?? undefined,
+        notes: d.notes ?? undefined,
+        exercises: (d.exercises ?? []).map((e) => ({
+          id: e.id,
+          name: e.exerciseName ?? "Bài tập",
+          sets: e.sets ?? undefined,
+          reps: e.reps ?? undefined,
+          intensity: e.intensity ?? undefined,
+          restSeconds: e.restSeconds ?? undefined,
+          notes: e.notes ?? undefined,
+        })),
+      })),
+    })),
+  };
+}
+
+// ---- Progress check-in → UI ------------------------------------------------
+export function progressCheckInToUi(c: ProgressCheckInResponse): ProgressCheckIn {
+  return {
+    id: c.id,
+    checkInDate: c.checkInDate,
+    weightKg: c.weightKg ?? undefined,
+    bodyFatPercent: c.bodyFatPercent ?? undefined,
+    waistCm: c.waistCm ?? undefined,
+    energyLevel: c.energyLevel ?? undefined,
+    sleepQuality: c.sleepQuality ?? undefined,
+    learnerNote: c.learnerNote ?? undefined,
+    coachFeedback: c.coachFeedback ?? undefined,
+  };
+}
+
+// ---- Learner assessment → UI -----------------------------------------------
+export function assessmentToUi(a: LearnerAssessmentResponse): LearnerAssessment {
+  return {
+    id: a.id,
+    goalType: a.goalType ?? undefined,
+    goalDescription: a.goalDescription ?? undefined,
+    heightCm: a.heightCm ?? undefined,
+    weightKg: a.weightKg ?? undefined,
+    bodyFatPercent: a.bodyFatPercent ?? undefined,
+    currentLevel: a.currentLevel ?? undefined,
+    healthNotes: a.healthNotes ?? undefined,
+    injuryNotes: a.injuryNotes ?? undefined,
+    trainingHistory: a.trainingHistory ?? undefined,
+    availableDaysPerWeek: a.availableDaysPerWeek ?? undefined,
+    preferredSessionDurationMinutes: a.preferredSessionDurationMinutes ?? undefined,
+    equipmentAvailable: a.equipmentAvailable ?? undefined,
+  };
+}
+
+// ---- Coach's own listings (packages + posts) -------------------------------
+export function packageToUi(p: TrainingPackageResponse): TrainingPackage {
+  return {
+    id: p.id,
+    title: p.title ?? "Gói huấn luyện",
+    description: p.description ?? undefined,
+    price: p.price,
+    sessionCount: p.sessionCount,
+    durationDays: p.durationDays,
+    sport: toSport(p.sportName),
+    level: p.level ?? undefined,
+    goalType: p.goalType ?? undefined,
+    status: p.status ?? "Pending",
+    isOnline: p.isOnline,
+    createdAt: p.createdAt,
+  };
+}
+
+export function postToUi(p: PostResponse): CoachPost {
+  return {
+    id: p.id,
+    title: p.title ?? "Bài đăng",
+    description: p.description ?? undefined,
+    price: p.price,
+    sport: toSport(p.sportName),
+    status: p.status ?? "Pending",
+    isOnline: p.isOnline,
+    createdAt: p.createdAt,
+    imageUrls: p.imageUrls ?? undefined,
   };
 }
 
@@ -232,6 +358,17 @@ function toPayoutStatus(raw?: string | null): Payout["status"] {
     default:
       return "pending";
   }
+}
+
+export function payoutAccountToUi(a: CoachPayoutAccountResponse): PayoutAccount {
+  return {
+    id: a.id,
+    payoutMethod: a.payoutMethod ?? undefined,
+    bankName: a.bankName ?? undefined,
+    bankAccountNumber: a.bankAccountNumber ?? undefined,
+    bankAccountHolder: a.bankAccountHolder ?? undefined,
+    status: a.status ?? undefined,
+  };
 }
 
 export function withdrawalToPayout(w: WithdrawalRequestResponse): Payout {

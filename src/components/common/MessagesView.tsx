@@ -94,7 +94,19 @@ export function MessagesView({ userId }: MessagesViewProps) {
       activeId ? api.fetchMessages(activeId) : Promise.resolve<Message[]>([]),
     [activeId],
   );
-  const messages = useMemo(() => messagesData ?? [], [messagesData]);
+
+  // Optimistically-appended messages not yet reflected in the fetched list.
+  // Cleared on thread switch — switching back re-fetches the canonical list.
+  const [pending, setPending] = useState<Message[]>([]);
+  useEffect(() => {
+    setPending([]);
+  }, [activeId]);
+
+  const messages = useMemo(() => {
+    const base = messagesData ?? [];
+    const extra = pending.filter((m) => m.threadId === activeId);
+    return extra.length ? [...base, ...extra] : base;
+  }, [messagesData, pending, activeId]);
 
   const filteredThreads = useMemo(() => {
     let list = threads;
@@ -125,12 +137,33 @@ export function MessagesView({ userId }: MessagesViewProps) {
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [activeId, isAITyping, messages]);
 
-  const handleSend = () => {
-    if (!composer.trim()) return;
+  const handleSend = async () => {
+    const text = composer.trim();
+    if (!text || !active) return;
     setComposer("");
-    if (active?.isAI) {
+
+    // AI thread has no backend room — keep the simulated typing reply.
+    if (active.isAI) {
       setIsAITyping(true);
       setTimeout(() => setIsAITyping(false), 2200);
+      return;
+    }
+
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: Message = {
+      id: tempId,
+      threadId: active.id,
+      senderId: userId,
+      text,
+      sentAt: new Date().toISOString(),
+    };
+    setPending((p) => [...p, optimistic]);
+    try {
+      const saved = await api.sendMessage(active.id, text);
+      setPending((p) => p.map((m) => (m.id === tempId ? saved : m)));
+    } catch {
+      setPending((p) => p.filter((m) => m.id !== tempId));
+      setComposer(text);
     }
   };
 
@@ -489,7 +522,7 @@ export function MessagesView({ userId }: MessagesViewProps) {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
-                          handleSend();
+                          void handleSend();
                         }
                       }}
                       placeholder={
@@ -504,7 +537,7 @@ export function MessagesView({ userId }: MessagesViewProps) {
                     <ComposerIconButton icon={Smile} label="Emoji" />
 
                     <button
-                      onClick={handleSend}
+                      onClick={() => void handleSend()}
                       disabled={!composer.trim()}
                       aria-label="Send message"
                       className={cn(

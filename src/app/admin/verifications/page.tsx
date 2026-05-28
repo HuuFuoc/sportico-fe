@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, relativeDay } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { api, type VerificationKind } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Coach, VerificationRequest } from "@/types";
@@ -113,6 +113,11 @@ export default function VerificationsPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  // Optimistic moderation results — the fetched queue is read-only, so we overlay
+  // approved/rejected ids locally and roll back on API failure (no refetch flicker).
+  const [statusOverride, setStatusOverride] = useState<
+    Record<string, VerificationRequest["status"]>
+  >({});
 
   // Enrich verifications with synthetic risk + trust score
   const enriched = useMemo<EnrichedVerification[]>(
@@ -122,9 +127,15 @@ export default function VerificationsPage() {
         const trustScore =
           risk === "low" ? 92 - i * 2 : risk === "med" ? 72 - i : 48 - i;
         const progress = Math.min(100, 40 + i * 12);
-        return { ...v, risk, trustScore: Math.max(20, trustScore), progress };
+        return {
+          ...v,
+          status: statusOverride[v.id] ?? v.status,
+          risk,
+          trustScore: Math.max(20, trustScore),
+          progress,
+        };
       }),
-    [verificationsData],
+    [verificationsData, statusOverride],
   );
 
   const filtered = useMemo(() => {
@@ -152,14 +163,44 @@ export default function VerificationsPage() {
     setActiveId(filtered[next]?.id ?? active.id);
   };
 
+  const moderate = (
+    item: EnrichedVerification,
+    status: "approved" | "rejected",
+    reason?: string,
+  ) => {
+    const id = item.id;
+    const kind = (item.documents[0]?.type ?? "post") as VerificationKind;
+    const prev = statusOverride[id];
+    setStatusOverride((o) => ({ ...o, [id]: status }));
+    const action =
+      status === "approved"
+        ? api.approveVerification(id, kind)
+        : api.rejectVerification(id, kind, reason ?? "");
+    void action.catch(() => {
+      // Roll back to the prior override (or remove it entirely).
+      setStatusOverride((o) => {
+        const next = { ...o };
+        if (prev === undefined) delete next[id];
+        else next[id] = prev;
+        return next;
+      });
+      showToast(`Không thể ${status === "approved" ? "duyệt" : "từ chối"} ${item.coachName}`);
+    });
+  };
+
   const handleApprove = () => {
-    showToast(`${active?.coachName ?? "Coach"} approved`);
+    if (!active) return;
+    moderate(active, "approved");
+    showToast(`${active.coachName} approved`);
     navigate(1);
   };
   const openReject = () => setRejectOpen(true);
   const confirmReject = () => {
     setRejectOpen(false);
-    showToast(`${active?.coachName ?? "Coach"} rejected · ${rejectReason}`);
+    if (active) {
+      moderate(active, "rejected", rejectReason);
+      showToast(`${active.coachName} rejected · ${rejectReason}`);
+    }
     setRejectReason("");
     navigate(1);
   };

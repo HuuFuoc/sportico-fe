@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
@@ -27,9 +27,37 @@ export function TopBar({ role, title }: TopBarProps) {
     () => api.fetchNotifications(),
     [],
   );
-  const notifications = notificationsData ?? [];
+
+  // Optimistic read state — the fetched list is read-only, so we overlay locally
+  // marked ids and roll back on failure rather than refetching (avoids flicker).
+  const [localRead, setLocalRead] = useState<Set<string>>(new Set());
+  const notifications = useMemo(
+    () =>
+      (notificationsData ?? []).map((n) => ({
+        ...n,
+        read: n.read || localRead.has(n.id),
+      })),
+    [notificationsData, localRead],
+  );
   const unread = notifications.filter((n) => !n.read).length;
   const user = useCurrentUser();
+
+  const markRead = (id: string) => {
+    setLocalRead((prev) => new Set(prev).add(id));
+    void api.markNotificationRead(id).catch(() => {
+      setLocalRead((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    });
+  };
+
+  const markAllRead = () => {
+    const prev = localRead;
+    setLocalRead(new Set((notificationsData ?? []).map((n) => n.id)));
+    void api.markAllNotificationsRead().catch(() => setLocalRead(prev));
+  };
 
   const placeholder =
     role === "coach"
@@ -102,7 +130,11 @@ export function TopBar({ role, title }: TopBarProps) {
               <div className="absolute right-0 mt-2 w-80 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] shadow-sm z-50 overflow-hidden">
                 <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
                   <p className="text-h3 text-on-surface">Notifications</p>
-                  <button className="text-body-sm text-primary hover:underline">
+                  <button
+                    onClick={markAllRead}
+                    disabled={unread === 0}
+                    className="text-body-sm text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-default"
+                  >
                     Mark all read
                   </button>
                 </div>
@@ -111,7 +143,10 @@ export function TopBar({ role, title }: TopBarProps) {
                     <Link
                       key={n.id}
                       href={n.href ?? "#"}
-                      onClick={() => setShowNotifs(false)}
+                      onClick={() => {
+                        if (!n.read) markRead(n.id);
+                        setShowNotifs(false);
+                      }}
                       className={cn(
                         "flex gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors border-b border-[var(--color-border-soft)] last:border-b-0",
                         !n.read && "bg-primary/[0.03]",

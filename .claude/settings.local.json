@@ -88,7 +88,9 @@
       "Bash(pnpm dev > /tmp/sportico-dev2.log 2>&1 & *)",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
-      "Bash(echo \"=== EXIT: $? ===\")"
+      "Bash(echo \"=== EXIT: $? ===\")",
+      "Bash(node -e \"const s=require\\('./swagger_tmp.json'\\); for\\(const p of Object.keys\\(s.paths\\)\\){ if\\(/purchase|bookings/.test\\(p\\)\\){ console.log\\('PATH', p\\); for\\(const m of Object.keys\\(s.paths[p]\\)\\){ const op=s.paths[p][m]; console.log\\('  ',m.toUpperCase\\(\\), op.summary||''\\); const rb=op.requestBody&&op.requestBody.content&&op.requestBody.content['application/json']; if\\(rb&&rb.schema\\){ console.log\\('   reqSchema:', JSON.stringify\\(rb.schema\\)\\); } } } }\")",
+      "Bash(pnpm build *)"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",
