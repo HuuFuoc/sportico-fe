@@ -102,7 +102,7 @@ export async function login(payload: LoginPayload): Promise<AuthTokens> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Login failed. Please try again.",
+        "Đăng nhập thất bại. Vui lòng thử lại.",
       result.errorCode,
     );
   }
@@ -122,7 +122,7 @@ export async function login(payload: LoginPayload): Promise<AuthTokens> {
 export async function register(
   payload: RegisterPayload,
 ): Promise<RegisterResult> {
-  if (isMockMode()) return { message: "Registration successful" };
+  if (isMockMode()) return { message: "Đăng ký thành công" };
 
   const result = await request(endpoints.auth.register, {
     method: "POST",
@@ -137,18 +137,18 @@ export async function register(
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Registration failed. Please try again.",
+        "Đăng ký thất bại. Vui lòng thử lại.",
       result.errorCode,
     );
   }
-  return { message: result.message ?? "Registration successful" };
+  return { message: result.message ?? "Đăng ký thành công" };
 }
 
 // ---- Verify email (kept for future use; no UI yet) -------------------------
 
 /** Confirm an email verification token. Activates the user backend-side. */
 export async function verifyEmail(token: string): Promise<RegisterResult> {
-  if (isMockMode()) return { message: "Email verified successfully" };
+  if (isMockMode()) return { message: "Xác minh email thành công" };
 
   const result = await request(endpoints.auth.verifyEmail(token), {
     method: "GET",
@@ -158,11 +158,11 @@ export async function verifyEmail(token: string): Promise<RegisterResult> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Verification failed.",
+        "Xác minh thất bại.",
       result.errorCode,
     );
   }
-  return { message: result.message ?? "Email verified successfully" };
+  return { message: result.message ?? "Xác minh email thành công" };
 }
 
 // ---- Refresh token ---------------------------------------------------------
@@ -178,13 +178,13 @@ export async function verifyEmail(token: string): Promise<RegisterResult> {
  */
 export async function refreshTokens(): Promise<AuthTokens> {
   if (isMockMode()) {
-    throw new AuthError("Token refresh is unavailable in mock mode.");
+    throw new AuthError("Làm mới phiên không khả dụng ở chế độ mock.");
   }
   const email = getAuthEmail();
   const refreshToken = getRefreshToken();
   if (!email || !refreshToken) {
     clearAuthTokens();
-    throw new AuthError("Your session has expired. Please log in again.");
+    throw new AuthError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
   }
 
   let result: Result<AuthTokens>;
@@ -203,7 +203,7 @@ export async function refreshTokens(): Promise<AuthTokens> {
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Your session has expired. Please log in again.",
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
       result.errorCode,
     );
   }
@@ -230,7 +230,7 @@ export async function registerCoachProfile(
   payload: CoachOnboardingPayload,
 ): Promise<Result> {
   if (isMockMode()) {
-    throw new AuthError("Coach onboarding requires the live API.");
+    throw new AuthError("Đăng ký huấn luyện viên cần API thật.");
   }
   const result = await request(endpoints.coachOnboarding, {
     method: "POST",
@@ -240,7 +240,7 @@ export async function registerCoachProfile(
     throw new AuthError(
       messageForCode(result.errorCode) ??
         result.message ??
-        "Coach onboarding failed.",
+        "Đăng ký huấn luyện viên thất bại.",
       result.errorCode,
     );
   }
@@ -252,7 +252,7 @@ export async function registerCoachProfile(
 async function mockLogin(payload: LoginPayload): Promise<AuthTokens> {
   // Mirrors the documented demo test path (see CLAUDE.md §7).
   if (payload.email.trim().toLowerCase() === "wrong@example.com") {
-    throw new AuthError("Invalid email or password.");
+    throw new AuthError("Sai email hoặc mật khẩu.");
   }
   const tokens: AuthTokens = {
     accessToken: "mock-access-token",
@@ -281,10 +281,13 @@ async function request<T = unknown>(
 
 function asResult<T>(raw: unknown): Result<T> {
   if (!isRecord(raw)) return { isSuccess: false };
+  // Backend envelope nests the failure under `error: { code, message }`.
+  // Fall back to top-level fields so older/alternate shapes still parse.
+  const error = isRecord(raw.error) ? raw.error : undefined;
   return {
     isSuccess: raw.isSuccess === true,
-    message: pickString(raw.message),
-    errorCode: pickString(raw.errorCode),
+    message: (error && pickString(error.message)) ?? pickString(raw.message),
+    errorCode: (error && pickString(error.code)) ?? pickString(raw.errorCode),
     data: raw.data as T | undefined,
   };
 }
@@ -295,11 +298,17 @@ function toAuthError(err: unknown): AuthError {
   if (err instanceof AuthError) return err;
   if (err instanceof ApiError) {
     const body = isRecord(err.body) ? err.body : undefined;
-    const code = body ? pickString(body.errorCode) : undefined;
-    const serverMsg = body ? pickString(body.message) : undefined;
+    // Failure envelope: { isSuccess:false, data:null, error:{ code, message } }.
+    const error = body && isRecord(body.error) ? body.error : undefined;
+    const code =
+      (error && pickString(error.code)) ??
+      (body ? pickString(body.errorCode) : undefined);
+    const serverMsg =
+      (error && pickString(error.message)) ??
+      (body ? pickString(body.message) : undefined);
     if (err.status === 0) {
       return new AuthError(
-        "Can't reach the server. Check your connection and try again.",
+        "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.",
         code,
       );
     }
@@ -308,7 +317,7 @@ function toAuthError(err: unknown): AuthError {
       code,
     );
   }
-  return new AuthError("Something went wrong. Please try again.");
+  return new AuthError("Đã có lỗi xảy ra. Vui lòng thử lại.");
 }
 
 /** Map a backend errorCode to friendly copy. Returns undefined for codes that
@@ -316,18 +325,18 @@ function toAuthError(err: unknown): AuthError {
 function messageForCode(code: string | undefined): string | undefined {
   switch (code) {
     case "AUTH_INVALID_CREDENTIALS":
-      return "Invalid email or password.";
+      return "Sai email hoặc mật khẩu.";
     case "COMMON_ACCOUNT_NOT_ACTIVE":
-      return "Please verify your email before logging in.";
+      return "Vui lòng xác minh email trước khi đăng nhập.";
     case "USER_EMAIL_ALREADY_EXISTS":
-      return "This email is already registered.";
+      return "Email này đã được đăng ký.";
     case "AUTH_INVALID_REFRESH_TOKEN":
     case "AUTH_REFRESH_TOKEN_EXPIRED":
-      return "Your session has expired. Please log in again.";
+      return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
     case "AUTH_INVALID_VERIFICATION_TOKEN":
-      return "This verification link is invalid or has expired.";
+      return "Liên kết xác minh không hợp lệ hoặc đã hết hạn.";
     case "COACH_PROFILE_ALREADY_EXISTS":
-      return "You already have a coach profile.";
+      return "Bạn đã có hồ sơ huấn luyện viên.";
     default:
       // COMMON_VALIDATION_ERROR, SPORT_INVALID, etc. → show backend message.
       return undefined;
@@ -335,9 +344,9 @@ function messageForCode(code: string | undefined): string | undefined {
 }
 
 function defaultForStatus(status: number): string {
-  if (status === 401 || status === 403) return "Invalid email or password.";
-  if (status >= 500) return "Something went wrong on our end. Please try again.";
-  return "Request failed. Please try again.";
+  if (status === 401 || status === 403) return "Sai email hoặc mật khẩu.";
+  if (status >= 500) return "Đã có lỗi từ phía máy chủ. Vui lòng thử lại.";
+  return "Yêu cầu thất bại. Vui lòng thử lại.";
 }
 
 // ---- Small helpers ---------------------------------------------------------

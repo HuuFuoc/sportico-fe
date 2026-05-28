@@ -63,7 +63,7 @@ export default function RegisterPage() {
       setServerError(
         err instanceof AuthError
           ? err.message
-          : "Something went wrong. Please try again.",
+          : "Đã có lỗi xảy ra. Vui lòng thử lại.",
       );
     }
   };

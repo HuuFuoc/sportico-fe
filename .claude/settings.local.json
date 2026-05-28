@@ -62,7 +62,15 @@
       "PowerShell(pnpm build 2>&1)",
       "PowerShell(pnpm lint 2>&1)",
       "PowerShell(npx eslint 'src/components/landing/HeroSection.tsx' 'src/components/landing/HeroPreview.tsx' 2>&1)",
-      "Bash(grep -n 'aria-label\\\\|\"Start training\\\\|joined this week\\\\|Start free today\\\\|No card\\\\|breakthrough\\\\|one match away\\\\|Join thousands\\\\|Get started\\\\|Browse coaches\\\\|athletes ·\\\\|AI accuracy\\\\|SOC 2\\\\|encryption\\\\|0\\\\\\\\.8s\\\\|Cancel anytime\\\\|Are you a coach\\\\|Grow your practice' \"d:/FPT-Ky8/EXE202/sportico/src/components/landing/FinalCTASection.tsx\")"
+      "Bash(grep -n 'aria-label\\\\|\"Start training\\\\|joined this week\\\\|Start free today\\\\|No card\\\\|breakthrough\\\\|one match away\\\\|Join thousands\\\\|Get started\\\\|Browse coaches\\\\|athletes ·\\\\|AI accuracy\\\\|SOC 2\\\\|encryption\\\\|0\\\\\\\\.8s\\\\|Cancel anytime\\\\|Are you a coach\\\\|Grow your practice' \"d:/FPT-Ky8/EXE202/sportico/src/components/landing/FinalCTASection.tsx\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} in %{time_total}s\\\\n\" --max-time 30 \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/api/auth/login\" -X POST -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"ping@example.com\\\\\",\\\\\"password\\\\\":\\\\\"x\\\\\"}\")",
+      "Bash(curl -s --max-time 30 \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/api/auth/login\" -X POST -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"ping@example.com\\\\\",\\\\\"password\\\\\":\\\\\"wrongpass123\\\\\"}\")",
+      "Bash(curl -s --max-time 30 \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o swagger_tmp.json -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('swagger_tmp.json'\\)\\); [print\\(m.upper\\(\\), p\\) for p in d['paths'] for m in d['paths'][p]]\")",
+      "Bash(node -e \"const d=require\\('./swagger_tmp.json'\\); for\\(const p in d.paths\\){for\\(const m in d.paths[p]\\){console.log\\(m.toUpperCase\\(\\),p\\)}}\")",
+      "Bash(node -e ' *)",
+      "Bash(rm -f swagger_tmp.json)",
+      "Bash(curl -s --max-time 40 \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o swagger_tmp.json -w \"HTTP %{http_code}, %{size_download} bytes\\\\n\")"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

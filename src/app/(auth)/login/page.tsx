@@ -13,6 +13,7 @@ import { AuthInput } from "@/components/ui/AuthInput";
 import { AuthButton } from "@/components/ui/AuthButton";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { login, AuthError } from "@/lib/auth-api";
+import { getCurrentUser } from "@/lib/auth-session";
 import { useAppStore } from "@/lib/store/useAppStore";
 import {
   loginSchema,
@@ -23,6 +24,7 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const setRole = useAppStore((s) => s.setRole);
+  const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -49,16 +51,17 @@ export default function LoginPage() {
       });
 
       setSuccess(true);
-      // TODO(auth): backend login does not return role and there is no /me
-      // endpoint. Redirect defaults to learner until a profile/current-user
-      // endpoint or role claim is available.
-      setRole("learner");
-      router.push("/learner/dashboard");
+      // Login returns no role/user; identity comes from the JWT claims.
+      const user = getCurrentUser();
+      const role = user?.role ?? "learner";
+      setRole(role);
+      if (user?.userId) setCurrentUserId(user.userId);
+      router.push(`/${role}/dashboard`);
     } catch (err) {
       setServerError(
         err instanceof AuthError
           ? err.message
-          : "Something went wrong. Please try again.",
+          : "Đã có lỗi xảy ra. Vui lòng thử lại.",
       );
     }
   };

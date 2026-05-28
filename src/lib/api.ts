@@ -1,18 +1,18 @@
 // ============================================================================
-// Sportico data access layer — THE backend swap point.
+// Sportico data access layer — hybrid mock/live backend.
 //
-// Every page/component reads data through `api.*`; this is the ONLY module that
-// imports from `@/lib/mock/*`. Each method delegates to `getResource`, which:
+// Every page/component reads data through `api.*`. Each method is one of:
 //
-//   • returns the local mock fixture when NEXT_PUBLIC_API_BASE_URL is unset
-//     (dev / demo — the current behaviour), or
-//   • performs a typed `fetch()` against the backend when it IS set.
+//   • LIVE-OR-MOCK — the real backend has a matching endpoint. In live mode
+//     (NEXT_PUBLIC_API_BASE_URL set) it calls `backend.*` and adapts the DTO to
+//     the UI domain type via `src/lib/backend/mappers.ts`; in mock mode it
+//     returns the local fixture.
+//   • MOCK-ALWAYS — the backend has NO matching endpoint yet (coach directory,
+//     learner list, AI insights, analytics, wellness). These always return the
+//     local fixture so the corresponding pages keep working.
 //
-// To go live: set NEXT_PUBLIC_API_BASE_URL and, if needed, adjust the paths in
-// `src/lib/api-endpoints.ts`. No page changes required.
-//
-// Response shapes are the domain types in `src/types/index.ts` — that file is
-// the contract the backend must match.
+// The UI domain types in `src/types` stay the contract; adapters bridge the gap
+// so pages render unchanged.
 // ============================================================================
 
 import type {
@@ -34,8 +34,12 @@ import type {
   Sport,
   VerificationRequest,
 } from "@/types";
-import { getResource } from "@/lib/api-client";
-import { endpoints } from "@/lib/api-endpoints";
+import { isMockMode } from "@/lib/api-client";
+import { backend } from "@/lib/backend/client";
+import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
+import * as map from "@/lib/backend/mappers";
+import { NOW } from "@/lib/mock/clock";
+import type { BookingResponse } from "@/lib/backend/dto";
 import { AVAILABLE_SPORTS } from "@/lib/constants";
 
 // --- mock fixtures: imported in THIS FILE ONLY ------------------------------
@@ -83,89 +87,176 @@ export interface EarningsTotal {
   sessions: number;
 }
 
+/** Run the live implementation when the backend is configured, else the mock. */
+function live<T>(
+  liveFn: () => Promise<T>,
+  mockFn: () => T | Promise<T>,
+): Promise<T> {
+  return isMockMode() ? Promise.resolve(mockFn()) : liveFn();
+}
+
+/** Aggregate per-booking sessions into a flat, UI-shaped Session[]. */
+async function liveSessionsForBookings(
+  bookings: BookingResponse[],
+): Promise<Session[]> {
+  const out: Session[] = [];
+  for (const b of bookings) {
+    const page = await backend.bookingSessions(b.id, { pageSize: 100 });
+    for (const s of page.items ?? []) out.push(map.sessionToSession(s, b));
+  }
+  return out;
+}
+
+async function liveLearnerSessions(): Promise<Session[]> {
+  const page = await backend.myBookings({ pageSize: 50 });
+  return liveSessionsForBookings(page.items ?? []);
+}
+
+async function liveCoachSessions(): Promise<Session[]> {
+  const page = await backend.coachBookings({ pageSize: 50 });
+  return liveSessionsForBookings(page.items ?? []);
+}
+
 export const api = {
   // ---- Users -------------------------------------------------------------
+  // Coach directory derives from public training packages (no coach-list API).
   fetchCoaches: (): Promise<Coach[]> =>
-    getResource(endpoints.coaches, () => getCoaches()),
+    live(async () => {
+      const page = await backend.publicTrainingPackages({ pageSize: 60 });
+      return (page.items ?? []).map(map.packageToCoach);
+    }, () => getCoaches()),
   fetchCoach: (id: string): Promise<Coach | undefined> =>
-    getResource(endpoints.coachById(id), () => getCoachById(id)),
-  fetchLearners: (): Promise<Learner[]> =>
-    getResource(endpoints.learners, () => getLearners()),
+    live(async () => {
+      const page = await backend.publicTrainingPackages({
+        coachId: id,
+        pageSize: 1,
+      });
+      const first = (page.items ?? [])[0];
+      return first ? map.packageToCoach(first) : undefined;
+    }, () => getCoachById(id)),
+
+  // No backend endpoints → always mock.
+  fetchLearners: (): Promise<Learner[]> => Promise.resolve(getLearners()),
   fetchLearner: (id: string): Promise<Learner | undefined> =>
-    getResource(endpoints.learnerById(id), () => getLearnerById(id)),
-  fetchAdmins: (): Promise<Admin[]> =>
-    getResource(endpoints.admins, () => getAdmins()),
+    Promise.resolve(getLearnerById(id)),
+  fetchAdmins: (): Promise<Admin[]> => Promise.resolve(getAdmins()),
   fetchAdmin: (id: string): Promise<Admin | undefined> =>
-    getResource(endpoints.adminById(id), () => getAdminById(id)),
+    Promise.resolve(getAdminById(id)),
   fetchUser: (id: string): Promise<AnyUser | undefined> =>
-    getResource(endpoints.userById(id), () => getUserById(id)),
+    Promise.resolve(getUserById(id)),
 
   // ---- Sessions ----------------------------------------------------------
   fetchSessions: (): Promise<Session[]> =>
-    getResource(endpoints.sessions, () => getSessions()),
-  fetchSession: (id: string): Promise<Session | undefined> =>
-    getResource(endpoints.sessionById(id), () => getSessionById(id)),
-  fetchSessionsForCoach: (id: string): Promise<Session[]> =>
-    getResource(endpoints.sessionsForCoach(id), () => getSessionsForCoach(id)),
-  fetchSessionsForLearner: (id: string): Promise<Session[]> =>
-    getResource(endpoints.sessionsForLearner(id), () =>
-      getSessionsForLearner(id),
+    live(
+      () => (getCurrentRole() === "coach" ? liveCoachSessions() : liveLearnerSessions()),
+      () => getSessions(),
     ),
+  // No session-by-id endpoint → mock.
+  fetchSession: (id: string): Promise<Session | undefined> =>
+    Promise.resolve(getSessionById(id)),
+  fetchSessionsForCoach: (id: string): Promise<Session[]> =>
+    live(liveCoachSessions, () => getSessionsForCoach(id)),
+  fetchSessionsForLearner: (id: string): Promise<Session[]> =>
+    live(liveLearnerSessions, () => getSessionsForLearner(id)),
   fetchUpcoming: (filter?: {
     coachId?: string;
     learnerId?: string;
   }): Promise<Session[]> =>
-    getResource(endpoints.upcoming(filter), () => getUpcomingSessions(filter)),
+    live(async () => {
+      const all = filter?.coachId
+        ? await liveCoachSessions()
+        : filter?.learnerId
+          ? await liveLearnerSessions()
+          : getCurrentRole() === "coach"
+            ? await liveCoachSessions()
+            : await liveLearnerSessions();
+      const now = new Date(NOW).getTime();
+      return all
+        .filter(
+          (s) =>
+            s.status !== "cancelled" && new Date(s.start).getTime() >= now,
+        )
+        .sort((a, b) => +new Date(a.start) - +new Date(b.start));
+    }, () => getUpcomingSessions(filter)),
 
   // ---- Messages ----------------------------------------------------------
   fetchThreads: (userId: string): Promise<MessageThread[]> =>
-    getResource(endpoints.threads(userId), () => getThreadsForUser(userId)),
+    live(async () => {
+      const rooms = await backend.chatRooms();
+      const me = getCurrentUserId();
+      return rooms.map((r) => map.roomToThread(r, me));
+    }, () => getThreadsForUser(userId)),
   fetchThread: (id: string): Promise<MessageThread | undefined> =>
-    getResource(endpoints.threadById(id), () => getThreadById(id)),
+    live(async () => {
+      const rooms = await backend.chatRooms();
+      const room = rooms.find((r) => r.id === id);
+      return room ? map.roomToThread(room, getCurrentUserId()) : undefined;
+    }, () => getThreadById(id)),
   fetchMessages: (threadId: string): Promise<Message[]> =>
-    getResource(endpoints.messages(threadId), () =>
-      getMessagesForThread(threadId),
-    ),
+    live(async () => {
+      const page = await backend.roomMessages(threadId, { pageSize: 100 });
+      return (page.items ?? [])
+        .map(map.chatMessageToMessage)
+        .sort((a, b) => +new Date(a.sentAt) - +new Date(b.sentAt));
+    }, () => getMessagesForThread(threadId)),
 
   // ---- Earnings / payouts ------------------------------------------------
   fetchEarnings: (): Promise<EarningPoint[]> =>
-    getResource(endpoints.earnings, () => getEarnings()),
+    live(async () => {
+      const page = await backend.walletTransactions({ pageSize: 200 });
+      return map.transactionsToEarnings(page.items ?? []);
+    }, () => getEarnings()),
   fetchPayouts: (): Promise<Payout[]> =>
-    getResource(endpoints.payouts, () => getPayouts()),
+    live(async () => {
+      const page = await backend.myWithdrawals({ pageSize: 100 });
+      return (page.items ?? []).map(map.withdrawalToPayout);
+    }, () => getPayouts()),
   fetchEarningsTotal: (): Promise<EarningsTotal> =>
-    getResource(endpoints.earningsTotal, () => getEarningsTotal()),
+    live(async () => {
+      const wallet = await backend.wallet();
+      return map.walletToTotal(wallet);
+    }, () => getEarningsTotal()),
 
-  // ---- Analytics / progress ---------------------------------------------
+  // ---- Analytics / progress (no backend) → mock --------------------------
   fetchDailyActiveUsers: (): Promise<AnalyticsDailyPoint[]> =>
-    getResource(endpoints.analyticsDailyActiveUsers, () =>
-      getDailyActiveUsers(),
-    ),
+    Promise.resolve(getDailyActiveUsers()),
   fetchProgressMetrics: (learnerId: string): Promise<ProgressMetric[]> =>
-    getResource(endpoints.progressMetrics(learnerId), () =>
-      getProgressMetricsForLearner(learnerId),
-    ),
+    Promise.resolve(getProgressMetricsForLearner(learnerId)),
   fetchProgressTrend: (): Promise<ProgressTrendPoint[]> =>
-    getResource(endpoints.progressTrend, () => getProgressTrend()),
+    Promise.resolve(getProgressTrend()),
 
-  // ---- Wellness (learner dashboard) -------------------------------------
+  // ---- Wellness (no backend) → mock --------------------------------------
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fetchWellness: (learnerId: string): Promise<LearnerWellness> =>
-    getResource(endpoints.wellness(learnerId), () => getLearnerWellness()),
+    Promise.resolve(getLearnerWellness()),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fetchActivityHeatmap: (learnerId: string): Promise<number[][]> =>
-    getResource(endpoints.activityHeatmap(learnerId), () => activityHeatmap),
+    Promise.resolve(activityHeatmap),
 
   // ---- AI insights / notifications / verifications ----------------------
   fetchInsights: (audience: Role): Promise<AIInsight[]> =>
-    getResource(endpoints.insights(audience), () =>
-      getInsightsForRole(audience),
-    ),
+    Promise.resolve(getInsightsForRole(audience)),
   fetchNotifications: (): Promise<NotificationItem[]> =>
-    getResource(endpoints.notifications, () => getNotifications()),
+    live(async () => {
+      const page = await backend.notifications({ pageSize: 50 });
+      return (page.items ?? []).map(map.notificationToItem);
+    }, () => getNotifications()),
   fetchVerifications: (): Promise<VerificationRequest[]> =>
-    getResource(endpoints.verifications, () => getVerifications()),
+    live(async () => {
+      const [posts, packages, payouts] = await Promise.all([
+        backend.pendingPosts({ pageSize: 50 }),
+        backend.pendingTrainingPackages({ pageSize: 50 }),
+        backend.pendingPayoutAccounts({ pageSize: 50 }),
+      ]);
+      return [
+        ...(packages.items ?? []).map(map.trainingPackageToVerification),
+        ...(posts.items ?? []).map(map.postToVerification),
+        ...(payouts.items ?? []).map(map.payoutAccountToVerification),
+      ];
+    }, () => getVerifications()),
 
-  // ---- Reference data ----------------------------------------------------
-  fetchSports: (): Promise<Sport[]> =>
-    getResource(endpoints.sports, () => AVAILABLE_SPORTS),
+  // ---- Reference data (no GET sports endpoint) → mock --------------------
+  fetchSports: (): Promise<Sport[]> => Promise.resolve(AVAILABLE_SPORTS),
 };
 
 export default api;
