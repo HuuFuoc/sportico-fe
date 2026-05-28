@@ -7,7 +7,10 @@ import { CoachCard } from "@/components/common/CoachCard";
 import { AIBadge } from "@/components/common/AIBadge";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
-import { mockCoaches, AVAILABLE_SPORTS } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { AVAILABLE_SPORTS } from "@/lib/constants";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Sport } from "@/types";
 
 const GOALS = [
@@ -30,6 +33,14 @@ const STEPS = ["Sport", "Goal", "Style", "Budget", "Results"] as const;
 type StepName = (typeof STEPS)[number];
 
 export default function AIMatchPage() {
+  const {
+    data: coachesData,
+    loading: coachesLoading,
+    error: coachesError,
+    refetch,
+  } = useApiResource(() => api.fetchCoaches(), []);
+  const allCoaches = useMemo(() => coachesData ?? [], [coachesData]);
+
   const [step, setStep] = useState<StepName>("Sport");
   const [sport, setSport] = useState<Sport | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
@@ -39,12 +50,12 @@ export default function AIMatchPage() {
   const stepIdx = STEPS.indexOf(step);
 
   const matches = useMemo(() => {
-    return mockCoaches
+    return allCoaches
       .filter((c) => (sport ? c.sport === sport : true))
       .filter((c) => c.hourlyRate <= budget)
       .sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0))
       .slice(0, 6);
-  }, [sport, budget]);
+  }, [allCoaches, sport, budget]);
 
   const next = () => {
     const i = STEPS.indexOf(step);
@@ -241,11 +252,17 @@ export default function AIMatchPage() {
                   Browse all coaches →
                 </Link>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {matches.map((c) => (
-                  <CoachCard key={c.id} coach={c} />
-                ))}
-              </div>
+              {coachesLoading ? (
+                <LoadingState label="Đang tìm huấn luyện viên phù hợp…" />
+              ) : coachesError ? (
+                <ErrorState onRetry={refetch} />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {matches.map((c) => (
+                    <CoachCard key={c.id} coach={c} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
-import { getUserById } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
 import { useAppStore, type AppRole } from "@/lib/store/useAppStore";
 
 interface NavItem {
@@ -112,7 +113,11 @@ export function Sidebar({ role }: { role: AppRole }) {
   const mobileOpen = useAppStore((s) => s.mobileSidebarOpen);
   const setMobileSidebarOpen = useAppStore((s) => s.setMobileSidebarOpen);
   const currentUserId = useAppStore((s) => s.currentUserId);
-  const user = getUserById(currentUserId);
+  // TODO(auth): currentUserId comes from a hard-coded demo id (see @/lib/auth).
+  const { data: user } = useApiResource(
+    () => api.fetchUser(currentUserId),
+    [currentUserId],
+  );
 
   const settingsHref =
     role === "coach"

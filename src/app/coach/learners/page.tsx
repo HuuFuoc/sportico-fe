@@ -9,7 +9,9 @@ import { ProgressRing, Sparkline } from "@/components/coach/DataViz";
 import { AnimatedNumber } from "@/components/landing/AnimatedNumber";
 import { Reveal } from "@/components/landing/Motion";
 import { cn } from "@/lib/utils";
-import { mockLearners } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import {
   getAthleteMetrics,
   type AthleteMetrics,
@@ -52,14 +54,22 @@ const RISK_RANK: Record<RiskLevel, number> = {
 };
 
 export default function CoachLearnersPage() {
+  const {
+    data: learnersData,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchLearners(), []);
+  const learners = useMemo(() => learnersData ?? [], [learnersData]);
+
   const [query, setQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | RiskLevel>("all");
   const [sortKey, setSortKey] = useState<SortKey>("priority");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const enriched = useMemo<Enriched[]>(
-    () => mockLearners.map((l) => ({ learner: l, m: getAthleteMetrics(l) })),
-    [],
+    () => learners.map((l) => ({ learner: l, m: getAthleteMetrics(l) })),
+    [learners],
   );
 
   const stats = useMemo(() => {
@@ -79,10 +89,10 @@ export default function CoachLearnersPage() {
       fatigue,
       declining,
       avgReadiness: Math.round(
-        enriched.reduce((s, e) => s + e.m.readiness, 0) / n,
+        enriched.reduce((s, e) => s + e.m.readiness, 0) / Math.max(n, 1),
       ),
       avgEngagement: Math.round(
-        enriched.reduce((s, e) => s + e.m.engagement, 0) / n,
+        enriched.reduce((s, e) => s + e.m.engagement, 0) / Math.max(n, 1),
       ),
     };
   }, [enriched]);
@@ -162,6 +172,22 @@ export default function CoachLearnersPage() {
       confidence: 91,
     },
   ];
+
+  if (loading) {
+    return (
+      <AppShell role="coach" title="My Learners">
+        <LoadingState label="Đang tải danh sách học viên…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="coach" title="My Learners">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="coach" title="My Learners">

@@ -29,10 +29,14 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, initials, localDateKey } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+// NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
+// TODO(api): once the backend returns real timestamps, use `new Date()` here.
 import { NOW } from "@/lib/mock/clock";
-import { getSessionsForLearner } from "@/lib/mock/sessions";
-import { getCoachById } from "@/lib/mock/users";
-import type { Session } from "@/types";
+import type { Coach, Session } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -48,8 +52,23 @@ function startOfWeek(d: Date) {
 }
 
 export default function LearnerSchedulePage() {
-  const learnerId = "learner-1";
-  const sessions = getSessionsForLearner(learnerId);
+  // TODO(auth): hard-coded current learner until real session auth lands.
+  const learnerId = devUserIdForRole("learner");
+  const {
+    data: sessionsData,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchSessionsForLearner(learnerId), [learnerId]);
+  const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
+
+  // Coach lookup map (single fetch) so calendar cells don't fetch per session.
+  const { data: coachesData } = useApiResource(() => api.fetchCoaches(), []);
+  const coachById = useMemo(
+    () => new Map((coachesData ?? []).map((c) => [c.id, c])),
+    [coachesData],
+  );
+
   const reduce = useReducedMotion();
 
   const [view, setView] = useState<View>("Week");
@@ -110,6 +129,22 @@ export default function LearnerSchedulePage() {
     month: "short",
     day: "numeric",
   })}`;
+
+  if (loading) {
+    return (
+      <AppShell role="learner" title="My Schedule">
+        <LoadingState label="Đang tải lịch tập…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="learner" title="My Schedule">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="learner" title="My Schedule">
@@ -320,6 +355,7 @@ export default function LearnerSchedulePage() {
                         <SessionBlock
                           key={s.id}
                           session={s}
+                          coach={coachById.get(s.coachId)}
                           delay={i * 0.04 + idx * 0.04}
                           reduce={reduce ?? false}
                         />
@@ -380,6 +416,7 @@ export default function LearnerSchedulePage() {
                           <SessionBlock
                             key={s.id}
                             session={s}
+                            coach={coachById.get(s.coachId)}
                             delay={0}
                             reduce={reduce ?? false}
                           />
@@ -397,6 +434,7 @@ export default function LearnerSchedulePage() {
             <AICoachCard reduce={reduce ?? false} missedCount={missed} />
             <UpcomingSessions
               upcoming={upcoming}
+              coachById={coachById}
               reduce={reduce ?? false}
             />
             <QuickActions reduce={reduce ?? false} />
@@ -521,14 +559,15 @@ function sessionTypeAccent(type: Session["type"]) {
 
 function SessionBlock({
   session,
+  coach,
   delay,
   reduce,
 }: {
   session: Session;
+  coach?: Coach;
   delay: number;
   reduce: boolean;
 }) {
-  const coach = getCoachById(session.coachId);
   const a = sessionTypeAccent(session.type);
   const time = new Date(session.start).toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -706,9 +745,11 @@ function AICoachCard({
 
 function UpcomingSessions({
   upcoming,
+  coachById,
   reduce,
 }: {
   upcoming: Session[];
+  coachById: Map<string, Coach>;
   reduce: boolean;
 }) {
   return (
@@ -747,6 +788,7 @@ function UpcomingSessions({
               <UpcomingCard
                 key={s.id}
                 session={s}
+                coach={coachById.get(s.coachId)}
                 delay={i * 0.06}
                 reduce={reduce}
               />
@@ -760,14 +802,15 @@ function UpcomingSessions({
 
 function UpcomingCard({
   session,
+  coach,
   delay,
   reduce,
 }: {
   session: Session;
+  coach?: Coach;
   delay: number;
   reduce: boolean;
 }) {
-  const coach = getCoachById(session.coachId);
   const a = sessionTypeAccent(session.type);
   const date = new Date(session.start);
   const isOnline = session.location?.toLowerCase() === "online";

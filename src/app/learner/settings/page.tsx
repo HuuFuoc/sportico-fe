@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
-import { getLearnerById, AVAILABLE_SPORTS } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { AVAILABLE_SPORTS } from "@/lib/constants";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 
 const TABS = [
   { id: "profile", label: "Profile", icon: "person" },
@@ -17,19 +21,33 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function LearnerSettingsPage() {
-  const learner = getLearnerById("learner-1")!;
+  // TODO(auth): hard-coded current learner until real session auth lands.
+  const learnerId = devUserIdForRole("learner");
+  const {
+    data: learner,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchLearner(learnerId), [learnerId]);
+
   const [tab, setTab] = useState<TabId>("profile");
-  const [name, setName] = useState(learner.name);
-  const [email, setEmail] = useState(learner.email);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [bio, setBio] = useState(
     "Recreational athlete focused on consistency and mobility.",
   );
-  const [sports, setSports] = useState<Set<string>>(
-    new Set(learner.preferredSports),
-  );
+  const [sports, setSports] = useState<Set<string>>(new Set());
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
   const [aiSuggestions, setAISuggestions] = useState(true);
+
+  // Seed editable fields once the learner profile loads from the API.
+  useEffect(() => {
+    if (!learner) return;
+    setName(learner.name);
+    setEmail(learner.email);
+    setSports(new Set(learner.preferredSports));
+  }, [learner]);
 
   const toggleSport = (s: string) => {
     setSports((prev) => {
@@ -39,6 +57,22 @@ export default function LearnerSettingsPage() {
       return next;
     });
   };
+
+  if (loading) {
+    return (
+      <AppShell role="learner" title="Settings">
+        <LoadingState label="Đang tải cài đặt…" />
+      </AppShell>
+    );
+  }
+
+  if (error || !learner) {
+    return (
+      <AppShell role="learner" title="Settings">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="learner" title="Settings">

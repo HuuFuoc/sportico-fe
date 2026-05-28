@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { AuthBackground } from "@/components/auth/AuthBackground";
-import { AuthHero } from "@/components/auth/AuthHero";
+import { AuthVisualPanel } from "@/components/auth/AuthVisualPanel";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -9,16 +9,16 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <AuthBackground />
 
       <div className="relative grid min-h-screen lg:grid-cols-2">
-        {/* LEFT — hero panel, hidden on mobile */}
+        {/* LEFT — storytelling collage, hidden on mobile */}
         <div className="relative hidden lg:block">
-          <AuthHero />
+          <AuthVisualPanel />
         </div>
 
         {/* RIGHT — form panel */}
-        <div className="relative flex min-h-screen items-center justify-center px-5 py-12 sm:px-8">
+        <div className="relative flex min-h-screen items-center justify-center px-5 pb-12 pt-24 sm:px-8 lg:py-12">
           {/* Mobile brand bar */}
           <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 py-5 lg:hidden">
-            <Link href="/" aria-label="Sportico — trang chủ" className="inline-flex">
+            <Link href="/" aria-label="Sportico — home" className="inline-flex">
               <img
                 src="/logo.png"
                 alt="Sportico"
@@ -29,7 +29,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               href="/"
               className="text-[12px] font-medium text-slate-500 hover:text-slate-900"
             >
-              Quay lại trang chủ
+              Back to home
             </Link>
           </div>
 

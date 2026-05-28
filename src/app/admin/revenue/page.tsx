@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { createContext, Fragment, useContext, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Bar,
@@ -53,9 +53,10 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency } from "@/lib/utils";
-import { mockEarnings, mockPayouts } from "@/lib/mock/earnings";
-import { getCoachById } from "@/lib/mock/users";
-import type { Payout } from "@/types";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import type { Coach, EarningPoint, Payout } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -66,27 +67,39 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const PLATFORM_FEE_PCT = 0.15;
 const SCALE = 18.4; // marketplace-wide scale-up
 
-const cashflow = mockEarnings.map((e, i) => {
-  const revenue = Math.round(e.gross * SCALE);
-  const payouts = Math.round(revenue * (1 - PLATFORM_FEE_PCT));
-  const fees = revenue - payouts;
-  // Plant 2 anomalies
-  const anomaly = i === 6 ? "spike" : i === 9 ? "dip" : null;
-  return {
-    month: e.month,
-    revenue,
-    payouts,
-    fees,
-    failedRate: Number((0.6 + Math.sin(i * 1.2) * 0.4 + (i === 10 ? 1.4 : 0)).toFixed(2)),
-    anomaly,
-  };
-});
+type CashflowPoint = {
+  month: string;
+  revenue: number;
+  payouts: number;
+  fees: number;
+  failedRate: number;
+  anomaly: string | null;
+};
 
-const last = cashflow[cashflow.length - 1];
-const prev = cashflow[cashflow.length - 2];
+// Derive marketplace-wide cashflow from the (fetched) coach earnings series.
+function buildCashflow(earnings: EarningPoint[]): CashflowPoint[] {
+  return earnings.map((e, i) => {
+    const revenue = Math.round(e.gross * SCALE);
+    const payouts = Math.round(revenue * (1 - PLATFORM_FEE_PCT));
+    const fees = revenue - payouts;
+    // Plant 2 anomalies
+    const anomaly = i === 6 ? "spike" : i === 9 ? "dip" : null;
+    return {
+      month: e.month,
+      revenue,
+      payouts,
+      fees,
+      failedRate: Number(
+        (0.6 + Math.sin(i * 1.2) * 0.4 + (i === 10 ? 1.4 : 0)).toFixed(2),
+      ),
+      anomaly,
+    };
+  });
+}
 
-const GROSS_VOLUME = last.revenue;
-const NET_REVENUE = last.fees;
+// Page-local coach lookup so the payout table can resolve names without each
+// row fetching (provided by the page, consumed via useContext).
+const CoachLookupContext = createContext<Map<string, Coach>>(new Map());
 const PLATFORM_MARGIN = 15.0;
 const PENDING_LIABILITY = 125_400;
 const FAILED_RATE = 2.4;
@@ -133,6 +146,23 @@ const RANGE_OPTIONS = ["24h", "7d", "30d", "90d", "12m"] as const;
 type Range = (typeof RANGE_OPTIONS)[number];
 
 export default function AdminRevenuePage() {
+  const { data, loading, error, refetch } = useApiResource(
+    () =>
+      Promise.all([
+        api.fetchEarnings(),
+        api.fetchPayouts(),
+        api.fetchCoaches(),
+      ]),
+    [],
+  );
+  const earnings = useMemo(() => data?.[0] ?? [], [data]);
+  const rawPayouts = useMemo(() => data?.[1] ?? [], [data]);
+  const coachById = useMemo(
+    () => new Map((data?.[2] ?? []).map((c) => [c.id, c])),
+    [data],
+  );
+  const cashflow = useMemo(() => buildCashflow(earnings), [earnings]);
+
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("30d");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -145,7 +175,7 @@ export default function AdminRevenuePage() {
   // Enrich payouts
   const payouts = useMemo<EnrichedPayout[]>(
     () =>
-      mockPayouts.map((p, i) => ({
+      rawPayouts.map((p, i) => ({
         ...p,
         rail: (["ACH", "Wire", "Card", "SEPA"] as PayoutRail[])[i % 4],
         country: COUNTRIES[i % COUNTRIES.length],
@@ -160,7 +190,7 @@ export default function AdminRevenuePage() {
               ? 6
               : 0,
       })),
-    [],
+    [rawPayouts],
   );
 
   const filteredPayouts = useMemo(() => {
@@ -175,7 +205,7 @@ export default function AdminRevenuePage() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((p) => {
-        const c = getCoachById(p.coachId);
+        const c = coachById.get(p.coachId);
         return (
           (c?.name ?? "").toLowerCase().includes(q) ||
           p.id.toLowerCase().includes(q) ||
@@ -184,7 +214,7 @@ export default function AdminRevenuePage() {
       });
     }
     return list;
-  }, [payouts, tableFilter, search]);
+  }, [payouts, tableFilter, search, coachById]);
 
   const toggleOne = (id: string) => {
     const next = new Set(selected);
@@ -207,8 +237,30 @@ export default function AdminRevenuePage() {
     filteredPayouts.length > 0 &&
     filteredPayouts.every((p) => selected.has(p.id));
 
+  if (loading) {
+    return (
+      <AppShell role="admin" title="Revenue & Payouts">
+        <LoadingState label="Đang tải dữ liệu doanh thu…" />
+      </AppShell>
+    );
+  }
+
+  if (error || earnings.length === 0) {
+    return (
+      <AppShell role="admin" title="Revenue & Payouts">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
+  const last = cashflow[cashflow.length - 1];
+  const prev = cashflow[cashflow.length - 2] ?? last;
+  const GROSS_VOLUME = last.revenue;
+  const NET_REVENUE = last.fees;
+
   return (
-    <AppShell role="admin" title="Revenue & Payouts">
+    <CoachLookupContext.Provider value={coachById}>
+      <AppShell role="admin" title="Revenue & Payouts">
       <div className="max-w-[1500px] mx-auto pb-24 space-y-4">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -391,7 +443,8 @@ export default function AdminRevenuePage() {
           />
         )}
       </AnimatePresence>
-    </AppShell>
+      </AppShell>
+    </CoachLookupContext.Provider>
   );
 }
 
@@ -538,7 +591,7 @@ function CashflowChart({
   data,
   reduce,
 }: {
-  data: typeof cashflow;
+  data: CashflowPoint[];
   reduce: boolean;
 }) {
   return (
@@ -1084,6 +1137,7 @@ function PayoutTable({
   setExpanded: (id: string | null) => void;
   reduce: boolean;
 }) {
+  const coachById = useContext(CoachLookupContext);
   const FILTERS: { id: typeof filter; label: string; count?: number }[] = [
     { id: "all", label: "All", count: payouts.length },
     {
@@ -1209,7 +1263,7 @@ function PayoutTable({
               </tr>
             )}
             {payouts.map((p, i) => {
-              const coach = getCoachById(p.coachId);
+              const coach = coachById.get(p.coachId);
               const status = STATUS_META[p.status];
               const isSelected = selected.has(p.id);
               const isExpanded = expanded === p.id;

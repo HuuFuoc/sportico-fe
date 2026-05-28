@@ -4,8 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { AIInsightBanner } from "@/components/common/AIInsightBanner";
 import { AIBadge } from "@/components/common/AIBadge";
-import { getSessionById, mockSessions } from "@/lib/mock/sessions";
-import { getCoachById, getLearnerById } from "@/lib/mock/users";
+import { api } from "@/lib/api";
 import { formatCurrency, relativeDay } from "@/lib/utils";
 
 interface PageProps {
@@ -30,15 +29,18 @@ const NOTES_POST = [
 ];
 
 export async function generateStaticParams() {
-  return mockSessions.map((s) => ({ id: s.id }));
+  const sessions = await api.fetchSessions();
+  return sessions.map((s) => ({ id: s.id }));
 }
 
 export default async function SessionDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const session = getSessionById(id);
+  const session = await api.fetchSession(id);
   if (!session) notFound();
-  const coach = getCoachById(session.coachId);
-  const learner = getLearnerById(session.learnerId);
+  const [coach, learner] = await Promise.all([
+    api.fetchCoach(session.coachId),
+    api.fetchLearner(session.learnerId),
+  ]);
   const date = new Date(session.start);
 
   return (

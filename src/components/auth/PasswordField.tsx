@@ -13,7 +13,7 @@ interface PasswordFieldProps
 
 export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
   function PasswordField(
-    { label = "Mật khẩu", error, hint, ...rest },
+    { label = "Password", error, hint, ...rest },
     ref,
   ) {
     const [visible, setVisible] = useState(false);
@@ -31,9 +31,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             type="button"
             onClick={() => setVisible((v) => !v)}
             tabIndex={-1}
-            aria-label={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            aria-label={visible ? "Hide password" : "Show password"}
             aria-pressed={visible}
-            className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white"
+            className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
           >
             {visible ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>

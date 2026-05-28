@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { AnimatedNumber } from "@/components/landing/AnimatedNumber";
@@ -8,10 +9,8 @@ import { ProgressRing } from "@/components/dashboard/ProgressRing";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
 import { AICoachCard } from "@/components/dashboard/AICoachCard";
-import { getLearnerById, getCoaches, getCoachById } from "@/lib/mock/users";
-import { getUpcomingSessions } from "@/lib/mock/sessions";
-import { getLearnerWellness, activityHeatmap } from "@/lib/mock/wellness";
-import { getProgressTrend } from "@/lib/mock/analytics";
+import { api } from "@/lib/api";
+import { devUserIdForRole } from "@/lib/auth";
 import { cn, relativeDay } from "@/lib/utils";
 
 const SESSION_ACCENT: Record<string, string> = {
@@ -20,15 +19,27 @@ const SESSION_ACCENT: Record<string, string> = {
   "AI-Guided": "bg-violet-100 text-violet-700",
 };
 
-export default function LearnerDashboardPage() {
-  const learner = getLearnerById("learner-1")!;
-  const wellness = getLearnerWellness();
-  const coaches = getCoaches()
-    .slice()
+export default async function LearnerDashboardPage() {
+  // TODO(auth): hard-coded current learner until real session auth lands.
+  const learnerId = devUserIdForRole("learner");
+  const [learner, wellness, allCoaches, upcomingAll, trendData, heatmap] =
+    await Promise.all([
+      api.fetchLearner(learnerId),
+      api.fetchWellness(learnerId),
+      api.fetchCoaches(),
+      api.fetchUpcoming({ learnerId }),
+      api.fetchProgressTrend(),
+      api.fetchActivityHeatmap(learnerId),
+    ]);
+
+  if (!learner) notFound();
+
+  const coaches = [...allCoaches]
     .sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0))
     .slice(0, 3);
-  const upcoming = getUpcomingSessions({ learnerId: learner.id }).slice(0, 3);
-  const trend = getProgressTrend().map((p) => p.score);
+  const coachById = new Map(allCoaches.map((c) => [c.id, c]));
+  const upcoming = upcomingAll.slice(0, 3);
+  const trend = trendData.map((p) => p.score);
 
   const weekMinutes = wellness.weeklyTraining.reduce((a, b) => a + b, 0);
 
@@ -287,7 +298,7 @@ export default function LearnerDashboardPage() {
                 </span>
               </div>
               <div className="mt-5 flex flex-1 items-center">
-                <ActivityHeatmap weeks={activityHeatmap} />
+                <ActivityHeatmap weeks={heatmap} />
               </div>
             </div>
           </div>
@@ -371,7 +382,7 @@ export default function LearnerDashboardPage() {
           ) : (
             <ul className="divide-y divide-[var(--color-border-soft)]">
               {upcoming.map((s) => {
-                const coach = getCoachById(s.coachId);
+                const coach = coachById.get(s.coachId);
                 const d = new Date(s.start);
                 const time = d.toLocaleTimeString("en-US", {
                   hour: "numeric",

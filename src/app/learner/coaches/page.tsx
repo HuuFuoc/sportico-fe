@@ -5,7 +5,10 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn, formatCurrency } from "@/lib/utils";
-import { mockCoaches, AVAILABLE_SPORTS } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { AVAILABLE_SPORTS } from "@/lib/constants";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Coach, Sport } from "@/types";
 
 const PRICE_FILTERS = [
@@ -25,6 +28,14 @@ const SORTS = [
 type SortKey = (typeof SORTS)[number]["key"];
 
 export default function BrowseCoachesPage() {
+  const {
+    data: coachesData,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchCoaches(), []);
+  const allCoaches = useMemo(() => coachesData ?? [], [coachesData]);
+
   const [query, setQuery] = useState("");
   const [sport, setSport] = useState<Sport | "All">("All");
   const [priceIdx, setPriceIdx] = useState(0);
@@ -33,15 +44,15 @@ export default function BrowseCoachesPage() {
 
   const topMatch = useMemo(
     () =>
-      [...mockCoaches].sort(
+      [...allCoaches].sort(
         (a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0),
       )[0],
-    [],
+    [allCoaches],
   );
 
   const coaches = useMemo(() => {
     const price = PRICE_FILTERS[priceIdx];
-    return mockCoaches
+    return allCoaches
       .filter((c) => {
         if (query) {
           const q = query.toLowerCase();
@@ -69,7 +80,7 @@ export default function BrowseCoachesPage() {
             return (b.matchPercent ?? 0) - (a.matchPercent ?? 0);
         }
       });
-  }, [query, sport, priceIdx, topRated, sortKey]);
+  }, [allCoaches, query, sport, priceIdx, topRated, sortKey]);
 
   const filtersActive =
     query !== "" || sport !== "All" || priceIdx !== 0 || topRated;
@@ -81,6 +92,22 @@ export default function BrowseCoachesPage() {
     setTopRated(false);
   };
 
+  if (loading) {
+    return (
+      <AppShell role="learner" title="Find Coaches">
+        <LoadingState label="Đang tải danh sách huấn luyện viên…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="learner" title="Find Coaches">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell role="learner" title="Find Coaches">
       <div className="mx-auto max-w-[1200px] space-y-7 pb-6">
@@ -90,7 +117,7 @@ export default function BrowseCoachesPage() {
             Find your coach
           </h1>
           <p className="mt-1.5 text-[15px] text-on-surface-variant">
-            {mockCoaches.length} verified coaches across{" "}
+            {allCoaches.length} verified coaches across{" "}
             {AVAILABLE_SPORTS.length} disciplines — curated and ranked for you.
           </p>
         </header>
@@ -140,41 +167,43 @@ export default function BrowseCoachesPage() {
             </div>
 
             {/* Top match preview */}
-            <div className="w-full shrink-0 rounded-[16px] border border-white/15 bg-white/10 p-4 backdrop-blur-xl lg:w-[290px]">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/65">
-                <MaterialIcon name="emoji_events" filled size={13} />
-                Your top match today
-              </p>
-              <div className="mt-3 flex items-center gap-3">
-                <img
-                  src={topMatch.avatarUrl}
-                  alt={topMatch.name}
-                  className="h-12 w-12 rounded-[12px] object-cover ring-2 ring-white/20"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold text-white">
-                    {topMatch.name}
-                  </p>
-                  <p className="truncate text-[12px] text-white/65">
-                    {topMatch.headline}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3.5">
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-white/65">Compatibility</span>
-                  <span className="font-semibold text-white">
-                    {topMatch.matchPercent}%
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-                  <div
-                    className="h-full rounded-full bg-white"
-                    style={{ width: `${topMatch.matchPercent}%` }}
+            {topMatch && (
+              <div className="w-full shrink-0 rounded-[16px] border border-white/15 bg-white/10 p-4 backdrop-blur-xl lg:w-[290px]">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/65">
+                  <MaterialIcon name="emoji_events" filled size={13} />
+                  Your top match today
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={topMatch.avatarUrl}
+                    alt={topMatch.name}
+                    className="h-12 w-12 rounded-[12px] object-cover ring-2 ring-white/20"
                   />
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-semibold text-white">
+                      {topMatch.name}
+                    </p>
+                    <p className="truncate text-[12px] text-white/65">
+                      {topMatch.headline}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3.5">
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-white/65">Compatibility</span>
+                    <span className="font-semibold text-white">
+                      {topMatch.matchPercent}%
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
+                    <div
+                      className="h-full rounded-full bg-white"
+                      style={{ width: `${topMatch.matchPercent}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
 

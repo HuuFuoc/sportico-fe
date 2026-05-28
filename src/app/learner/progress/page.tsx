@@ -38,11 +38,10 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn } from "@/lib/utils";
-import {
-  getProgressMetricsForLearner,
-  getProgressTrend,
-} from "@/lib/mock/analytics";
-import { getLearnerById } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -124,9 +123,21 @@ function sparkline(seed: number, base: number, jitter: number) {
 }
 
 export default function LearnerProgressPage() {
-  const learner = getLearnerById("learner-1")!;
-  const metrics = getProgressMetricsForLearner(learner.id);
-  const trend = getProgressTrend();
+  // TODO(auth): hard-coded current learner until real session auth lands.
+  const learnerId = devUserIdForRole("learner");
+  const { data, loading, error, refetch } = useApiResource(
+    () =>
+      Promise.all([
+        api.fetchLearner(learnerId),
+        api.fetchProgressMetrics(learnerId),
+        api.fetchProgressTrend(),
+      ]),
+    [learnerId],
+  );
+  const learner = data?.[0];
+  const metrics = useMemo(() => data?.[1] ?? [], [data]);
+  const trend = useMemo(() => data?.[2] ?? [], [data]);
+
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("3M");
   const [hoveredWeek, setHoveredWeek] = useState<string | null>(null);
@@ -156,6 +167,22 @@ export default function LearnerProgressPage() {
     (s, a) => s + a.xp,
     0,
   );
+
+  if (loading) {
+    return (
+      <AppShell role="learner" title="My Progress">
+        <LoadingState label="Đang tải tiến độ…" />
+      </AppShell>
+    );
+  }
+
+  if (error || !learner) {
+    return (
+      <AppShell role="learner" title="My Progress">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="learner" title="My Progress">

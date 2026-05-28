@@ -42,7 +42,9 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatNumber } from "@/lib/utils";
-import { mockCoaches, mockLearners } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -98,6 +100,13 @@ function seedSpark(seed: number, base: number, jitter: number, len = 8) {
 }
 
 export default function AdminUsersPage() {
+  const { data, loading, error, refetch } = useApiResource(
+    () => Promise.all([api.fetchLearners(), api.fetchCoaches()]),
+    [],
+  );
+  const learnersData = useMemo(() => data?.[0] ?? [], [data]);
+  const coachesData = useMemo(() => data?.[1] ?? [], [data]);
+
   const reduce = useReducedMotion();
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
@@ -112,7 +121,7 @@ export default function AdminUsersPage() {
 
   // Build deterministic rows once
   const allRows: Row[] = useMemo(() => {
-    const learners: Row[] = mockLearners.map((l, i) => ({
+    const learners: Row[] = learnersData.map((l, i) => ({
       id: l.id,
       name: l.name,
       avatar: l.avatarUrl,
@@ -130,7 +139,7 @@ export default function AdminUsersPage() {
               ? "active"
               : "inactive",
     }));
-    const coaches: Row[] = mockCoaches.map((c, i) => ({
+    const coaches: Row[] = coachesData.map((c, i) => ({
       id: c.id,
       name: c.name,
       avatar: c.avatarUrl,
@@ -147,7 +156,7 @@ export default function AdminUsersPage() {
           : "inactive",
     }));
     return [...learners, ...coaches];
-  }, []);
+  }, [learnersData, coachesData]);
 
   // Apply tab + role + status + search
   const filtered = useMemo(() => {
@@ -225,6 +234,22 @@ export default function AdminUsersPage() {
       setSortDir("asc");
     }
   };
+
+  if (loading) {
+    return (
+      <AppShell role="admin" title="User Management">
+        <LoadingState label="Đang tải người dùng…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="admin" title="User Management">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="admin" title="User Management">
@@ -332,12 +357,12 @@ export default function AdminUsersPage() {
                       {
                         id: "learners" as Tab,
                         label: "Learners",
-                        count: mockLearners.length,
+                        count: learnersData.length,
                       },
                       {
                         id: "coaches" as Tab,
                         label: "Coaches",
-                        count: mockCoaches.length,
+                        count: coachesData.length,
                       },
                     ]
                   ).map((t) => (

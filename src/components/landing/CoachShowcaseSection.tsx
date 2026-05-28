@@ -17,7 +17,9 @@ import {
   Star,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
-import { getCoaches } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import type { Coach } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as Easing;
 
@@ -37,7 +39,8 @@ export function CoachShowcaseSection() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
 
-  const coaches = useMemo(() => getCoaches().slice(0, 3), []);
+  const { data: coachesData } = useApiResource(() => api.fetchCoaches(), []);
+  const coaches = useMemo(() => (coachesData ?? []).slice(0, 3), [coachesData]);
 
   return (
     <section
@@ -224,7 +227,7 @@ function CoachCard({
   reduce,
   delay,
 }: {
-  coach: ReturnType<typeof getCoaches>[number];
+  coach: Coach;
   featured?: boolean;
   inView: boolean;
   reduce: boolean;

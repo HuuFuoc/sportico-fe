@@ -22,11 +22,10 @@ import {
   Zap,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
-import {
-  getMessagesForThread,
-  getThreadsForUser,
-} from "@/lib/mock/messages";
-import { getUserById } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import type { AnyUser, Message } from "@/types";
 
 interface MessagesViewProps {
   userId: string;
@@ -44,14 +43,58 @@ const AI_SUGGESTIONS = [
 ];
 
 export function MessagesView({ userId }: MessagesViewProps) {
-  const threads = getThreadsForUser(userId);
-  const [activeId, setActiveId] = useState(threads[0]?.id ?? "");
+  const {
+    data: threadsData,
+    loading: threadsLoading,
+    error: threadsError,
+    refetch: refetchThreads,
+  } = useApiResource(() => api.fetchThreads(userId), [userId]);
+  const threads = useMemo(() => threadsData ?? [], [threadsData]);
+
+  const [activeId, setActiveId] = useState("");
   const [composer, setComposer] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
   const [query, setQuery] = useState("");
   const [isAITyping, setIsAITyping] = useState(false);
   const reduce = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Resolve participant users. No batch endpoint yet, so fetch each once and
+  // cache in a map; keyed on a stable string so it only re-runs when ids change.
+  const otherIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of threads) {
+      if (t.isAI) continue;
+      const oid = t.participantIds.find((id) => id !== userId);
+      if (oid) ids.add(oid);
+    }
+    return Array.from(ids).sort();
+  }, [threads, userId]);
+
+  const { data: usersData } = useApiResource(
+    () => Promise.all(otherIds.map((id) => api.fetchUser(id))),
+    [otherIds.join(",")],
+  );
+  const userById = useMemo(() => {
+    const map = new Map<string, AnyUser>();
+    for (const u of usersData ?? []) if (u) map.set(u.id, u);
+    return map;
+  }, [usersData]);
+
+  // Select the first thread once threads load (or if the active one disappears).
+  useEffect(() => {
+    if (threads.length === 0) return;
+    setActiveId((cur) =>
+      cur && threads.some((t) => t.id === cur) ? cur : threads[0].id,
+    );
+  }, [threads]);
+
+  const { data: messagesData } = useApiResource(
+    () =>
+      activeId ? api.fetchMessages(activeId) : Promise.resolve<Message[]>([]),
+    [activeId],
+  );
+  const messages = useMemo(() => messagesData ?? [], [messagesData]);
 
   const filteredThreads = useMemo(() => {
     let list = threads;
@@ -61,7 +104,7 @@ export function MessagesView({ userId }: MessagesViewProps) {
       const q = query.toLowerCase();
       list = list.filter((t) => {
         const oid = t.participantIds.find((id) => id !== userId) ?? "";
-        const usr = t.isAI ? null : getUserById(oid);
+        const usr = t.isAI ? null : userById.get(oid);
         const name = t.isAI ? "ask ai" : (usr?.name ?? "").toLowerCase();
         return (
           name.includes(q) || t.lastMessagePreview.toLowerCase().includes(q)
@@ -69,22 +112,18 @@ export function MessagesView({ userId }: MessagesViewProps) {
       });
     }
     return list;
-  }, [threads, filter, query, userId]);
+  }, [threads, filter, query, userId, userById]);
 
-  const messages = useMemo(
-    () => (activeId ? getMessagesForThread(activeId) : []),
-    [activeId],
-  );
   const active = threads.find((t) => t.id === activeId);
   const otherId = active?.participantIds.find((id) => id !== userId) ?? "";
-  const other = active?.isAI ? null : getUserById(otherId);
+  const other = active?.isAI ? null : (userById.get(otherId) ?? null);
 
-  // Auto-scroll to bottom when conversation changes or typing
+  // Auto-scroll to bottom when conversation changes, messages load, or typing.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [activeId, isAITyping]);
+  }, [activeId, isAITyping, messages]);
 
   const handleSend = () => {
     if (!composer.trim()) return;
@@ -96,6 +135,26 @@ export function MessagesView({ userId }: MessagesViewProps) {
   };
 
   const unreadTotal = threads.reduce((sum, t) => sum + t.unreadCount, 0);
+
+  if (threadsLoading) {
+    return (
+      <div className="h-[calc(100vh-7rem)] flex items-center justify-center rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
+        <LoadingState label="Đang tải tin nhắn…" />
+      </div>
+    );
+  }
+
+  if (threadsError) {
+    return (
+      <div className="h-[calc(100vh-7rem)] flex items-center justify-center">
+        <ErrorState
+          title="Không tải được tin nhắn"
+          onRetry={refetchThreads}
+          className="max-w-md"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-5 h-[calc(100vh-7rem)]">
@@ -187,7 +246,7 @@ export function MessagesView({ userId }: MessagesViewProps) {
           <div className="space-y-0.5">
             {filteredThreads.map((t) => {
               const oid = t.participantIds.find((id) => id !== userId) ?? "";
-              const usr = t.isAI ? null : getUserById(oid);
+              const usr = t.isAI ? null : userById.get(oid);
               const isActive = t.id === activeId;
               const name = t.isAI ? "Sportico AI" : (usr?.name ?? "Unknown");
               return (
@@ -499,9 +558,9 @@ function MessageList({
   other,
   reduce,
 }: {
-  messages: ReturnType<typeof getMessagesForThread>;
+  messages: Message[];
   userId: string;
-  other: ReturnType<typeof getUserById> | null;
+  other: AnyUser | null;
   reduce: boolean;
 }) {
   return (

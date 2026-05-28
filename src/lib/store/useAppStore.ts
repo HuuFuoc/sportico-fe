@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { DEV_USER_IDS } from "@/lib/auth";
 
 export type AppRole = "learner" | "coach" | "admin";
 
@@ -17,19 +18,15 @@ interface AppState {
   setMobileSidebarOpen: (open: boolean) => void;
 }
 
-const DEFAULT_USER_BY_ROLE: Record<AppRole, string> = {
-  learner: "learner-1",
-  coach: "coach-1",
-  admin: "admin-1",
-};
-
+// TODO(auth): `currentUserId` is seeded from hard-coded demo ids. Centralized
+// in `@/lib/auth`; replace with the authenticated session user when auth lands.
 export const useAppStore = create<AppState>((set) => ({
   currentRole: "learner",
-  currentUserId: DEFAULT_USER_BY_ROLE.learner,
+  currentUserId: DEV_USER_IDS.learner,
   sidebarCollapsed: false,
   mobileSidebarOpen: false,
   setRole: (role) =>
-    set({ currentRole: role, currentUserId: DEFAULT_USER_BY_ROLE[role] }),
+    set({ currentRole: role, currentUserId: DEV_USER_IDS[role] }),
   setCurrentUserId: (id) => set({ currentUserId: id }),
   toggleSidebar: () =>
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),

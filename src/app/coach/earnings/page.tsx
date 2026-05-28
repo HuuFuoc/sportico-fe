@@ -48,9 +48,11 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency } from "@/lib/utils";
-import { mockEarnings, mockPayouts } from "@/lib/mock/earnings";
-import { getCoachById } from "@/lib/mock/users";
-import type { Payout } from "@/types";
+import { api } from "@/lib/api";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import type { EarningPoint, Payout } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const RANGE_OPTIONS = ["3M", "6M", "1Y", "All"] as const;
@@ -94,7 +96,21 @@ const STATUS_META: Record<
 };
 
 export default function CoachEarningsPage() {
-  const coach = getCoachById("coach-1")!;
+  // TODO(auth): hard-coded current coach until real session auth lands.
+  const coachId = devUserIdForRole("coach");
+  const { data, loading, error, refetch } = useApiResource(
+    () =>
+      Promise.all([
+        api.fetchEarnings(),
+        api.fetchPayouts(),
+        api.fetchCoach(coachId),
+      ]),
+    [coachId],
+  );
+  const earnings = useMemo(() => data?.[0] ?? [], [data]);
+  const payouts = useMemo(() => data?.[1] ?? [], [data]);
+  const coach = data?.[2];
+
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("1Y");
   const [search, setSearch] = useState("");
@@ -103,39 +119,18 @@ export default function CoachEarningsPage() {
   );
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
 
-  const last = mockEarnings[mockEarnings.length - 1];
-  const prev = mockEarnings[mockEarnings.length - 2];
-  const total = mockEarnings.reduce((s, x) => s + x.gross, 0);
-  const myPayouts = mockPayouts.filter((p) => p.coachId === coach.id);
-  const pendingTotal = myPayouts
-    .filter((p) => p.status !== "paid")
-    .reduce((s, p) => s + p.amount, 0);
-
-  const deltaPct = Math.round(((last.gross - prev.gross) / prev.gross) * 100);
-
   // Range-filtered earnings
   const rangedEarnings = useMemo(() => {
-    const len = mockEarnings.length;
-    if (range === "3M") return mockEarnings.slice(-3);
-    if (range === "6M") return mockEarnings.slice(-6);
-    if (range === "1Y") return mockEarnings.slice(-12);
-    return mockEarnings.slice(-len);
-  }, [range]);
-
-  // Revenue breakdown
-  const grossThisMonth = last.gross;
-  const platformFee = Math.round(grossThisMonth * 0.15);
-  const refunds = Math.round(grossThisMonth * 0.03);
-  const netPayout = grossThisMonth - platformFee - refunds;
-  const breakdown = [
-    { name: "Net payout", value: netPayout, color: "#10b981" },
-    { name: "Platform fee", value: platformFee, color: "#4f46e5" },
-    { name: "Refunds", value: refunds, color: "#f59e0b" },
-  ];
+    const len = earnings.length;
+    if (range === "3M") return earnings.slice(-3);
+    if (range === "6M") return earnings.slice(-6);
+    if (range === "1Y") return earnings.slice(-12);
+    return earnings.slice(-len);
+  }, [range, earnings]);
 
   // Filtered payouts list
   const filteredPayouts = useMemo(() => {
-    return mockPayouts.filter((p) => {
+    return payouts.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -147,7 +142,47 @@ export default function CoachEarningsPage() {
       }
       return true;
     });
-  }, [search, statusFilter]);
+  }, [search, statusFilter, payouts]);
+
+  if (loading) {
+    return (
+      <AppShell role="coach" title="Earnings">
+        <LoadingState label="Đang tải dữ liệu thu nhập…" />
+      </AppShell>
+    );
+  }
+
+  if (error || !coach || earnings.length === 0) {
+    return (
+      <AppShell role="coach" title="Earnings">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
+  const last = earnings[earnings.length - 1];
+  const prev = earnings[earnings.length - 2] ?? last;
+  const total = earnings.reduce((s, x) => s + x.gross, 0);
+  const myPayouts = payouts.filter((p) => p.coachId === coach.id);
+  const pendingTotal = myPayouts
+    .filter((p) => p.status !== "paid")
+    .reduce((s, p) => s + p.amount, 0);
+
+  const deltaPct =
+    prev.gross > 0
+      ? Math.round(((last.gross - prev.gross) / prev.gross) * 100)
+      : 0;
+
+  // Revenue breakdown
+  const grossThisMonth = last.gross;
+  const platformFee = Math.round(grossThisMonth * 0.15);
+  const refunds = Math.round(grossThisMonth * 0.03);
+  const netPayout = grossThisMonth - platformFee - refunds;
+  const breakdown = [
+    { name: "Net payout", value: netPayout, color: "#10b981" },
+    { name: "Platform fee", value: platformFee, color: "#4f46e5" },
+    { name: "Refunds", value: refunds, color: "#f59e0b" },
+  ];
 
   return (
     <AppShell role="coach" title="Earnings">
@@ -197,6 +232,7 @@ export default function CoachEarningsPage() {
         <HeroEarnings
           value={last.gross}
           deltaPct={deltaPct}
+          trend={earnings.slice(-6)}
           reduce={reduce ?? false}
         />
 
@@ -483,10 +519,12 @@ export default function CoachEarningsPage() {
 function HeroEarnings({
   value,
   deltaPct,
+  trend,
   reduce,
 }: {
   value: number;
   deltaPct: number;
+  trend: EarningPoint[];
   reduce: boolean;
 }) {
   const up = deltaPct >= 0;
@@ -554,7 +592,7 @@ function HeroEarnings({
           <ClientOnly fallback={<div className="h-full" />}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={mockEarnings.slice(-6)}
+                data={trend}
                 margin={{ left: 0, right: 0, top: 8, bottom: 0 }}
               >
                 <defs>
@@ -826,7 +864,7 @@ function SessionsCard({
   data,
   reduce,
 }: {
-  data: typeof mockEarnings;
+  data: EarningPoint[];
   reduce: boolean;
 }) {
   const max = Math.max(...data.map((d) => d.sessions));

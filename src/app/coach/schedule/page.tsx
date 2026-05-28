@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -36,10 +36,21 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency, initials, localDateKey } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+// NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
+// TODO(api): once the backend returns real timestamps, use `new Date()` here.
 import { NOW } from "@/lib/mock/clock";
-import { getSessionsForCoach } from "@/lib/mock/sessions";
-import { getLearnerById } from "@/lib/mock/users";
-import type { Session } from "@/types";
+import type { Learner, Session } from "@/types";
+
+// Page-local learner lookup so calendar blocks and rows can resolve a session's
+// learner without each one fetching (or importing mock data) individually.
+const LearnerLookupContext = createContext<Map<string, Learner>>(new Map());
+function useLearner(id: string): Learner | undefined {
+  return useContext(LearnerLookupContext).get(id);
+}
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -68,8 +79,23 @@ function seedSpark(seed: number, base: number, jitter: number, len = 8) {
 }
 
 export default function CoachSchedulePage() {
-  const coachId = "coach-1";
-  const sessions = getSessionsForCoach(coachId);
+  // TODO(auth): hard-coded current coach until real session auth lands.
+  const coachId = devUserIdForRole("coach");
+  const {
+    data: sessionsData,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchSessionsForCoach(coachId), [coachId]);
+  const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
+
+  // Learner lookup map (single fetch) provided to calendar blocks via context.
+  const { data: learnersData } = useApiResource(() => api.fetchLearners(), []);
+  const learnerById = useMemo(
+    () => new Map((learnersData ?? []).map((l) => [l.id, l])),
+    [learnersData],
+  );
+
   const reduce = useReducedMotion();
 
   const [view, setView] = useState<View>("Week");
@@ -181,9 +207,26 @@ export default function CoachSchedulePage() {
     day: "numeric",
   })}`;
 
+  if (loading) {
+    return (
+      <AppShell role="coach" title="Schedule">
+        <LoadingState label="Đang tải lịch…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="coach" title="Schedule">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell role="coach" title="Schedule">
-      <div className="max-w-[1400px] mx-auto space-y-6">
+    <LearnerLookupContext.Provider value={learnerById}>
+      <AppShell role="coach" title="Schedule">
+        <div className="max-w-[1400px] mx-auto space-y-6">
         {/* ============ HEADER ============ */}
         <motion.header
           initial={{ opacity: 0, y: 10 }}
@@ -550,7 +593,8 @@ export default function CoachSchedulePage() {
           </aside>
         </div>
       </div>
-    </AppShell>
+      </AppShell>
+    </LearnerLookupContext.Provider>
   );
 }
 
@@ -701,6 +745,7 @@ function PendingConfirmations({
   pending: Session[];
   reduce: boolean;
 }) {
+  const learnerById = useContext(LearnerLookupContext);
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -729,7 +774,7 @@ function PendingConfirmations({
 
         <ul className="space-y-2">
           {pending.map((s) => {
-            const learner = getLearnerById(s.learnerId);
+            const learner = learnerById.get(s.learnerId);
             return (
               <li
                 key={s.id}
@@ -814,6 +859,7 @@ function SessionBlock({
   delay: number;
   reduce: boolean;
 }) {
+  const learner = useLearner(session.learnerId);
   const start = new Date(session.start);
   const hour = start.getHours();
   const minute = start.getMinutes();
@@ -826,7 +872,6 @@ function SessionBlock({
     36,
     (session.durationMinutes / 60) * HOUR_HEIGHT - 2,
   );
-  const learner = getLearnerById(session.learnerId);
   const a = sessionAccent(session.type);
   const time = start.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -910,7 +955,7 @@ function SessionBlock({
 }
 
 function MobileSessionCard({ session }: { session: Session }) {
-  const learner = getLearnerById(session.learnerId);
+  const learner = useLearner(session.learnerId);
   const a = sessionAccent(session.type);
   const start = new Date(session.start);
   const time = start.toLocaleTimeString("en-US", {
@@ -1157,7 +1202,7 @@ function TodayRow({
   delay: number;
   reduce: boolean;
 }) {
-  const learner = getLearnerById(session.learnerId);
+  const learner = useLearner(session.learnerId);
   const time = new Date(session.start).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -1310,7 +1355,7 @@ function UpcomingRow({
   delay: number;
   reduce: boolean;
 }) {
-  const learner = getLearnerById(session.learnerId);
+  const learner = useLearner(session.learnerId);
   const date = new Date(session.start);
   const isToday = date.toDateString() === NOW.toDateString();
   const time = date.toLocaleTimeString("en-US", {

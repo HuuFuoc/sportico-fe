@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { AIBadge } from "@/components/common/AIBadge";
-import { getCoachById, mockCoaches } from "@/lib/mock/users";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
 interface PageProps {
@@ -62,12 +62,13 @@ const PRICING = [
 ];
 
 export async function generateStaticParams() {
-  return mockCoaches.map((c) => ({ id: c.id }));
+  const coaches = await api.fetchCoaches();
+  return coaches.map((c) => ({ id: c.id }));
 }
 
 export default async function CoachProfilePage({ params }: PageProps) {
   const { id } = await params;
-  const coach = getCoachById(id);
+  const coach = await api.fetchCoach(id);
   if (!coach) notFound();
 
   return (

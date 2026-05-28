@@ -40,8 +40,12 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
-import { getCoachById, getLearnerById, mockLearners } from "@/lib/mock/users";
-import { getUpcomingSessions } from "@/lib/mock/sessions";
+import { api } from "@/lib/api";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+// NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
+// TODO(api): once the backend returns real timestamps, use `new Date()` here.
 import { NOW } from "@/lib/mock/clock";
 import { cn, formatCurrency, initials } from "@/lib/utils";
 import type { Session, Learner } from "@/types";
@@ -84,26 +88,56 @@ const ENGAGEMENT_SEGMENTS = [
 ];
 
 export default function CoachDashboardPage() {
-  const coach = getCoachById("coach-1")!;
+  // TODO(auth): hard-coded current coach until real session auth lands.
+  const coachId = devUserIdForRole("coach");
+  const { data, loading, error, refetch } = useApiResource(
+    () =>
+      Promise.all([
+        api.fetchCoach(coachId),
+        api.fetchUpcoming({ coachId }),
+        api.fetchLearners(),
+      ]),
+    [coachId],
+  );
+  const coach = data?.[0];
+  const upcomingAll = useMemo(() => data?.[1] ?? [], [data]);
+  const learners = useMemo(() => data?.[2] ?? [], [data]);
+  const learnerById = useMemo(
+    () => new Map(learners.map((l) => [l.id, l])),
+    [learners],
+  );
   const reduce = useReducedMotion();
 
-  const upcoming = useMemo(
-    () => getUpcomingSessions({ coachId: coach.id }).slice(0, 5),
-    [coach.id],
-  );
+  const upcoming = useMemo(() => upcomingAll.slice(0, 5), [upcomingAll]);
   const todaySessions = useMemo(
     () =>
-      getUpcomingSessions({ coachId: coach.id }).filter(
+      upcomingAll.filter(
         (s) => new Date(s.start).toDateString() === NOW.toDateString(),
       ),
-    [coach.id],
+    [upcomingAll],
   );
-  const recentLearners = mockLearners.slice(0, 5);
+  const recentLearners = useMemo(() => learners.slice(0, 5), [learners]);
 
   const followUpCount = 3;
   const hour = new Date(NOW).getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  if (loading) {
+    return (
+      <AppShell role="coach" title="Dashboard">
+        <LoadingState label="Đang tải bảng điều khiển…" />
+      </AppShell>
+    );
+  }
+
+  if (error || !coach) {
+    return (
+      <AppShell role="coach" title="Dashboard">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="coach" title="Dashboard">
@@ -205,6 +239,7 @@ export default function CoachDashboardPage() {
             {/* Today's schedule */}
             <TodaySchedule
               sessions={todaySessions}
+              learnerById={learnerById}
               reduce={reduce ?? false}
             />
 
@@ -218,7 +253,11 @@ export default function CoachDashboardPage() {
               inactiveCount={followUpCount}
               reduce={reduce ?? false}
             />
-            <UpcomingSessions sessions={upcoming} reduce={reduce ?? false} />
+            <UpcomingSessions
+              sessions={upcoming}
+              learnerById={learnerById}
+              reduce={reduce ?? false}
+            />
             <QuickActions reduce={reduce ?? false} />
           </aside>
         </div>
@@ -703,9 +742,11 @@ function EngagementDonut({ reduce }: { reduce: boolean }) {
 
 function TodaySchedule({
   sessions,
+  learnerById,
   reduce,
 }: {
   sessions: Session[];
+  learnerById: Map<string, Learner>;
   reduce: boolean;
 }) {
   return (
@@ -745,6 +786,7 @@ function TodaySchedule({
               <TodayRow
                 key={s.id}
                 session={s}
+                learner={learnerById.get(s.learnerId)}
                 delay={i * 0.06}
                 reduce={reduce}
               />
@@ -789,14 +831,15 @@ function CompactEmptyToday() {
 
 function TodayRow({
   session,
+  learner,
   delay,
   reduce,
 }: {
   session: Session;
+  learner?: Learner;
   delay: number;
   reduce: boolean;
 }) {
-  const learner = getLearnerById(session.learnerId);
   const time = new Date(session.start).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -1101,9 +1144,11 @@ function AICoachCard({
 
 function UpcomingSessions({
   sessions,
+  learnerById,
   reduce,
 }: {
   sessions: Session[];
+  learnerById: Map<string, Learner>;
   reduce: boolean;
 }) {
   return (
@@ -1138,6 +1183,7 @@ function UpcomingSessions({
             <UpcomingRow
               key={s.id}
               session={s}
+              learner={learnerById.get(s.learnerId)}
               delay={i * 0.05}
               reduce={reduce}
             />
@@ -1150,14 +1196,15 @@ function UpcomingSessions({
 
 function UpcomingRow({
   session,
+  learner,
   delay,
   reduce,
 }: {
   session: Session;
+  learner?: Learner;
   delay: number;
   reduce: boolean;
 }) {
-  const learner = getLearnerById(session.learnerId);
   const date = new Date(session.start);
   const isToday = date.toDateString() === NOW.toDateString();
   const time = date.toLocaleTimeString("en-US", {

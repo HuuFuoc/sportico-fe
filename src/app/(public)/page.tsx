@@ -6,10 +6,10 @@ import { CoachShowcaseSection } from "@/components/landing/CoachShowcaseSection"
 import { ProductPreviewSection } from "@/components/landing/ProductPreviewSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
-import { getCoaches } from "@/lib/mock/users";
+import { api } from "@/lib/api";
 
-export default function LandingPage() {
-  const coaches = getCoaches();
+export default async function LandingPage() {
+  const coaches = await api.fetchCoaches();
   const heroCoach = coaches[0];
 
   return (

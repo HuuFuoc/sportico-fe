@@ -3,17 +3,22 @@
 import { useState } from "react";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
-import {
-  getMessagesForThread,
-  getThreadsForUser,
-} from "@/lib/mock/messages";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
 import { useAppStore } from "@/lib/store/useAppStore";
 
 export function AskAIPanel({ className }: { className?: string }) {
   const userId = useAppStore((s) => s.currentUserId);
-  const threads = getThreadsForUser(userId);
-  const aiThread = threads.find((t) => t.isAI);
-  const messages = aiThread ? getMessagesForThread(aiThread.id) : [];
+  const { data: threadsData } = useApiResource(
+    () => api.fetchThreads(userId),
+    [userId],
+  );
+  const aiThread = (threadsData ?? []).find((t) => t.isAI);
+  const { data: messagesData } = useApiResource(
+    () => (aiThread ? api.fetchMessages(aiThread.id) : Promise.resolve([])),
+    [aiThread?.id],
+  );
+  const messages = messagesData ?? [];
   const [input, setInput] = useState("");
 
   return (

@@ -39,9 +39,10 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, relativeDay } from "@/lib/utils";
-import { mockVerifications } from "@/lib/mock/insights";
-import { getCoachById } from "@/lib/mock/users";
-import type { VerificationRequest } from "@/types";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import type { Coach, VerificationRequest } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -94,12 +95,21 @@ function deterministicRisk(i: number): Risk {
 }
 
 export default function VerificationsPage() {
+  const { data, loading, error, refetch } = useApiResource(
+    () => Promise.all([api.fetchVerifications(), api.fetchCoaches()]),
+    [],
+  );
+  const verificationsData = useMemo(() => data?.[0] ?? [], [data]);
+  const coachById = useMemo(
+    () => new Map((data?.[1] ?? []).map((c) => [c.id, c])),
+    [data],
+  );
+
   const reduce = useReducedMotion();
   const [filter, setFilter] = useState<Filter>("pending");
   const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState<string>(
-    mockVerifications[0]?.id ?? "",
-  );
+  // Empty initial id is fine — `active` below falls back to the first item.
+  const [activeId, setActiveId] = useState<string>("");
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -107,14 +117,14 @@ export default function VerificationsPage() {
   // Enrich verifications with synthetic risk + trust score
   const enriched = useMemo<EnrichedVerification[]>(
     () =>
-      mockVerifications.map((v, i) => {
+      verificationsData.map((v, i) => {
         const risk = deterministicRisk(i);
         const trustScore =
           risk === "low" ? 92 - i * 2 : risk === "med" ? 72 - i : 48 - i;
         const progress = Math.min(100, 40 + i * 12);
         return { ...v, risk, trustScore: Math.max(20, trustScore), progress };
       }),
-    [],
+    [verificationsData],
   );
 
   const filtered = useMemo(() => {
@@ -133,7 +143,7 @@ export default function VerificationsPage() {
 
   const active =
     filtered.find((v) => v.id === activeId) ?? filtered[0] ?? null;
-  const coach = active ? getCoachById(active.coachId) : null;
+  const coach = active ? (coachById.get(active.coachId) ?? null) : null;
 
   const navigate = (dir: 1 | -1) => {
     if (!active) return;
@@ -182,6 +192,22 @@ export default function VerificationsPage() {
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id, filtered.length, rejectOpen]);
+
+  if (loading) {
+    return (
+      <AppShell role="admin" title="Coach Verification">
+        <LoadingState label="Đang tải hàng đợi xác thực…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="admin" title="Coach Verification">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="admin" title="Coach Verification">
@@ -522,7 +548,7 @@ function QueueColumn({
 // Center review panel
 // ============================================================================
 
-type CoachLite = NonNullable<ReturnType<typeof getCoachById>>;
+type CoachLite = Coach;
 
 function ReviewPanel({
   v,

@@ -1,21 +1,6 @@
 import type { Admin, Coach, Learner, Sport } from "@/types";
 import { avatarFor } from "@/lib/utils";
-
-const sports: Sport[] = [
-  "Tennis",
-  "Yoga",
-  "HIIT",
-  "Strength",
-  "Running",
-  "Swimming",
-  "Boxing",
-  "Pilates",
-  "Cycling",
-  "Basketball",
-  "Football",
-  "Golf",
-  "Mindfulness",
-];
+import { AVAILABLE_SPORTS } from "@/lib/constants";
 
 // ============================================================================
 // Coaches (18)
@@ -705,4 +690,5 @@ export function getCoachesBySport(sport: Sport) {
   return mockCoaches.filter((c) => c.sport === sport);
 }
 
-export const AVAILABLE_SPORTS = sports;
+// Canonical list now lives in @/lib/constants; re-exported for compatibility.
+export { AVAILABLE_SPORTS };

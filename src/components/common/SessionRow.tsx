@@ -1,7 +1,10 @@
+"use client";
+
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn, initials, relativeDay } from "@/lib/utils";
-import { getCoachById, getLearnerById } from "@/lib/mock/users";
-import type { Session } from "@/types";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import type { Coach, Learner, Session } from "@/types";
 
 interface SessionRowProps {
   session: Session;
@@ -17,10 +20,14 @@ export function SessionRow({
   className,
   actions,
 }: SessionRowProps) {
-  const other =
-    viewer === "learner"
-      ? getCoachById(session.coachId)
-      : getLearnerById(session.learnerId);
+  // Resolve the counterparty (coach for a learner's view, learner otherwise).
+  const { data: other } = useApiResource<Coach | Learner | undefined>(
+    () =>
+      viewer === "learner"
+        ? api.fetchCoach(session.coachId)
+        : api.fetchLearner(session.learnerId),
+    [viewer, session.coachId, session.learnerId],
+  );
   const date = new Date(session.start);
   const time = date.toLocaleTimeString("en-US", {
     hour: "numeric",

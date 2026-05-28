@@ -35,7 +35,12 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, formatCurrency } from "@/lib/utils";
-import { getCoachById, AVAILABLE_SPORTS } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { AVAILABLE_SPORTS } from "@/lib/constants";
+import { devUserIdForRole } from "@/lib/auth";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import type { Sport } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -59,19 +64,26 @@ const SUGGESTED_SPECIALTIES = [
 const COACHING_TONES = ["Friendly", "Professional", "Motivating", "Concise"];
 
 export default function EditCoachProfilePage() {
-  const coach = getCoachById("coach-1")!;
+  // TODO(auth): hard-coded current coach until real session auth lands.
+  const coachId = devUserIdForRole("coach");
+  const {
+    data: coach,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchCoach(coachId), [coachId]);
   const reduce = useReducedMotion();
 
-  // Form state
-  const [name, setName] = useState(coach.name);
-  const [headline, setHeadline] = useState(coach.headline);
-  const [bio, setBio] = useState(coach.bio);
-  const [hourlyRate, setHourlyRate] = useState(coach.hourlyRate);
-  const [sport, setSport] = useState(coach.sport);
-  const [specialties, setSpecialties] = useState<string[]>(coach.specialties);
-  const [location, setLocation] = useState(coach.location);
+  // Form state — seeded from the coach profile once it loads (see effect below).
+  const [name, setName] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [bio, setBio] = useState("");
+  const [hourlyRate, setHourlyRate] = useState(0);
+  const [sport, setSport] = useState<Sport>("Tennis");
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [location, setLocation] = useState("");
   const [newSpecialty, setNewSpecialty] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState(coach.avatarUrl);
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [tone, setTone] = useState(COACHING_TONES[1]);
 
   // UI state
@@ -79,6 +91,19 @@ export default function EditCoachProfilePage() {
   const [saving, setSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false); // mobile toggle
+
+  // Seed the form once the coach profile loads from the API.
+  useEffect(() => {
+    if (!coach) return;
+    setName(coach.name);
+    setHeadline(coach.headline);
+    setBio(coach.bio);
+    setHourlyRate(coach.hourlyRate);
+    setSport(coach.sport);
+    setSpecialties(coach.specialties);
+    setLocation(coach.location);
+    setAvatarUrl(coach.avatarUrl);
+  }, [coach]);
 
   // Mark dirty on any change
   const markDirty = () => setDirty(true);
@@ -161,6 +186,22 @@ export default function EditCoachProfilePage() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
+
+  if (loading) {
+    return (
+      <AppShell role="coach" title="Edit Public Profile">
+        <LoadingState label="Đang tải hồ sơ…" />
+      </AppShell>
+    );
+  }
+
+  if (error || !coach) {
+    return (
+      <AppShell role="coach" title="Edit Public Profile">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role="coach" title="Edit Public Profile">

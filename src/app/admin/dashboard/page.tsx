@@ -46,10 +46,15 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
-import { mockDailyActiveUsers } from "@/lib/mock/analytics";
-import { mockVerifications } from "@/lib/mock/insights";
-import type { VerificationRequest } from "@/types";
-import { mockCoaches, mockLearners } from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import type {
+  AnalyticsDailyPoint,
+  Coach,
+  Learner,
+  VerificationRequest,
+} from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const RANGE_OPTIONS = ["Today", "Week", "Month", "All"] as const;
@@ -102,21 +107,29 @@ const HEATMAP = HEATMAP_DAYS.map((d, i) =>
 );
 
 export default function AdminDashboardPage() {
+  const { data, loading, error, refetch } = useApiResource(
+    () =>
+      Promise.all([
+        api.fetchDailyActiveUsers(),
+        api.fetchVerifications(),
+        api.fetchCoaches(),
+        api.fetchLearners(),
+      ]),
+    [],
+  );
+  const dau = useMemo(() => data?.[0] ?? [], [data]);
+  const allVerifications = useMemo(() => data?.[1] ?? [], [data]);
+  const allCoaches = useMemo(() => data?.[2] ?? [], [data]);
+  const allLearners = useMemo(() => data?.[3] ?? [], [data]);
+
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("Month");
   const [tab, setTab] = useState<Tab>("Coaches");
 
-  const dau = mockDailyActiveUsers;
-  const todayDAU = dau[dau.length - 1].activeUsers;
-  const dauTotal = dau.reduce((s, d) => s + d.activeUsers, 0);
-  const recentCoaches = mockCoaches.slice(0, 5);
-  const recentLearners = mockLearners.slice(0, 5);
-  const pendingVerifications = mockVerifications.slice(0, 4);
-
   // Verification with synthetic risk score
   const verifications = useMemo<VerificationWithRisk[]>(
     () =>
-      pendingVerifications.map((v, i) => ({
+      allVerifications.slice(0, 4).map((v, i) => ({
         ...v,
         risk: (i === 0
           ? "low"
@@ -127,8 +140,29 @@ export default function AdminDashboardPage() {
               : "low") as RiskLevel,
         score: 92 - i * 14,
       })),
-    [pendingVerifications],
+    [allVerifications],
   );
+
+  if (loading) {
+    return (
+      <AppShell role="admin" title="Admin Dashboard">
+        <LoadingState label="Đang tải bảng điều khiển…" />
+      </AppShell>
+    );
+  }
+
+  if (error || dau.length === 0) {
+    return (
+      <AppShell role="admin" title="Admin Dashboard">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
+  const todayDAU = dau[dau.length - 1].activeUsers;
+  const dauTotal = dau.reduce((s, d) => s + d.activeUsers, 0);
+  const recentCoaches = allCoaches.slice(0, 5);
+  const recentLearners = allLearners.slice(0, 5);
 
   return (
     <AppShell role="admin" title="Admin Dashboard">
@@ -602,7 +636,7 @@ function DAUChart({
   total,
   reduce,
 }: {
-  data: typeof mockDailyActiveUsers;
+  data: AnalyticsDailyPoint[];
   today: number;
   total: number;
   reduce: boolean;
@@ -1223,8 +1257,8 @@ function RecentUsers({
 }: {
   tab: Tab;
   setTab: (t: Tab) => void;
-  coaches: typeof mockCoaches;
-  learners: typeof mockLearners;
+  coaches: Coach[];
+  learners: Learner[];
   reduce: boolean;
 }) {
   const items =

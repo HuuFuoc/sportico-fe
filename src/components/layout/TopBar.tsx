@@ -5,31 +5,31 @@ import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
 import { useAppStore, type AppRole } from "@/lib/store/useAppStore";
-import { getNotifications } from "@/lib/mock/insights";
-import {
-  getAdminById,
-  getCoachById,
-  getLearnerById,
-} from "@/lib/mock/users";
+import { api } from "@/lib/api";
+import { useApiResource } from "@/lib/hooks/useApiResource";
 
 interface TopBarProps {
   role: AppRole;
   title?: string;
 }
 
-function useCurrentUser(role: AppRole) {
+function useCurrentUser() {
+  // TODO(auth): currentUserId comes from a hard-coded demo id (see @/lib/auth).
   const id = useAppStore((s) => s.currentUserId);
-  if (role === "coach") return getCoachById(id) ?? null;
-  if (role === "admin") return getAdminById(id) ?? null;
-  return getLearnerById(id) ?? null;
+  const { data } = useApiResource(() => api.fetchUser(id), [id]);
+  return data;
 }
 
 export function TopBar({ role, title }: TopBarProps) {
   const [showNotifs, setShowNotifs] = useState(false);
   const toggleMobileSidebar = useAppStore((s) => s.toggleMobileSidebar);
-  const notifications = getNotifications();
+  const { data: notificationsData } = useApiResource(
+    () => api.fetchNotifications(),
+    [],
+  );
+  const notifications = notificationsData ?? [];
   const unread = notifications.filter((n) => !n.read).length;
-  const user = useCurrentUser(role);
+  const user = useCurrentUser();
 
   const placeholder =
     role === "coach"
