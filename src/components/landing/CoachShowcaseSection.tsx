@@ -53,7 +53,7 @@ export function CoachShowcaseSection() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_10%_15%,rgba(124,58,237,0.06),transparent_60%),radial-gradient(ellipse_50%_40%_at_90%_85%,rgba(236,72,153,0.04),transparent_60%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
+      <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20 lg:py-24">
         {/* ============ HEADER ============ */}
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
@@ -170,8 +170,12 @@ export function CoachShowcaseSection() {
           </span>
         </motion.div>
 
-        {/* ============ COACH CARDS GRID ============ */}
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* ============ COACH CARDS GRID ============
+            Asymmetric column track gives the featured card visual weight via
+            WIDTH instead of `row-span-2` — the previous row-span left phantom
+            row-2 cells in cols 2 and 3, producing the "floating disconnected
+            cards" + white-void feeling. */}
+        <div className="mt-10 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr]">
           {coaches.map((coach, i) => (
             <CoachCard
               key={coach.id}
@@ -253,9 +257,9 @@ function CoachCard({
       }}
       whileHover={reduce ? {} : { y: -6 }}
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.1)] transition-all duration-500 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_24px_50px_-20px_rgba(124,58,237,0.2)]",
+        "group relative flex flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.1)] transition-all duration-500 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_24px_50px_-20px_rgba(124,58,237,0.2)]",
         featured
-          ? "border-violet-200/60 lg:row-span-2"
+          ? "border-violet-200/60"
           : "border-slate-200 hover:border-violet-200",
       )}
     >

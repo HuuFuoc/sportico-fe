@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { useAppStore, type AppRole } from "@/lib/store/useAppStore";
+import { useAuthStore } from "@/lib/store/useAuthStore";
+import { logout } from "@/lib/auth-api";
 
 interface NavItem {
   href: string;
@@ -61,7 +64,8 @@ const COACH_NAV: NavGroup[] = [
   {
     label: "Kinh doanh",
     items: [
-      { href: "/coach/packages", label: "Gói & bài đăng", icon: "inventory_2" },
+      { href: "/coach/training-packages", label: "Gói tập", icon: "inventory_2" },
+      { href: "/coach/media", label: "Media", icon: "collections" },
       { href: "/coach/earnings", label: "Thu nhập", icon: "payments" },
       { href: "/coach/profile", label: "Hồ sơ", icon: "account_circle" },
     ],
@@ -112,15 +116,30 @@ const ROLE_LABEL: Record<AppRole, string> = {
 
 export function Sidebar({ role }: { role: AppRole }) {
   const pathname = usePathname();
+  const router = useRouter();
   const groups = navForRole(role);
   const mobileOpen = useAppStore((s) => s.mobileSidebarOpen);
   const setMobileSidebarOpen = useAppStore((s) => s.setMobileSidebarOpen);
   const currentUserId = useAppStore((s) => s.currentUserId);
-  // TODO(auth): currentUserId comes from a hard-coded demo id (see @/lib/auth).
-  const { data: user } = useApiResource(
-    () => api.fetchUser(currentUserId),
+
+  // ── Live mode: use the hydrated /api/auth/me user (real name, email, avatar).
+  // ── Mock/demo mode: fall back to the mock fixture user (supports demo flows).
+  const authUser = useAuthStore((s) => s.user);
+  const { data: mockUser } = useApiResource(
+    () => (isMockMode() ? api.fetchUser(currentUserId) : Promise.resolve(null)),
     [currentUserId],
   );
+
+  // Prefer the hydrated backend user; fall back to the mock fixture.
+  const displayName = authUser?.fullName ?? mockUser?.name ?? "Người dùng Sportico";
+  const displayAvatar = authUser?.avatarUrl ?? mockUser?.avatarUrl ?? null;
+  const displayEmail = authUser?.email ?? mockUser?.email ?? null;
+
+  const handleLogout = () => {
+    logout();
+    useAuthStore.getState().clear();
+    router.push("/login");
+  };
 
   const settingsHref =
     role === "coach"
@@ -236,10 +255,10 @@ export function Sidebar({ role }: { role: AppRole }) {
         <div className="border-t border-[var(--color-border-soft)] p-3">
           <div className="flex items-center gap-2.5 rounded-[11px] border border-[var(--color-border-soft)] bg-surface-container-low/60 p-2">
             <div className="relative shrink-0">
-              {user?.avatarUrl ? (
+              {displayAvatar ? (
                 <img
-                  src={user.avatarUrl}
-                  alt={user.name}
+                  src={displayAvatar}
+                  alt={displayName}
                   className="h-9 w-9 rounded-full object-cover"
                 />
               ) : (
@@ -251,10 +270,10 @@ export function Sidebar({ role }: { role: AppRole }) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold text-on-surface">
-                {user?.name ?? "Người dùng Sportico"}
+                {displayName}
               </p>
-              <p className="text-[11px] text-on-surface-variant">
-                {ROLE_LABEL[role]} · Trực tuyến
+              <p className="truncate text-[11px] text-on-surface-variant">
+                {displayEmail ?? ROLE_LABEL[role]}
               </p>
             </div>
             <Link
@@ -267,6 +286,7 @@ export function Sidebar({ role }: { role: AppRole }) {
           </div>
           <button
             type="button"
+            onClick={handleLogout}
             className="mt-1 flex w-full items-center gap-3 rounded-[9px] px-3 py-2 text-[13px] text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
           >
             <MaterialIcon name="logout" size={19} />

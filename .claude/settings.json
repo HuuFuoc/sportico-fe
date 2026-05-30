@@ -10,7 +10,12 @@
       "PowerShell(Remove-Item -Path \"d:\\\\sportico-fe\\\\src\\\\components\\\\auth\\\\FloatingStoryCard.tsx\" -Force; if \\(-not \\(Test-Path \"d:\\\\sportico-fe\\\\src\\\\components\\\\auth\\\\FloatingStoryCard.tsx\"\\)\\) { Write-Output \"removed\" })",
       "Bash(echo \"TSC_EXIT=$?\")",
       "WebFetch(domain:cdn.tatlerasia.com)",
-      "Bash(echo \"TSC=$?\")"
+      "Bash(echo \"TSC=$?\")",
+      "Bash(gh --version)",
+      "Bash(git --version)",
+      "Bash(ls -la /tmp/sportico-platform 2>&1 | head; echo \"---\"; ls /tmp/sportico-platform/src 2>&1)",
+      "Read(//tmp/**)",
+      "Read(//tmp/sportico-platform/**)"
     ]
   }
 }

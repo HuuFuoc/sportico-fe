@@ -221,17 +221,87 @@ export interface PostResponse {
   imageUrls?: string[] | null;
 }
 
-// ---- Coach profile ---------------------------------------------------------
+// ---- Coach profile / media -------------------------------------------------
 
+export interface CoachProfileMediaResponse {
+  id: string;
+  coachId: string;
+  mediaType: string;
+  mediaUrl: string;
+  title?: string | null;
+  description?: string | null;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CoachTeachingLocationResponse {
+  id: string;
+  coachId: string;
+  address: string;
+  city?: string | null;
+  district?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Full coach profile returned by GET/PUT /api/coaches/me and POST register. */
 export interface CoachProfileResponse {
   userId: string;
   headline?: string | null;
   bio?: string | null;
   experienceYears?: number | null;
+  coverImageUrl?: string | null;
+  teachingAddress?: string | null;
+  teachingCity?: string | null;
+  teachingDistrict?: string | null;
+  teachingLatitude?: number | null;
+  teachingLongitude?: number | null;
+  isOnlineAvailable?: boolean | null;
+  isOfflineAvailable?: boolean | null;
+  specialties?: string | null;
+  certificationsSummary?: string | null;
+  achievementsSummary?: string | null;
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
+  websiteUrl?: string | null;
   rating: number;
   totalReviews: number;
   createdAt: string;
   updatedAt: string;
+  media?: CoachProfileMediaResponse[] | null;
+  teachingLocations?: CoachTeachingLocationResponse[] | null;
+}
+
+// ---- Current user (GET /api/auth/me) ---------------------------------------
+
+export interface CoachProfileSummaryResponse {
+  headline?: string | null;
+  bio?: string | null;
+  experienceYears?: number | null;
+  coverImageUrl?: string | null;
+  rating: number;
+  totalReviews: number;
+}
+
+export interface LearnerProfileSummaryResponse {
+  goal?: string | null;
+}
+
+export interface CurrentUserResponse {
+  id: string;
+  email: string;
+  fullName: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  dateOfBirth?: string | null;
+  status: string;
+  roles: string[];
+  coachProfile?: CoachProfileSummaryResponse | null;
+  learnerProfile?: LearnerProfileSummaryResponse | null;
 }
 
 // ---- Training plan ---------------------------------------------------------

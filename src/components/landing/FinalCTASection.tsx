@@ -80,7 +80,7 @@ export function FinalCTASection() {
     <section
       ref={ref}
       aria-label="Bắt đầu tập luyện cùng Sportico"
-      className="relative bg-white px-4 pb-24 pt-8 sm:px-6"
+      className="relative bg-white px-4 pb-12 pt-6 sm:px-6 sm:pb-16 lg:pb-20"
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}

@@ -218,15 +218,20 @@ export function HeroSection({ coach }: { coach: Coach }) {
               longest Vietnamese cycling word ("THỂ CHẤT & TINH THẦN", 20 chars
               in Inter Black) still fits in a single line inside the container.
               Leading is bumped to 1.02 to give diacritics breathing room. */}
+          {/* `lineHeight: 1.12` gives Vietnamese tone marks (Ộ/Ơ/Ầ) room to
+              breathe between the two block lines — at 1.02 the diacritics of
+              the cycling word kiss the descenders of line 1. The cycling block
+              gets a small explicit `mt` so the two lines stay anchored, even
+              when the cycling word swaps to a taller letter cluster. */}
           <h1
             className="mt-6 max-w-[820px] font-black uppercase tracking-[-0.035em] text-white"
             style={{
               fontSize: "clamp(38px, 6.2vw, 68px)",
-              lineHeight: 1.02,
+              lineHeight: 1.12,
             }}
           >
             <span className="block">CỘNG ĐỒNG TRƯỚC TIÊN.</span>
-            <span className="relative block">
+            <span className="relative mt-1 block sm:mt-2">
               <AnimatePresence mode="wait">
                 <motion.span
                   key={CYCLE_WORDS[wordIdx]}

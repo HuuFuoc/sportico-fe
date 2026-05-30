@@ -14,10 +14,12 @@
 //              → Result<{ accessToken, refreshToken, expiresAt }> (rotated)
 //   Verify   : GET  /api/auth/verify-email?token=...   → Result
 //   Coach    : POST /api/coaches/register (Bearer)     → Result<CoachProfile>
+//   Me       : GET  /api/auth/me (Bearer)              → Result<CurrentUser>
+//              The authoritative source of the user's roles + profiles (the JWT
+//              roles are fixed at issue time, so /me is re-read after refresh).
 //
-// There is NO /me endpoint and NO logout endpoint — do not add them. Logout is
-// client-side (discard tokens). Tokens are Bearer, stored via auth-token.ts and
-// replayed by apiFetch.
+// There is NO logout endpoint — logout is client-side (discard tokens). Tokens
+// are Bearer, stored via auth-token.ts and replayed by apiFetch.
 //
 // MOCK MODE (env unset): login/register resolve a demo success so the app stays
 // navigable. LIVE MODE: real apiFetch calls only — never a fake success.
@@ -31,6 +33,7 @@ import {
   getRefreshToken,
   getAuthEmail,
 } from "@/lib/auth-token";
+import type { CurrentUserResponse } from "@/lib/types/coach";
 
 // ---- Envelope + payload types ----------------------------------------------
 
@@ -61,13 +64,6 @@ export interface RegisterPayload {
 
 export interface RegisterResult {
   message: string;
-}
-
-export interface CoachOnboardingPayload {
-  headline: string;
-  bio?: string;
-  experienceYears: number;
-  sportIds: number[];
 }
 
 /** A user-presentable auth failure. Pages render `.message`; `.errorCode` is the
@@ -212,39 +208,39 @@ export async function refreshTokens(): Promise<AuthTokens> {
   return result.data;
 }
 
+// ---- Current user (GET /api/auth/me) ---------------------------------------
+
+/**
+ * Fetch the authenticated user with their backend-sourced roles + profiles.
+ * This is the AUTHORITATIVE role source (the access-token JWT bakes roles at
+ * issue time, so it can be stale right after coach registration — call this
+ * after a token refresh to observe the freshly-granted coach role).
+ *
+ * Throws {@link AuthError} on any failure (no token, 401, mock mode, network).
+ */
+export async function getCurrentUser(): Promise<CurrentUserResponse> {
+  if (isMockMode()) {
+    throw new AuthError("Thông tin người dùng cần backend thật.");
+  }
+  const result = await request<CurrentUserResponse>(endpoints.auth.me, {
+    method: "GET",
+  });
+  if (!result.isSuccess || !result.data) {
+    throw new AuthError(
+      messageForCode(result.errorCode) ??
+        result.message ??
+        "Không tải được thông tin người dùng.",
+      result.errorCode,
+    );
+  }
+  return result.data;
+}
+
 // ---- Logout (client-side only) ---------------------------------------------
 
 /** Sign out. No backend endpoint exists — just discard the tokens. */
 export function logout(): void {
   clearAuthTokens();
-}
-
-// ---- Coach onboarding (future use; not wired to a page) --------------------
-
-/**
- * Promote the authenticated user to coach and create their profile. Requires a
- * valid Bearer token (attached automatically by apiFetch). Not currently wired
- * to any page — there is no coach-onboarding flow yet.
- */
-export async function registerCoachProfile(
-  payload: CoachOnboardingPayload,
-): Promise<Result> {
-  if (isMockMode()) {
-    throw new AuthError("Đăng ký huấn luyện viên cần API thật.");
-  }
-  const result = await request(endpoints.coachOnboarding, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (!result.isSuccess) {
-    throw new AuthError(
-      messageForCode(result.errorCode) ??
-        result.message ??
-        "Đăng ký huấn luyện viên thất bại.",
-      result.errorCode,
-    );
-  }
-  return result;
 }
 
 // ---- Mock-mode session -----------------------------------------------------

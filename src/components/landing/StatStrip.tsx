@@ -44,7 +44,7 @@ export function StatStrip() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_70%_at_15%_10%,rgba(124,58,237,0.06),transparent_60%),radial-gradient(ellipse_45%_60%_at_85%_90%,rgba(6,182,212,0.05),transparent_60%),radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(236,72,153,0.03),transparent_70%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-20 sm:py-24">
+      <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20 lg:py-24">
         {/* ============ EYEBROW: TRUST ROW ============ */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

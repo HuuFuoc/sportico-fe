@@ -14,12 +14,23 @@ import { AuthButton } from "@/components/ui/AuthButton";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { login, AuthError } from "@/lib/auth-api";
 import { getCurrentUser } from "@/lib/auth-session";
+import { isMockMode } from "@/lib/api-client";
 import { useAppStore } from "@/lib/store/useAppStore";
+import { useAuthStore } from "@/lib/store/useAuthStore";
+import type { Role } from "@/types";
 import {
   loginSchema,
   zodResolver,
   type LoginValues,
 } from "@/lib/validation/auth";
+
+/** Pick the landing role from the backend roles array (admin > coach > learner). */
+function roleFromBackend(roles: string[]): Role {
+  const lower = roles.map((r) => r.toLowerCase());
+  if (lower.includes("admin")) return "admin";
+  if (lower.includes("coach")) return "coach";
+  return "learner";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,11 +62,28 @@ export default function LoginPage() {
       });
 
       setSuccess(true);
-      // Login returns no role/user; identity comes from the JWT claims.
-      const user = getCurrentUser();
-      const role = user?.role ?? "learner";
+
+      // Login returns no role/user. In live mode read GET /api/auth/me (the
+      // authoritative roles + profiles) and route by backend roles; fall back to
+      // the JWT claims in mock mode or if /me is unavailable.
+      let role: Role = "learner";
+      if (!isMockMode()) {
+        const me = await useAuthStore.getState().hydrate({ force: true });
+        if (me) {
+          role = roleFromBackend(me.roles);
+          if (me.id) setCurrentUserId(me.id);
+        } else {
+          const jwt = getCurrentUser();
+          role = jwt?.role ?? "learner";
+          if (jwt?.userId) setCurrentUserId(jwt.userId);
+        }
+      } else {
+        const jwt = getCurrentUser();
+        role = jwt?.role ?? "learner";
+        if (jwt?.userId) setCurrentUserId(jwt.userId);
+      }
+
       setRole(role);
-      if (user?.userId) setCurrentUserId(user.userId);
       router.push(`/${role}/dashboard`);
     } catch (err) {
       setServerError(

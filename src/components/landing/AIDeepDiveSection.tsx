@@ -217,7 +217,7 @@ export function AIDeepDiveSection() {
         ))}
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
+      <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20 lg:py-24">
         {/* ============ HEADER ============ */}
         <div className="max-w-2xl">
           <motion.div

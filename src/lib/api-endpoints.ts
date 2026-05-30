@@ -11,18 +11,16 @@ import type { Role } from "@/types";
 
 export const endpoints = {
   // ---- Auth (real backend contract — routes live under /api) -------------
-  // Base = NEXT_PUBLIC_API_BASE_URL (the Azure host). There is NO /me and NO
-  // logout endpoint — do not add them.
+  // Base = NEXT_PUBLIC_API_BASE_URL (the Azure host). `me` returns the current
+  // user with backend roles + profiles. There is NO logout endpoint.
   auth: {
     register: "/api/auth/register",
     verifyEmail: (token: string) =>
       `/api/auth/verify-email?token=${encodeURIComponent(token)}`,
     login: "/api/auth/login",
     refreshToken: "/api/auth/refresh-token",
+    me: "/api/auth/me",
   },
-  // Coach onboarding — distinct from the `coaches` data-list endpoint above.
-  coachOnboarding: "/api/coaches/register",
-
   // ---- Users -------------------------------------------------------------
   coaches: "/coaches",
   coachById: (id: string) => `/coaches/${encodeURIComponent(id)}`,

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ScrollRestoration } from "@/components/common/ScrollRestoration";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
+import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,6 +36,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-surface text-on-surface font-sans">
+        <AuthBootstrap />
         <ScrollRestoration />
         {children}
         <ScrollToTopButton />

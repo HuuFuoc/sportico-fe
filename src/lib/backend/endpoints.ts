@@ -11,10 +11,15 @@ export const backendEndpoints = {
     verifyEmail: (token: string) =>
       `/api/auth/verify-email?token=${encodeURIComponent(token)}`,
     refreshToken: "/api/auth/refresh-token",
+    me: "/api/auth/me",
   },
 
   // ---- Coaches -----------------------------------------------------------
   coachRegister: "/api/coaches/register",
+  coachMe: "/api/coaches/me",
+  coachMedia: "/api/coaches/me/media",
+  coachMediaById: (id: string) =>
+    `/api/coaches/me/media/${encodeURIComponent(id)}`,
   coachPayoutAccount: "/api/coaches/me/payout-account",
   coachWallet: "/api/coaches/me/wallet",
   coachWalletTransactions: "/api/coaches/me/wallet/transactions",
@@ -30,6 +35,8 @@ export const backendEndpoints = {
   trainingPackages: "/api/training-packages",
   trainingPackageById: (id: string) =>
     `/api/training-packages/${encodeURIComponent(id)}`,
+  trainingPackageArchive: (id: string) =>
+    `/api/training-packages/${encodeURIComponent(id)}/archive`,
 
   // ---- Bookings ----------------------------------------------------------
   myBookings: "/api/bookings/me",

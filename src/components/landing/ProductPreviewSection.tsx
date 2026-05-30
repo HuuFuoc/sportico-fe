@@ -87,7 +87,7 @@ export function ProductPreviewSection() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_60%_at_85%_10%,rgba(124,58,237,0.07),transparent_60%),radial-gradient(ellipse_50%_50%_at_10%_90%,rgba(6,182,212,0.05),transparent_60%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
+      <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20 lg:py-24">
         {/* ============ HEADER ============ */}
         <div className="mx-auto max-w-2xl text-center">
           <motion.div

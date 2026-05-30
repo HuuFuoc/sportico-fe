@@ -83,7 +83,7 @@ export function TestimonialsSection() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_0%,rgba(124,58,237,0.06),transparent_60%),radial-gradient(ellipse_50%_60%_at_50%_100%,rgba(6,182,212,0.04),transparent_60%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
+      <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20 lg:py-24">
         {/* ============ HEADER ============ */}
         <div className="mx-auto max-w-2xl text-center">
           <motion.div

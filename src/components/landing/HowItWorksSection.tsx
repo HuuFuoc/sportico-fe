@@ -46,12 +46,12 @@ export function HowItWorksSection() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_0%,rgba(124,58,237,0.08),transparent_60%),radial-gradient(ellipse_45%_50%_at_85%_90%,rgba(6,182,212,0.05),transparent_60%),radial-gradient(ellipse_40%_50%_at_15%_90%,rgba(236,72,153,0.04),transparent_60%)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
+      <div className="relative mx-auto max-w-6xl px-6 py-16 sm:py-20 lg:py-24">
         {/* ============ HEADER ============ */}
         <Header inView={inView} reduce={reduce ?? false} />
 
         {/* ============ STEPS GRID — asymmetric 1fr / 1.4fr / 1fr ============ */}
-        <div className="relative mt-16 sm:mt-20">
+        <div className="relative mt-12 sm:mt-14">
           {/* Connection lines on desktop */}
           <ConnectionLines inView={inView} reduce={reduce ?? false} />
 
@@ -172,7 +172,6 @@ function SideStep({
       whileHover={reduce ? {} : { y: -4 }}
       className={cn(
         "group relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-7 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.12)] transition-all duration-500 hover:border-violet-200 hover:shadow-[0_2px_6px_rgba(15,23,42,0.05),0_22px_48px_-18px_rgba(124,58,237,0.18)]",
-        "lg:mt-10",
       )}
     >
       {/* Ghosted big number */}
