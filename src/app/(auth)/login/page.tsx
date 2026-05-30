@@ -32,15 +32,14 @@ function roleFromBackend(roles: string[]): Role {
   return "learner";
 }
 
-/** Post-login destination by role:
- *  - admin  → /admin/dashboard (operations console)
- *  - coach  → /coach/dashboard (in-app home)
- *  - learner → / (marketing homepage; navbar shows their identity right away).
+/** Post-login destination by role — goes to the personal profile settings page
+ *  with ?fromLogin=1 so the page shows an onboarding banner + "Skip" button.
+ *  The user can complete their profile or navigate straight to their dashboard.
  */
 function postLoginHref(role: Role): string {
-  if (role === "admin") return "/admin/dashboard";
-  if (role === "coach") return "/coach/dashboard";
-  return "/";
+  if (role === "admin") return "/admin/settings?fromLogin=1";
+  if (role === "coach") return "/coach/settings?fromLogin=1";
+  return "/learner/settings?fromLogin=1";
 }
 
 export default function LoginPage() {

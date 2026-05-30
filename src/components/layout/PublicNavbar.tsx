@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { StaggeredMenuButton } from "@/components/landing/StaggeredMenu";
+import { useAuthStore, userIsCoach, userIsAdmin } from "@/lib/store/useAuthStore";
+import { logout } from "@/lib/auth-api";
+import { avatarFor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types";
 
 interface PublicNavbarProps {
   /**
@@ -20,11 +25,10 @@ interface NavLink {
   href: string;
 }
 
-// Public-facing nav. Only routes that exist on the platform are listed here;
-// "Trở thành Huấn luyện viên" is treated as a CTA elsewhere because its
-// visibility depends on the viewer's role.
+// Public-facing nav links. "Huấn Luyện Viên" points to the public /coaches
+// page (standalone, no dashboard chrome) — NOT to /learner/coaches.
 const BASE_LINKS: NavLink[] = [
-  { label: "Huấn Luyện Viên", href: "/learner/coaches" },
+  { label: "Huấn Luyện Viên", href: "/coaches" },
   { label: "Về Chúng Tôi", href: "/" },
 ];
 
@@ -32,8 +36,7 @@ const BECOME_COACH_HREF = "/coach/onboarding";
 const LOGIN_HREF = "/login";
 const REGISTER_HREF = "/register";
 
-/** Returns `true` if this viewer should see the "Become a coach" CTA. Guests
- *  and signed-in learners see it; coaches and admins do not. */
+/** Guests and signed-in learners see the "Trở thành HLV" CTA; coaches/admins do not. */
 function canShowBecomeCoach(role: Role, isAuthenticated: boolean): boolean {
   if (!isAuthenticated) return true;
   return role === "learner";
@@ -51,6 +54,33 @@ function settingsHref(role: Role): string {
 export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Auth state from the hydrated store
+  const authUser = useAuthStore((s) => s.user);
+  const authStatus = useAuthStore((s) => s.status);
+  const isAuthenticated = authStatus === "authenticated" && authUser !== null;
+
+  // Derive the UI role: admin > coach > learner
+  const role: Role = authUser
+    ? userIsAdmin(authUser)
+      ? "admin"
+      : userIsCoach(authUser)
+        ? "coach"
+        : "learner"
+    : "learner";
+
+  const displayName = authUser?.fullName ?? "Người dùng";
+  const avatarSrc = authUser?.avatarUrl ?? avatarFor(authUser?.id ?? "guest");
+  const showBecomeCoach = canShowBecomeCoach(role, isAuthenticated);
+
+  // Logout handler: clear tokens + auth store + go to login
+  const handleLogout = () => {
+    logout();
+    useAuthStore.getState().clear();
+    router.push("/login");
+  };
 
   // Scroll-aware: transparent variant flips to solid after 40px.
   useEffect(() => {
@@ -61,9 +91,20 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
     return () => window.removeEventListener("scroll", onScroll);
   }, [variant]);
 
+  // Close user dropdown on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
   const transparent = variant === "transparent" && !scrolled;
 
-  // ------------------------------------------------------------------------
   return (
     <header
       className={cn(
@@ -167,6 +208,8 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
     </header>
   );
 }
+
+// ── UserMenu dropdown ─────────────────────────────────────────────────────────
 
 function UserMenu({
   displayName,
@@ -274,6 +317,8 @@ function UserMenu({
     </div>
   );
 }
+
+// ── MenuItem helper ───────────────────────────────────────────────────────────
 
 function MenuItem({
   href,

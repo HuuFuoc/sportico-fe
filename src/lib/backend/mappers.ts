@@ -95,7 +95,9 @@ function pickActivePackage(
 ) {
   const bookable = pkgs.filter((p) => {
     const s = (p.status ?? "").toLowerCase();
-    return !s || s === "approved" || s === "active";
+    // Accept both the real backend status ("published") and legacy values
+    // ("approved", "active") so the picker survives any future enum changes.
+    return !s || s === "published" || s === "approved" || s === "active";
   });
   if (bookable.length === 0) return undefined;
   return bookable.reduce((cheapest, p) => {

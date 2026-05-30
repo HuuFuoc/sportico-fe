@@ -44,6 +44,12 @@ const LEARNER_NAV: NavGroup[] = [
       { href: "/learner/progress", label: "Tiến độ", icon: "monitoring" },
     ],
   },
+  {
+    label: "Tài khoản",
+    items: [
+      { href: "/learner/settings", label: "Cài đặt", icon: "settings" },
+    ],
+  },
 ];
 
 const COACH_NAV: NavGroup[] = [
@@ -69,6 +75,7 @@ const COACH_NAV: NavGroup[] = [
       { href: "/coach/earnings", label: "Thu nhập", icon: "payments" },
       { href: "/coach/profile", label: "Hồ sơ", icon: "account_circle" },
       { href: "/coach/preview", label: "Xem hồ sơ", icon: "visibility" },
+      { href: "/coach/settings", label: "Cài đặt", icon: "settings" },
     ],
   },
 ];
@@ -94,6 +101,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/withdrawals", label: "Rút tiền", icon: "account_balance_wallet" },
       { href: "/admin/ai-settings", label: "Cài đặt AI", icon: "auto_awesome" },
       { href: "/admin/console", label: "Console", icon: "terminal" },
+      { href: "/admin/settings", label: "Cài đặt tài khoản", icon: "manage_accounts" },
     ],
   },
 ];

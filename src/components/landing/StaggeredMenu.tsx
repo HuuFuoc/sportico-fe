@@ -26,7 +26,7 @@ const MENU_ITEMS = [
   { label: "Trang chủ", href: "/", ariaLabel: "Đi tới trang chủ" },
   {
     label: "Tìm HLV",
-    href: "/learner/coaches",
+    href: "/coaches",
     ariaLabel: "Tìm huấn luyện viên",
   },
   {

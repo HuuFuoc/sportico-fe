@@ -41,7 +41,8 @@ import type {
   TrainingPackage,
   VerificationRequest,
 } from "@/types";
-import { isMockMode } from "@/lib/api-client";
+import { isMockMode, ApiError } from "@/lib/api-client";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 import { backend } from "@/lib/backend/client";
 import type { AssessmentBody } from "@/lib/backend/client";
 import { getAccessToken } from "@/lib/auth-token";
@@ -159,8 +160,12 @@ export const api = {
     live(async () => {
       try {
         return map.publicCoachDetailToCoach(await backend.publicCoach(id));
-      } catch {
-        return undefined;
+      } catch (err) {
+        // True 404 → coach does not exist → caller shows notFound().
+        // Anything else (500, network, mapping error) → rethrow so the
+        // caller's error state fires instead of a misleading frontend 404.
+        if (err instanceof ApiError && err.status === 404) return undefined;
+        throw err;
       }
     }, () => getCoachById(id)),
 
@@ -207,6 +212,8 @@ export const api = {
     liveAuthed<Learner>(
       async () => {
         const u = await backend.updateMe(body);
+        // Immediately update the auth store so sidebar/navbar show new name/avatar.
+        useAuthStore.getState().setUser(u);
         const fallback = getLearnerById(getCurrentUserId() ?? "learner-1");
         return map.currentUserToLearner(u, fallback);
       },

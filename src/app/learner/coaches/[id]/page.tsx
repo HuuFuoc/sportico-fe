@@ -93,7 +93,12 @@ export default function CoachProfilePage({ params }: PageProps) {
   if (error) {
     return (
       <AppShell role="learner" title="Hồ sơ huấn luyện viên">
-        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+        <ErrorState
+          title="Không tải được hồ sơ huấn luyện viên"
+          message="Máy chủ không phản hồi hoặc đã xảy ra lỗi. Vui lòng thử lại."
+          onRetry={refetch}
+          className="mx-auto mt-10 max-w-md"
+        />
       </AppShell>
     );
   }

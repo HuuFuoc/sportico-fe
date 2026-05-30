@@ -42,7 +42,12 @@ export function BookSessionButton({
         const coach = await api.fetchCoach(coachId);
         pkgId = coach?.packageId;
       }
-      const result = await api.purchasePackage(pkgId ?? "");
+      if (!pkgId) {
+        setError("Huấn luyện viên chưa có gói tập. Vui lòng liên hệ trực tiếp.");
+        setLoading(false);
+        return;
+      }
+      const result = await api.purchasePackage(pkgId);
       if ("checkoutUrl" in result) {
         window.location.href = result.checkoutUrl;
         return; // keep the spinner while the browser navigates away

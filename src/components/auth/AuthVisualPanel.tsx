@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, BadgeCheck, Calendar, Sparkles } from "lucide-react";
 import { avatarFor } from "@/lib/utils";
+import { ClientOnly } from "@/components/common/ClientOnly";
 
 type Variant = "login" | "register";
 
@@ -85,31 +86,36 @@ export function AuthVisualPanel({ variant }: { variant?: Variant }) {
         {/* Bottom fade for watermark + microbadge strip */}
         <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-[#0a0a0e] via-black/75 to-transparent" />
 
-        {/* Sparkle particles — same recipe as HeroSection */}
-        {SPARKLES.map((s, i) => (
-          <motion.span
-            key={i}
-            initial={{ opacity: 0, scale: 0 }}
-            animate={
-              reduce
-                ? { opacity: 0.4, scale: 1 }
-                : { opacity: [0, 0.6, 0], scale: [0, 1, 0], y: [0, -28] }
-            }
-            transition={{
-              duration: Number(s.duration),
-              repeat: Infinity,
-              delay: Number(s.delay),
-              ease: "easeInOut",
-            }}
-            style={{
-              left: `${s.x}%`,
-              top: `${s.y}%`,
-              width: s.size,
-              height: s.size,
-            }}
-            className="absolute rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-          />
-        ))}
+        {/* Sparkle particles — client-only to avoid SSR/client style mismatch.
+            motion/react serializes px and % values differently on the server
+            (rounded strings) vs the client (raw numbers), causing a hydration
+            warning even though the SPARKLES array is deterministic. */}
+        <ClientOnly>
+          {SPARKLES.map((s, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={
+                reduce
+                  ? { opacity: 0.4, scale: 1 }
+                  : { opacity: [0, 0.6, 0], scale: [0, 1, 0], y: [0, -28] }
+              }
+              transition={{
+                duration: Number(s.duration),
+                repeat: Infinity,
+                delay: Number(s.delay),
+                ease: "easeInOut",
+              }}
+              style={{
+                left: `${s.x}%`,
+                top: `${s.y}%`,
+                width: s.size,
+                height: s.size,
+              }}
+              className="absolute rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+            />
+          ))}
+        </ClientOnly>
 
         {/* Indigo glow blob — bottom-left, breathing */}
         <motion.div

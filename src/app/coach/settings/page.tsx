@@ -1,27 +1,228 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
+import {
+  PersonalProfileForm,
+  CoachProfileFooter,
+} from "@/components/settings/PersonalProfileForm";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
 const TABS = [
-  { id: "account", label: "Account", icon: "lock" },
-  { id: "availability", label: "Availability", icon: "schedule" },
-  { id: "notifications", label: "Notifications", icon: "notifications" },
-  { id: "payments", label: "Payments", icon: "payments" },
-  { id: "policies", label: "Cancellation Policies", icon: "policy" },
+  { id: "profile", label: "Hồ sơ cá nhân", icon: "person" },
+  { id: "account", label: "Tài khoản", icon: "lock" },
+  { id: "availability", label: "Lịch rảnh", icon: "schedule" },
+  { id: "notifications", label: "Thông báo", icon: "notifications" },
+  { id: "payments", label: "Thanh toán", icon: "payments" },
+  { id: "policies", label: "Chính sách huỷ", icon: "policy" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+const DAYS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CoachSettingsPage() {
-  const [tab, setTab] = useState<TabId>("account");
+  return (
+    <Suspense
+      fallback={
+        <AppShell role="coach" title="Cài đặt">
+          <div className="flex items-center justify-center py-20 text-on-surface-variant">
+            Đang tải…
+          </div>
+        </AppShell>
+      }
+    >
+      <CoachSettingsInner />
+    </Suspense>
+  );
+}
+
+function CoachSettingsInner() {
+  const params = useSearchParams();
+  const fromLogin = params.get("fromLogin") === "1";
+  const [tab, setTab] = useState<TabId>("profile");
+
+  return (
+    <AppShell role="coach" title="Cài đặt">
+      <div className="max-w-[1100px]">
+        <header className="mb-5">
+          <h1 className="text-h1">Cài đặt huấn luyện viên</h1>
+          <p className="mt-1 text-body-base text-on-surface-variant">
+            Hồ sơ cá nhân, lịch rảnh, thanh toán và chính sách.
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-[240px_1fr]">
+          {/* Sidebar nav */}
+          <nav className="h-fit space-y-0.5 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-1.5 md:sticky md:top-20">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-[6px] px-3 py-2 text-body-base text-left transition-colors",
+                  tab === t.id
+                    ? "bg-primary/[0.08] font-medium text-primary"
+                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                )}
+              >
+                <MaterialIcon name={t.icon} size={18} />
+                {t.label}
+              </button>
+            ))}
+            <Link
+              href="/coach/profile"
+              className="mt-2 flex w-full items-center gap-3 rounded-[6px] border-t border-[var(--color-border-soft)] px-3 pb-2 pt-3 text-body-base text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
+            >
+              <MaterialIcon name="account_circle" size={18} />
+              Hồ sơ công khai →
+            </Link>
+          </nav>
+
+          {/* Panel */}
+          <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
+            {/* ── Hồ sơ cá nhân ──────────────────────────────────── */}
+            {tab === "profile" && (
+              <div>
+                <PanelHeader
+                  title="Hồ sơ cá nhân"
+                  description="Thông tin tài khoản cá nhân. Hồ sơ công khai (bio, chuyên môn, địa điểm) được chỉnh sửa ở trang riêng."
+                />
+                <div className="p-6">
+                  <PersonalProfileForm
+                    fromLogin={fromLogin}
+                    skipHref="/coach/dashboard"
+                    footer={<CoachProfileFooter />}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── Tài khoản ──────────────────────────────────────── */}
+            {tab === "account" && <AccountTab />}
+
+            {/* ── Lịch rảnh ──────────────────────────────────────── */}
+            {tab === "availability" && <AvailabilityTab />}
+
+            {/* ── Thông báo ──────────────────────────────────────── */}
+            {tab === "notifications" && <NotificationsTab />}
+
+            {/* ── Thanh toán ─────────────────────────────────────── */}
+            {tab === "payments" && <PaymentsTab />}
+
+            {/* ── Chính sách huỷ ─────────────────────────────────── */}
+            {tab === "policies" && <PoliciesTab />}
+          </section>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+// ── Account tab ───────────────────────────────────────────────────────────────
+
+function AccountTab() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(t);
+  }, [feedback]);
+
+  const submit = async () => {
+    if (!currentPassword || !newPassword) {
+      setFeedback({ tone: "error", text: "Vui lòng nhập mật khẩu hiện tại và mới." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setFeedback({ tone: "error", text: "Mật khẩu mới phải có ít nhất 6 ký tự." });
+      return;
+    }
+    setSaving(true);
+    setFeedback(null);
+    try {
+      await api.changePassword({ currentPassword, newPassword });
+      setFeedback({ tone: "success", text: "Đã đổi mật khẩu thành công." });
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err) {
+      setFeedback({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Đổi mật khẩu thất bại.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <PanelHeader title="Tài khoản" description="Bảo mật đăng nhập." />
+      <div className="space-y-5 p-6">
+        {feedback && (
+          <div
+            role={feedback.tone === "error" ? "alert" : "status"}
+            className={cn(
+              "rounded-[8px] border px-4 py-2.5 text-[13px]",
+              feedback.tone === "success"
+                ? "border-[#bce8c8] bg-success-container/50 text-[#1f7a4d]"
+                : "border-rose-200 bg-rose-50 text-rose-700",
+            )}
+          >
+            {feedback.text}
+          </div>
+        )}
+        <TabInput
+          label="Mật khẩu hiện tại"
+          type="password"
+          placeholder="••••••••"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+        <TabInput
+          label="Mật khẩu mới"
+          type="password"
+          placeholder="••••••••"
+          hint="Tối thiểu 6 ký tự."
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
+        />
+        <div className="flex justify-end">
+          <button
+            onClick={() => void submit()}
+            disabled={saving}
+            className="h-10 rounded-[8px] bg-primary px-5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] disabled:opacity-60"
+          >
+            {saving ? "Đang đổi…" : "Đổi mật khẩu"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Availability tab ──────────────────────────────────────────────────────────
+
+function AvailabilityTab() {
   const [avail, setAvail] = useState<Record<string, boolean>>({
     Mon: true,
     Tue: true,
@@ -33,211 +234,110 @@ export default function CoachSettingsPage() {
   });
   const [bookingWindow, setBookingWindow] = useState(48);
   const [autoConfirm, setAutoConfirm] = useState(true);
+
+  return (
+    <div>
+      <PanelHeader
+        title="Lịch rảnh"
+        description="Ngày và giờ học viên có thể đặt lịch bạn."
+      />
+      <div className="space-y-5 p-6">
+        <div>
+          <label className="mb-2 block text-[13px] font-semibold text-on-surface">
+            Ngày hoạt động
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {DAYS.map((d, i) => {
+              const key = DAYS_EN[i];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setAvail({ ...avail, [key]: !avail[key] })}
+                  className={cn(
+                    "h-10 w-10 rounded-[6px] border text-[13px] font-medium transition-colors",
+                    avail[key]
+                      ? "border-primary bg-primary/[0.08] text-primary"
+                      : "border-[var(--color-border-soft)] text-on-surface-variant hover:border-primary",
+                  )}
+                >
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TabInput label="Giờ bắt đầu" type="time" defaultValue="08:00" />
+          <TabInput label="Giờ kết thúc" type="time" defaultValue="18:00" />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[13px] font-semibold text-on-surface">
+            Thời hạn đặt trước (giờ)
+          </label>
+          <p className="mb-2 text-[11.5px] text-on-surface-variant">
+            Số giờ tối thiểu học viên cần báo trước khi đặt.
+          </p>
+          <div className="flex max-w-sm items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={168}
+              step={6}
+              value={bookingWindow}
+              onChange={(e) => setBookingWindow(Number(e.target.value))}
+              className="flex-1 accent-primary"
+            />
+            <span className="min-w-[52px] text-right text-[13px] font-medium tabular-nums">
+              {bookingWindow}h
+            </span>
+          </div>
+        </div>
+        <Toggle
+          label="Tự xác nhận đặt lịch mới"
+          description="Nếu tắt, bạn sẽ xem xét thủ công mỗi yêu cầu."
+          checked={autoConfirm}
+          onChange={setAutoConfirm}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Notifications tab ─────────────────────────────────────────────────────────
+
+function NotificationsTab() {
   const [sessionReminder, setSessionReminder] = useState(true);
   const [paymentAlerts, setPaymentAlerts] = useState(true);
   const [aiNudge, setAiNudge] = useState(true);
-  const [cancellationFee, setCancellationFee] = useState(50);
 
   return (
-    <AppShell role="coach" title="Settings">
-      <div className="max-w-[1100px]">
-        <header className="mb-5">
-          <h1 className="text-h1">Coach Settings</h1>
-          <p className="text-body-base text-on-surface-variant mt-1">
-            Account, availability, payments and policies.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-5">
-          <nav className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-1.5 h-fit md:sticky md:top-20 space-y-0.5">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-[6px] text-body-base text-left transition-colors",
-                  tab === t.id
-                    ? "bg-primary/8 text-primary font-medium"
-                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                )}
-              >
-                <MaterialIcon name={t.icon} size={18} />
-                {t.label}
-              </button>
-            ))}
-            <Link
-              href="/coach/profile"
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-[6px] text-body-base text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors mt-2 border-t border-[var(--color-border-soft)] pt-3"
-            >
-              <MaterialIcon name="account_circle" size={18} />
-              Edit public profile →
-            </Link>
-          </nav>
-
-          <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px]">
-            {tab === "account" && (
-              <Tab title="Account" description="Login and security.">
-                <Field label="Email">
-                  <Input value="sarah.jenkins@procoach.ai" type="email" />
-                </Field>
-                <Field label="Current password">
-                  <Input type="password" placeholder="••••••••" />
-                </Field>
-                <Field label="New password">
-                  <Input type="password" placeholder="••••••••" />
-                </Field>
-                <Toggle
-                  label="Two-factor authentication"
-                  description="Required for accounts handling payouts."
-                  checked
-                  onChange={() => {}}
-                />
-              </Tab>
-            )}
-
-            {tab === "availability" && (
-              <Tab
-                title="Availability"
-                description="Days and hours learners can book you."
-              >
-                <Field label="Available days">
-                  <div className="flex flex-wrap gap-2">
-                    {DAYS.map((d) => (
-                      <button
-                        key={d}
-                        onClick={() =>
-                          setAvail({ ...avail, [d]: !avail[d] })
-                        }
-                        className={cn(
-                          "w-12 h-12 rounded-[6px] border transition-colors text-body-sm font-medium",
-                          avail[d]
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-[var(--color-border-soft)] text-on-surface-variant hover:border-primary",
-                        )}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Daily start">
-                    <Input type="time" defaultValue="08:00" />
-                  </Field>
-                  <Field label="Daily end">
-                    <Input type="time" defaultValue="18:00" />
-                  </Field>
-                </div>
-                <Field
-                  label="Booking window"
-                  hint="Minimum hours notice learners need to book."
-                >
-                  <div className="flex items-center gap-3 max-w-md">
-                    <input
-                      type="range"
-                      min={0}
-                      max={168}
-                      step={6}
-                      value={bookingWindow}
-                      onChange={(e) =>
-                        setBookingWindow(Number(e.target.value))
-                      }
-                      className="flex-1 accent-primary"
-                    />
-                    <span className="text-body-base font-medium min-w-[60px]">
-                      {bookingWindow}h
-                    </span>
-                  </div>
-                </Field>
-                <Toggle
-                  label="Auto-confirm new bookings"
-                  description="If off, you'll review every request manually."
-                  checked={autoConfirm}
-                  onChange={setAutoConfirm}
-                />
-              </Tab>
-            )}
-
-            {tab === "notifications" && (
-              <Tab
-                title="Notifications"
-                description="Email and in-app alerts."
-              >
-                <Toggle
-                  label="Session reminders"
-                  description="Get a reminder 24h before each session."
-                  checked={sessionReminder}
-                  onChange={setSessionReminder}
-                />
-                <Toggle
-                  label="Payment alerts"
-                  description="Notify when a payout is paid or failed."
-                  checked={paymentAlerts}
-                  onChange={setPaymentAlerts}
-                />
-                <Toggle
-                  label="AI coaching nudges"
-                  description="Insights about learner activity and retention."
-                  checked={aiNudge}
-                  onChange={setAiNudge}
-                />
-                <Toggle
-                  label="Weekly digest"
-                  description="Summary email every Monday morning."
-                  checked={false}
-                  onChange={() => {}}
-                />
-              </Tab>
-            )}
-
-            {tab === "payments" && <PaymentsTab />}
-
-            {tab === "policies" && (
-              <Tab
-                title="Cancellation policy"
-                description="Rules applied when learners cancel."
-              >
-                <Field
-                  label="Free cancellation window"
-                  hint="Hours before session start."
-                >
-                  <Input type="number" defaultValue={24} className="max-w-[150px]" />
-                </Field>
-                <Field
-                  label="Late cancellation fee"
-                  hint="% of session price charged after the free window."
-                >
-                  <div className="flex items-center gap-3 max-w-md">
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={cancellationFee}
-                      onChange={(e) =>
-                        setCancellationFee(Number(e.target.value))
-                      }
-                      className="flex-1 accent-primary"
-                    />
-                    <span className="text-body-base font-medium min-w-[50px]">
-                      {cancellationFee}%
-                    </span>
-                  </div>
-                </Field>
-                <Toggle
-                  label="No-show full charge"
-                  description="Charge 100% if learner doesn't show within 15 min."
-                  checked
-                  onChange={() => {}}
-                />
-              </Tab>
-            )}
-          </section>
-        </div>
+    <div>
+      <PanelHeader title="Thông báo" description="Email và thông báo trong app." />
+      <div className="space-y-5 p-6">
+        <Toggle
+          label="Nhắc nhở buổi tập"
+          description="Nhận nhắc 24h trước mỗi buổi."
+          checked={sessionReminder}
+          onChange={setSessionReminder}
+        />
+        <Toggle
+          label="Cảnh báo thanh toán"
+          description="Thông báo khi payout được xử lý hoặc thất bại."
+          checked={paymentAlerts}
+          onChange={setPaymentAlerts}
+        />
+        <Toggle
+          label="Gợi ý từ AI"
+          description="Nhận insights về hoạt động và giữ chân học viên."
+          checked={aiNudge}
+          onChange={setAiNudge}
+        />
       </div>
-    </AppShell>
+    </div>
   );
 }
+
+// ── Payments tab ──────────────────────────────────────────────────────────────
 
 function PaymentsTab() {
   const { data: account, loading, refetch } = useApiResource(
@@ -285,179 +385,185 @@ function PaymentsTab() {
   };
 
   return (
-    <Tab title="Payments" description="Payout method and tax info.">
-      {!editing ? (
-        <div className="p-4 border border-[var(--color-border-soft)] rounded-[10px] flex items-center gap-4">
-          <div className="w-10 h-10 rounded-[8px] bg-surface-container-high flex items-center justify-center shrink-0">
-            <MaterialIcon
-              name="account_balance"
-              size={20}
-              className="text-primary"
-            />
+    <div>
+      <PanelHeader title="Thanh toán" description="Tài khoản nhận tiền." />
+      <div className="space-y-5 p-6">
+        {!editing ? (
+          <div className="flex items-center gap-4 rounded-[10px] border border-[var(--color-border-soft)] p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-surface-container-high">
+              <MaterialIcon name="account_balance" size={20} className="text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              {loading ? (
+                <p className="text-[13px] text-on-surface-variant">Đang tải…</p>
+              ) : hasAccount ? (
+                <>
+                  <p className="text-[14px] font-medium">
+                    {account?.bankName} •••• {(account?.bankAccountNumber ?? "").slice(-4)}
+                  </p>
+                  <p className="text-[12px] text-on-surface-variant">
+                    {account?.bankAccountHolder}
+                    {account?.status ? ` • ${account.status}` : ""}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[14px] font-medium">Chưa có tài khoản nhận tiền</p>
+                  <p className="text-[12px] text-on-surface-variant">
+                    Thêm tài khoản ngân hàng để nhận payout
+                  </p>
+                </>
+              )}
+            </div>
+            <button
+              onClick={() => setEditing(true)}
+              className="shrink-0 text-[13px] font-medium text-primary hover:underline"
+            >
+              {hasAccount ? "Thay đổi" : "Thêm"}
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            {loading ? (
-              <p className="text-body-sm text-on-surface-variant">Đang tải…</p>
-            ) : hasAccount ? (
-              <>
-                <p className="text-body-base font-medium">
-                  {account?.bankName} ••••{" "}
-                  {(account?.bankAccountNumber ?? "").slice(-4)}
-                </p>
-                <p className="text-body-sm text-on-surface-variant">
-                  {account?.bankAccountHolder}
-                  {account?.status ? ` • ${account.status}` : ""}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-body-base font-medium">
-                  Chưa có tài khoản nhận tiền
-                </p>
-                <p className="text-body-sm text-on-surface-variant">
-                  Thêm tài khoản ngân hàng để nhận payout
-                </p>
-              </>
-            )}
-          </div>
-          <button
-            onClick={() => setEditing(true)}
-            className="text-body-sm text-primary hover:underline shrink-0"
-          >
-            {hasAccount ? "Replace" : "Add"}
-          </button>
-        </div>
-      ) : (
-        <div className="p-4 border border-[var(--color-border-soft)] rounded-[10px] space-y-3">
-          <Field label="Tên ngân hàng">
-            <Input
+        ) : (
+          <div className="space-y-4 rounded-[10px] border border-[var(--color-border-soft)] p-4">
+            <TabInput
+              label="Tên ngân hàng"
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               placeholder="Vietcombank"
             />
-          </Field>
-          <Field label="Số tài khoản">
-            <Input
+            <TabInput
+              label="Số tài khoản"
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
               placeholder="0123456789"
               inputMode="numeric"
             />
-          </Field>
-          <Field label="Chủ tài khoản">
-            <Input
+            <TabInput
+              label="Chủ tài khoản"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value)}
               placeholder="NGUYEN VAN A"
             />
-          </Field>
-          {error && (
-            <p className="text-body-sm text-[#ba1a1a]" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={() => {
-                setEditing(false);
-                setError(null);
-              }}
-              disabled={saving}
-              className="px-4 py-2 text-body-sm text-on-surface-variant hover:text-on-surface disabled:opacity-50"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={() => void save()}
-              disabled={saving}
-              className="px-4 py-2 bg-primary text-on-primary rounded-[6px] text-body-sm font-medium hover:bg-[#2d20b8] disabled:opacity-60"
-            >
-              {saving ? "Đang lưu…" : "Lưu tài khoản"}
-            </button>
+            {error && (
+              <p className="text-[12.5px] text-rose-600" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setEditing(false); setError(null); }}
+                disabled={saving}
+                className="px-4 py-2 text-[13px] text-on-surface-variant hover:text-on-surface disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => void save()}
+                disabled={saving}
+                className="h-10 rounded-[8px] bg-primary px-5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] disabled:opacity-60"
+              >
+                {saving ? "Đang lưu…" : "Lưu tài khoản"}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-
-      <Field label="Payout schedule">
-        <div className="flex gap-2">
-          {["Weekly", "Bi-weekly", "Monthly"].map((s, i) => (
-            <button
-              key={s}
-              className={cn(
-                "px-3 py-1.5 rounded-[6px] text-body-sm border",
-                i === 0
-                  ? "border-primary bg-primary/5 text-primary font-medium"
-                  : "border-[var(--color-border-soft)] hover:border-primary",
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </Field>
-    </Tab>
+        )}
+      </div>
+    </div>
   );
 }
 
-function Tab({
+// ── Policies tab ──────────────────────────────────────────────────────────────
+
+function PoliciesTab() {
+  const [cancellationFee, setCancellationFee] = useState(50);
+
+  return (
+    <div>
+      <PanelHeader
+        title="Chính sách huỷ lịch"
+        description="Quy tắc áp dụng khi học viên huỷ."
+      />
+      <div className="space-y-5 p-6">
+        <TabInput
+          label="Cửa sổ huỷ miễn phí (giờ)"
+          hint="Số giờ trước khi bắt đầu buổi tập."
+          type="number"
+          defaultValue={24}
+          className="max-w-[150px]"
+        />
+        <div>
+          <label className="mb-1.5 block text-[13px] font-semibold text-on-surface">
+            Phí huỷ muộn (%)
+          </label>
+          <p className="mb-2 text-[11.5px] text-on-surface-variant">
+            % giá buổi tập áp dụng khi huỷ sau giờ miễn phí.
+          </p>
+          <div className="flex max-w-sm items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={cancellationFee}
+              onChange={(e) => setCancellationFee(Number(e.target.value))}
+              className="flex-1 accent-primary"
+            />
+            <span className="min-w-[48px] text-right text-[13px] font-medium tabular-nums">
+              {cancellationFee}%
+            </span>
+          </div>
+        </div>
+        <Toggle
+          label="Tính đủ 100% khi vắng mặt"
+          description="Thu 100% nếu học viên không có mặt trong 15 phút đầu."
+          checked
+          onChange={() => {}}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+function PanelHeader({
   title,
   description,
-  children,
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
 }) {
   return (
-    <div>
-      <div className="px-6 py-4 border-b border-[var(--color-border-soft)]">
-        <h2 className="text-h2">{title}</h2>
-        <p className="text-body-sm text-on-surface-variant">{description}</p>
-      </div>
-      <div className="p-6 space-y-5">{children}</div>
-      <div className="px-6 py-3 border-t border-[var(--color-border-soft)] flex items-center justify-end gap-2 bg-surface-container-low/40">
-        <button className="px-4 py-2 text-body-sm text-on-surface-variant hover:text-on-surface">
-          Cancel
-        </button>
-        <button className="px-4 py-2 bg-primary text-on-primary rounded-[6px] text-body-sm font-medium hover:bg-[#2d20b8]">
-          Save changes
-        </button>
-      </div>
+    <div className="border-b border-[var(--color-border-soft)] px-6 py-4">
+      <h2 className="text-h2">{title}</h2>
+      <p className="text-body-sm text-on-surface-variant">{description}</p>
     </div>
   );
 }
 
-function Field({
+function TabInput({
   label,
   hint,
-  children,
-}: {
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   hint?: string;
-  children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="block text-body-base font-medium text-on-surface mb-1">
+      <label className="mb-1 block text-[13px] font-medium text-on-surface">
         {label}
       </label>
       {hint && (
-        <p className="text-body-sm text-on-surface-variant mb-2">{hint}</p>
+        <p className="mb-1.5 text-[11.5px] text-on-surface-variant">{hint}</p>
       )}
-      {children}
+      <input
+        {...props}
+        className={cn(
+          "h-11 w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 text-[14px] outline-none transition-colors focus:border-primary",
+          props.className,
+        )}
+      />
     </div>
-  );
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={cn(
-        "w-full px-3 py-2 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[6px] text-body-base outline-none focus:border-primary transition-colors",
-        props.className,
-      )}
-    />
   );
 }
 
@@ -474,18 +580,19 @@ function Toggle({
 }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1">
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-body-base font-medium">{label}</p>
         {description && (
-          <p className="text-body-sm text-on-surface-variant mt-0.5">
+          <p className="mt-0.5 text-body-sm text-on-surface-variant">
             {description}
           </p>
         )}
       </div>
       <button
+        type="button"
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0",
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
           checked ? "bg-primary" : "bg-surface-container-highest",
         )}
         aria-pressed={checked}
