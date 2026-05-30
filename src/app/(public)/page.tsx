@@ -6,6 +6,8 @@ import { CoachShowcaseSection } from "@/components/landing/CoachShowcaseSection"
 import { ProductPreviewSection } from "@/components/landing/ProductPreviewSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
+import { PublicNavbar } from "@/components/layout/PublicNavbar";
+import { Footer } from "@/components/layout/Footer";
 import { api } from "@/lib/api";
 
 export default async function LandingPage() {
@@ -14,29 +16,33 @@ export default async function LandingPage() {
 
   return (
     <>
-      {/* ===================== A — Hero (GRIND-style dark) ===================== */}
-      <HeroSection coach={heroCoach} />
+      <PublicNavbar variant="transparent" />
+      <main className="flex-1">
+        {/* ===================== A — Hero (GRIND-style dark) ===================== */}
+        <HeroSection coach={heroCoach} />
 
-      {/* ===================== B — Trust strip ===================== */}
-      <StatStrip />
+        {/* ===================== B — Trust strip ===================== */}
+        <StatStrip />
 
-      {/* ===================== C — How it works ===================== */}
-      <HowItWorksSection />
+        {/* ===================== C — How it works ===================== */}
+        <HowItWorksSection />
 
-      {/* ===================== D — AI deep-dive (dark engine) ===================== */}
-      <AIDeepDiveSection />
+        {/* ===================== D — AI deep-dive (dark engine) ===================== */}
+        <AIDeepDiveSection />
 
-      {/* ===================== E — Coach showcase ===================== */}
-      <CoachShowcaseSection />
+        {/* ===================== E — Coach showcase ===================== */}
+        <CoachShowcaseSection />
 
-      {/* ===================== F — Product preview ===================== */}
-      <ProductPreviewSection />
+        {/* ===================== F — Product preview ===================== */}
+        <ProductPreviewSection />
 
-      {/* ===================== G — Testimonials ===================== */}
-      <TestimonialsSection />
+        {/* ===================== G — Testimonials ===================== */}
+        <TestimonialsSection />
 
-      {/* ===================== H — Final CTA ===================== */}
-      <FinalCTASection />
+        {/* ===================== H — Final CTA ===================== */}
+        <FinalCTASection />
+      </main>
+      <Footer />
     </>
   );
 }

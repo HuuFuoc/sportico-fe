@@ -29,6 +29,9 @@ import type { AnyUser, Message } from "@/types";
 
 interface MessagesViewProps {
   userId: string;
+  /** Optional thread id to pre-select when present (e.g. from a `?thread=`
+   *  query param after navigating from a coach profile). */
+  initialThreadId?: string;
 }
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -42,7 +45,7 @@ const AI_SUGGESTIONS = [
   { icon: Zap, label: "Quick 15-min HIIT" },
 ];
 
-export function MessagesView({ userId }: MessagesViewProps) {
+export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
   const {
     data: threadsData,
     loading: threadsLoading,
@@ -51,7 +54,7 @@ export function MessagesView({ userId }: MessagesViewProps) {
   } = useApiResource(() => api.fetchThreads(userId), [userId]);
   const threads = useMemo(() => threadsData ?? [], [threadsData]);
 
-  const [activeId, setActiveId] = useState("");
+  const [activeId, setActiveId] = useState(initialThreadId ?? "");
   const [composer, setComposer] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
   const [query, setQuery] = useState("");
@@ -82,12 +85,17 @@ export function MessagesView({ userId }: MessagesViewProps) {
   }, [usersData]);
 
   // Select the first thread once threads load (or if the active one disappears).
+  // Honour `initialThreadId` when it matches a real thread, otherwise fall back
+  // to the first one.
   useEffect(() => {
     if (threads.length === 0) return;
-    setActiveId((cur) =>
-      cur && threads.some((t) => t.id === cur) ? cur : threads[0].id,
-    );
-  }, [threads]);
+    setActiveId((cur) => {
+      const candidate = cur || initialThreadId || "";
+      return candidate && threads.some((t) => t.id === candidate)
+        ? candidate
+        : threads[0].id;
+    });
+  }, [threads, initialThreadId]);
 
   const { data: messagesData } = useApiResource(
     () =>

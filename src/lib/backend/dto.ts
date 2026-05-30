@@ -37,6 +37,64 @@ export interface PageQuery {
   pageSize?: number;
 }
 
+// ---- Public coach directory ------------------------------------------------
+
+export interface PublicCoachSportResponse {
+  id: number;
+  name?: string | null;
+}
+
+export interface PublicCoachListItemResponse {
+  coachId: string;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  headline?: string | null;
+  bio?: string | null;
+  experienceYears: number;
+  coverImageUrl?: string | null;
+  teachingCity?: string | null;
+  teachingDistrict?: string | null;
+  isOnlineAvailable?: boolean | null;
+  isOfflineAvailable?: boolean | null;
+  specialties?: string | null;
+  rating: number;
+  totalReviews: number;
+  sports?: PublicCoachSportResponse[] | null;
+}
+
+export interface PublicCoachMediaResponse {
+  id: string;
+  mediaType?: string | null;
+  mediaUrl?: string | null;
+  title?: string | null;
+  description?: string | null;
+  orderIndex: number;
+}
+
+export interface PublicCoachTrainingPackageResponse {
+  id: string;
+  sportId: number;
+  sportName?: string | null;
+  title?: string | null;
+  description?: string | null;
+  price: number;
+  sessionCount: number;
+  durationDays: number;
+  location?: string | null;
+  isOnline: boolean;
+  level?: string | null;
+  goalType?: string | null;
+  status?: string | null;
+}
+
+export interface PublicCoachDetailResponse extends PublicCoachListItemResponse {
+  teachingAddress?: string | null;
+  certificationsSummary?: string | null;
+  achievementsSummary?: string | null;
+  media?: PublicCoachMediaResponse[] | null;
+  trainingPackages?: PublicCoachTrainingPackageResponse[] | null;
+}
+
 // ---- Sports / packages -----------------------------------------------------
 
 export interface SportResponse {
@@ -302,6 +360,20 @@ export interface CurrentUserResponse {
   roles: string[];
   coachProfile?: CoachProfileSummaryResponse | null;
   learnerProfile?: LearnerProfileSummaryResponse | null;
+}
+
+/** Request body for `PUT /api/users/me`. All fields are partial updates. */
+export interface UpdateMeRequest {
+  fullName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  dateOfBirth?: string;
+}
+
+/** Request body for `POST /api/auth/change-password`. */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 // ---- Training plan ---------------------------------------------------------

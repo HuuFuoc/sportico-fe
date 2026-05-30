@@ -150,20 +150,18 @@ async function liveCoachSessions(): Promise<Session[]> {
 
 export const api = {
   // ---- Users -------------------------------------------------------------
-  // Coach directory derives from public training packages (no coach-list API).
   fetchCoaches: (): Promise<Coach[]> =>
     live(async () => {
-      const page = await backend.publicTrainingPackages({ pageSize: 60 });
-      return (page.items ?? []).map(map.packageToCoach);
+      const page = await backend.publicCoaches({ pageSize: 60 });
+      return (page.items ?? []).map(map.publicCoachListItemToCoach);
     }, () => getCoaches()),
   fetchCoach: (id: string): Promise<Coach | undefined> =>
     live(async () => {
-      const page = await backend.publicTrainingPackages({
-        coachId: id,
-        pageSize: 1,
-      });
-      const first = (page.items ?? [])[0];
-      return first ? map.packageToCoach(first) : undefined;
+      try {
+        return map.publicCoachDetailToCoach(await backend.publicCoach(id));
+      } catch {
+        return undefined;
+      }
     }, () => getCoachById(id)),
 
   // ---- Coach's own listings ---------------------------------------------
@@ -187,6 +185,50 @@ export const api = {
     Promise.resolve(getAdminById(id)),
   fetchUser: (id: string): Promise<AnyUser | undefined> =>
     Promise.resolve(getUserById(id)),
+
+  // ---- Current user (settings page) -------------------------------------
+  /** Load the signed-in learner via `/api/users/me`. Falls back to the dev
+   *  mock when there is no session (so the page still renders). */
+  fetchCurrentLearner: (): Promise<Learner> =>
+    liveAuthed<Learner>(
+      async () => {
+        const u = await backend.usersMe();
+        const fallback = getLearnerById(getCurrentUserId() ?? "learner-1");
+        return map.currentUserToLearner(u, fallback);
+      },
+      () => getLearnerById(getCurrentUserId() ?? "learner-1") ?? getLearners()[0],
+    ),
+  updateMyProfile: (body: {
+    fullName?: string;
+    phone?: string;
+    avatarUrl?: string;
+    dateOfBirth?: string;
+  }): Promise<Learner> =>
+    liveAuthed<Learner>(
+      async () => {
+        const u = await backend.updateMe(body);
+        const fallback = getLearnerById(getCurrentUserId() ?? "learner-1");
+        return map.currentUserToLearner(u, fallback);
+      },
+      () => {
+        const base =
+          getLearnerById(getCurrentUserId() ?? "learner-1") ??
+          getLearners()[0];
+        return {
+          ...base,
+          name: body.fullName ?? base.name,
+          avatarUrl: body.avatarUrl ?? base.avatarUrl,
+        };
+      },
+    ),
+  changePassword: (body: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<void> =>
+    liveAuthed<void>(
+      () => backend.changePassword(body),
+      () => undefined,
+    ),
 
   // ---- Bookings / purchase ----------------------------------------------
   // Buy a training package. Live mode starts a real PayOS checkout and returns
@@ -335,6 +377,28 @@ export const api = {
         text: content,
         sentAt: new Date().toISOString(),
       }),
+    ),
+  /** Look up an existing 1-1 chat room with `otherUserId`. Returns the room id
+   *  if one exists, otherwise null (backend has no "create room" endpoint, so
+   *  callers must surface the limitation themselves). */
+  findChatRoomWith: (otherUserId: string): Promise<string | null> =>
+    liveAuthed<string | null>(
+      async () => {
+        const rooms = await backend.chatRooms();
+        const me = getCurrentUserId();
+        const room = rooms.find(
+          (r) =>
+            (r.user1Id === me && r.user2Id === otherUserId) ||
+            (r.user2Id === me && r.user1Id === otherUserId),
+        );
+        return room?.id ?? null;
+      },
+      () => {
+        const me = getCurrentUserId() ?? "learner-1";
+        const threads = getThreadsForUser(me);
+        const t = threads.find((th) => th.participantIds.includes(otherUserId));
+        return t?.id ?? null;
+      },
     ),
 
   // ---- Earnings / payouts ------------------------------------------------

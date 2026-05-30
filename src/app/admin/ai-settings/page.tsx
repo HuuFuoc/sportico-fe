@@ -3,14 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   Cell,
-  Line,
-  LineChart,
   ResponsiveContainer,
+  XAxis,
   YAxis,
 } from "recharts";
 import {
@@ -21,22 +18,17 @@ import {
   Bot,
   Brain,
   Check,
+  ChevronDown,
   ChevronRight,
-  CircleDot,
   Clock,
   Cpu,
   Database,
-  FileBarChart,
   FileText,
   FlaskConical,
   GitBranch,
-  GitCommit,
-  History,
   Info,
-  Lightbulb,
   Loader2,
   Lock,
-  LogOut,
   Play,
   Radio,
   RotateCcw,
@@ -69,19 +61,15 @@ interface Signal {
   desc: string;
   value: number;
   default: number;
-  impact: {
-    match: number;
-    repeat: number;
-    diversity: number;
-  };
+  impact: { match: number; repeat: number; diversity: number };
   confidence: number;
 }
 
 const SIGNAL_DEFAULTS: Signal[] = [
   {
     id: "rating",
-    label: "Coach Rating Weight",
-    desc: "Bias toward higher-rated coaches",
+    label: "Coach Rating",
+    desc: "Ưu tiên huấn luyện viên có đánh giá cao",
     value: 85,
     default: 85,
     impact: { match: 12, repeat: 9, diversity: -4 },
@@ -89,8 +77,8 @@ const SIGNAL_DEFAULTS: Signal[] = [
   },
   {
     id: "availability",
-    label: "Availability Match",
-    desc: "Prefer coaches with open slots in 7d",
+    label: "Khớp lịch trống",
+    desc: "Ưu tiên coach có slot mở trong 7 ngày tới",
     value: 40,
     default: 40,
     impact: { match: 5, repeat: 7, diversity: 2 },
@@ -98,8 +86,8 @@ const SIGNAL_DEFAULTS: Signal[] = [
   },
   {
     id: "price",
-    label: "Price Compatibility",
-    desc: "Match learner budget bands",
+    label: "Phù hợp ngân sách",
+    desc: "Khớp coach với khoảng giá của learner",
     value: 60,
     default: 60,
     impact: { match: 8, repeat: 4, diversity: -2 },
@@ -107,8 +95,8 @@ const SIGNAL_DEFAULTS: Signal[] = [
   },
   {
     id: "experience",
-    label: "Experience Weight",
-    desc: "Weight years of coaching",
+    label: "Kinh nghiệm",
+    desc: "Trọng số dựa trên số năm huấn luyện",
     value: 55,
     default: 55,
     impact: { match: 7, repeat: 3, diversity: -1 },
@@ -116,8 +104,8 @@ const SIGNAL_DEFAULTS: Signal[] = [
   },
   {
     id: "location",
-    label: "Location Proximity",
-    desc: "Prefer geographically close coaches",
+    label: "Khoảng cách địa lý",
+    desc: "Ưu tiên coach ở gần learner",
     value: 30,
     default: 30,
     impact: { match: 3, repeat: 2, diversity: 4 },
@@ -125,8 +113,8 @@ const SIGNAL_DEFAULTS: Signal[] = [
   },
   {
     id: "history",
-    label: "Past Engagement",
-    desc: "Boost coaches with positive history",
+    label: "Lịch sử tương tác",
+    desc: "Boost coach có lịch sử tích cực với learner",
     value: 70,
     default: 70,
     impact: { match: 10, repeat: 14, diversity: -7 },
@@ -137,118 +125,128 @@ const SIGNAL_DEFAULTS: Signal[] = [
 const GUARDS = [
   {
     id: "g1",
-    label: "Filter unverified coaches",
-    desc: "Don't surface coaches still in verification queue.",
+    label: "Lọc coach chưa xác minh",
+    desc: "Không hiển thị coach còn trong hàng đợi xác minh.",
     enabled: true,
     severity: "low" as const,
     compliance: null,
+    locked: false,
   },
   {
     id: "g2",
-    label: "Block auto-confirm paid sessions",
-    desc: "Require human approval before charging.",
+    label: "Chặn tự động xác nhận buổi học có phí",
+    desc: "Yêu cầu admin phê duyệt trước khi tính phí learner.",
     enabled: true,
     severity: "high" as const,
     compliance: "PCI DSS · §4.2",
+    locked: false,
   },
   {
     id: "g3",
-    label: "Anonymize PII in training logs",
-    desc: "Strip names, emails and addresses before retraining.",
+    label: "Ẩn danh PII trong log huấn luyện",
+    desc: "Loại bỏ tên, email, địa chỉ trước khi retrain mô hình.",
     enabled: true,
     severity: "critical" as const,
     compliance: "GDPR Art. 25",
+    locked: true,
   },
   {
     id: "g4",
-    label: "Log every AI recommendation",
-    desc: "Required for compliance auditing.",
+    label: "Ghi log mọi gợi ý AI",
+    desc: "Bắt buộc để phục vụ kiểm toán compliance.",
     enabled: false,
     severity: "med" as const,
     compliance: "SOC 2 CC7.3",
+    locked: false,
   },
   {
     id: "g5",
-    label: "Hallucination guard on chat",
-    desc: "Block low-confidence assistant responses.",
+    label: "Hallucination guard cho chat",
+    desc: "Chặn phản hồi của trợ lý có độ tin cậy thấp.",
     enabled: true,
     severity: "high" as const,
     compliance: "Internal AUP",
+    locked: false,
   },
   {
     id: "g6",
     label: "Bias drift detection",
-    desc: "Flag demographic ranking skew automatically.",
+    desc: "Tự động cảnh báo khi ranking thiên lệch theo demographic.",
     enabled: true,
     severity: "high" as const,
     compliance: "EU AI Act Art. 9",
+    locked: true,
   },
 ];
 
 const RISK_ALERTS = [
   {
+    id: "r1",
     severity: "high" as const,
-    icon: TrendingDown,
-    title: "Recommendation diversity dropping",
-    body: "Top-10 results 18% less diverse vs 7-day baseline.",
-    metric: "Diversity index 0.71 → 0.58",
-    age: "12m",
+    title: "Diversity gợi ý đang giảm",
+    body: "Top-10 kết quả giảm 18% diversity so với baseline 7 ngày.",
+    metric: "Diversity 0.71 → 0.58",
+    age: "12 phút",
+    action: "Xem xét hạ Coach Rating weight 5–8 điểm.",
   },
   {
+    id: "r2",
     severity: "med" as const,
-    icon: AlertTriangle,
-    title: "Fallback rate elevated",
-    body: "Assistant escalations to humans up 2.4%.",
+    title: "Fallback rate tăng bất thường",
+    body: "Tỉ lệ trợ lý chuyển sang human escalation tăng 2.4 pp.",
     metric: "2.1% → 4.5%",
-    age: "1h",
+    age: "1 giờ",
+    action: "Kiểm tra prompt thay đổi gần nhất trên canary.",
   },
   {
+    id: "r3",
     severity: "med" as const,
-    icon: Activity,
     title: "Inference latency spike",
-    body: "p99 above 380ms in us-east-1 for 14m.",
+    body: "p99 vượt 380ms tại us-east-1 trong 14 phút.",
     metric: "p99 380ms",
-    age: "14m",
+    age: "14 phút",
+    action: "Theo dõi auto-scaling · cân nhắc mở thêm replica.",
   },
   {
+    id: "r4",
     severity: "info" as const,
-    icon: Info,
-    title: "Model drift trending up",
-    body: "Population stability index increasing.",
+    title: "Model drift đang tăng nhẹ",
+    body: "Population Stability Index có xu hướng tăng dần.",
     metric: "PSI 0.18",
-    age: "6h",
+    age: "6 giờ",
+    action: "Lên lịch retrain trong 7 ngày tới.",
   },
 ];
 
 const ACTIVITY_FEED = [
   {
-    icon: GitCommit,
-    label: "v3.2.1 deployed to production",
-    meta: "By admin · 2h ago",
+    icon: GitBranch,
+    label: "v3.2.1 triển khai sang production",
+    meta: "ops@ · 2 giờ trước",
     tone: "good" as const,
   },
   {
     icon: Beaker,
-    label: "Shadow test started: rating_v2",
-    meta: "Running on 12% traffic",
+    label: "Shadow test mới: rating_v2",
+    meta: "Đang chạy trên 12% lưu lượng",
     tone: "info" as const,
   },
   {
     icon: ShieldAlert,
-    label: "Guardrail enabled: Hallucination guard",
-    meta: "By compliance@",
+    label: "Bật guardrail: Hallucination guard",
+    meta: "compliance@ · 3 giờ trước",
     tone: "info" as const,
   },
   {
     icon: AlertTriangle,
-    label: "Latency alert resolved",
-    meta: "us-east-1 · 38m ago",
+    label: "Cảnh báo latency đã được resolve",
+    meta: "us-east-1 · 38 phút trước",
     tone: "good" as const,
   },
   {
     icon: GitBranch,
-    label: "Canary v3.2.2 promoted to 25%",
-    meta: "Auto · health checks passed",
+    label: "Canary v3.2.2 promote lên 25%",
+    meta: "auto · health-check passed",
     tone: "info" as const,
   },
 ];
@@ -257,7 +255,7 @@ const DEPLOY_HISTORY = [
   {
     version: "v3.2.1",
     env: "production",
-    time: "Today 06:14",
+    time: "Hôm nay · 06:14",
     samples: "1.4M",
     accuracy: 94.2,
     by: "ops@",
@@ -266,7 +264,7 @@ const DEPLOY_HISTORY = [
   {
     version: "v3.2.0",
     env: "production",
-    time: "May 8 11:30",
+    time: "08/05 · 11:30",
     samples: "1.3M",
     accuracy: 93.4,
     by: "ops@",
@@ -275,7 +273,7 @@ const DEPLOY_HISTORY = [
   {
     version: "v3.1.8",
     env: "production",
-    time: "May 2 09:12",
+    time: "02/05 · 09:12",
     samples: "1.3M",
     accuracy: 92.9,
     by: "auto",
@@ -283,44 +281,76 @@ const DEPLOY_HISTORY = [
   },
 ];
 
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function seedSpark(seed: number, base: number, jitter: number, len = 16) {
-  return Array.from({ length: len }, (_, i) => {
-    const noise = Math.sin(i * 1.3 + seed) * jitter;
-    return { i, v: Math.max(0, base + noise) };
-  });
-}
+const EXPERIMENTS = [
+  {
+    id: "exp-2046",
+    name: "rating_v2 shadow",
+    status: "running" as const,
+    traffic: "12%",
+    progress: 64,
+    lift: "+3.2%",
+    age: "2 ngày",
+  },
+  {
+    id: "exp-2042",
+    name: "intent_classifier_v4",
+    status: "running" as const,
+    traffic: "5%",
+    progress: 28,
+    lift: "+0.8%",
+    age: "8 giờ",
+  },
+  {
+    id: "exp-2038",
+    name: "diversity_boost",
+    status: "promoted" as const,
+    traffic: "100%",
+    progress: 100,
+    lift: "+1.4%",
+    age: "Phát hành 1 ngày trước",
+  },
+  {
+    id: "exp-2035",
+    name: "freshness_decay_v3",
+    status: "rolled-back" as const,
+    traffic: "0%",
+    progress: 100,
+    lift: "−0.6%",
+    age: "Hoàn tác 3 ngày trước",
+  },
+];
 
 const ENV_META: Record<
   Env,
-  { label: string; dot: string; bg: string; tone: string }
+  { label: string; dot: string; chipBg: string; chipText: string; desc: string }
 > = {
   production: {
     label: "Production",
-    dot: "bg-[#10b981]",
-    bg: "bg-success-container",
-    tone: "text-[#1f7a4d]",
+    dot: "bg-[#0c8a4d]",
+    chipBg: "bg-[#0c8a4d]/10",
+    chipText: "text-[#0c6b3c]",
+    desc: "100% lưu lượng live",
   },
   canary: {
     label: "Canary",
-    dot: "bg-[#f59e0b]",
-    bg: "bg-[#fff5d6]",
-    tone: "text-[#b95000]",
+    dot: "bg-[#d97706]",
+    chipBg: "bg-[#d97706]/10",
+    chipText: "text-[#a3530a]",
+    desc: "Rollout 5–25%",
   },
   staging: {
     label: "Staging",
     dot: "bg-primary",
-    bg: "bg-primary/10",
-    tone: "text-primary",
+    chipBg: "bg-primary/10",
+    chipText: "text-primary",
+    desc: "QA nội bộ",
   },
   sandbox: {
     label: "Sandbox",
-    dot: "bg-[#94a3b8]",
-    bg: "bg-surface-container-low",
-    tone: "text-on-surface-variant",
+    dot: "bg-[#64748b]",
+    chipBg: "bg-[#64748b]/10",
+    chipText: "text-[#475569]",
+    desc: "Sandbox cô lập",
   },
 };
 
@@ -340,15 +370,15 @@ export default function AISettingsPage() {
   const [dirty, setDirty] = useState(false);
 
   const updateSignal = (id: string, value: number) => {
-    setSignals((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, value } : s)),
-    );
+    setSignals((prev) => prev.map((s) => (s.id === id ? { ...s, value } : s)));
     setDirty(true);
   };
 
   const toggleGuard = (id: string) => {
     setGuards((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, enabled: !g.enabled } : g)),
+      prev.map((g) =>
+        g.id === id && !g.locked ? { ...g, enabled: !g.enabled } : g,
+      ),
     );
     setDirty(true);
   };
@@ -358,7 +388,6 @@ export default function AISettingsPage() {
     setDirty(false);
   };
 
-  // Aggregate projected impact
   const projected = useMemo(() => {
     const sum = signals.reduce(
       (acc, s) => {
@@ -377,110 +406,212 @@ export default function AISettingsPage() {
     };
   }, [signals]);
 
+  const highRisks = RISK_ALERTS.filter((r) => r.severity === "high").length;
+  const medRisks = RISK_ALERTS.filter((r) => r.severity === "med").length;
+  const runningExperiments = EXPERIMENTS.filter((e) => e.status === "running")
+    .length;
+
   return (
-    <AppShell role="admin" title="AI Ops Control Center">
-      <div className="max-w-[1500px] mx-auto pb-24 space-y-4">
+    <AppShell role="admin" title="AI Model Control Center">
+      <div className="mx-auto w-full max-w-[1440px] pb-24">
         {/* ============ HEADER ============ */}
         <motion.header
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduce ? 0 : 0.35, ease: EASE }}
-          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3"
+          className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"
         >
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10.5px] font-semibold border border-primary/15">
-                <Brain size={10} />
-                AI Ops Control Center
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0c6b3c]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0c8a4d] animate-pulse" />
+                Hệ thống ổn định
               </span>
-              <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#1f7a4d]">
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                All systems operational
-              </span>
-              <span className="text-[10.5px] text-on-surface-variant">·</span>
-              <span className="text-[10.5px] text-on-surface-variant tabular-nums">
-                Model v3.2.1 · region us-east-1
+              <span className="text-[12px] text-on-surface-variant">·</span>
+              <span className="text-[12px] text-on-surface-variant tabular-nums">
+                v3.2.1 · us-east-1
               </span>
             </div>
-            <h1 className="text-[26px] sm:text-[30px] leading-[1.1] font-bold tracking-tight">
-              Intelligence &amp; Models
+            <h1 className="text-[28px] sm:text-[30px] leading-[1.15] font-semibold tracking-tight text-on-surface">
+              AI Model Control Center
             </h1>
-            <p className="text-[13px] text-on-surface-variant mt-1">
-              Tune, simulate, deploy, and govern platform-wide ML.
+            <p className="text-[14px] text-on-surface-variant mt-1.5 max-w-2xl leading-relaxed">
+              Quản lý cấu hình mô hình, triển khai an toàn theo môi trường, thí
+              nghiệm và hành vi ranking trên toàn nền tảng.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-col items-stretch sm:items-end gap-2.5 lg:shrink-0">
             <EnvSwitcher env={env} setEnv={setEnv} reduce={reduce ?? false} />
-            <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-semibold transition-colors">
-              <History size={12} />
-              Audit log
-            </button>
-            <button
-              onClick={resetSignals}
-              disabled={!dirty}
-              className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-semibold transition-colors disabled:opacity-50"
-            >
-              <Undo2 size={12} />
-              Reset
-            </button>
-            <button
-              onClick={() => setDeployOpen(true)}
-              className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md bg-primary text-on-primary text-[12px] font-semibold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.35)] hover:bg-[#3a2db5] transition-colors"
-            >
-              <Play size={11} strokeWidth={2.5} />
-              Deploy
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={resetSignals}
+                disabled={!dirty}
+                className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-surface-container-lowest hover:bg-surface-container-low/60 text-[13px] font-medium text-on-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Undo2 size={14} />
+                Đặt lại
+              </button>
+              <button className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-surface-container-lowest hover:bg-surface-container-low/60 text-[13px] font-medium text-on-surface transition-colors">
+                <Play size={13} />
+                Chạy mô phỏng
+              </button>
+              <button
+                onClick={() => setDeployOpen(true)}
+                className="h-9 px-4 inline-flex items-center gap-1.5 rounded-lg bg-primary text-on-primary text-[13px] font-semibold shadow-[0_1px_2px_rgba(53,37,205,0.18),0_4px_12px_-4px_rgba(53,37,205,0.32)] hover:bg-[#2c1eaa] transition-colors"
+              >
+                Xem & Triển khai
+                <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
         </motion.header>
 
-        {/* ============ LIVE TELEMETRY STRIP ============ */}
-        <TelemetryStrip />
+        {/* ============ KPI OVERVIEW ============ */}
+        <section className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <KpiCard
+            label="Mô hình đang chạy"
+            value="v3.2.1"
+            helper="Hybrid ranker + LLM"
+            status="success"
+            statusLabel="Production"
+            tabular={false}
+          />
+          <KpiCard
+            label="Chất lượng ghép cặp"
+            value="94.2%"
+            helper="+0.4 pp so với tuần trước"
+            delta="up"
+            status="success"
+          />
+          <KpiCard
+            label="Inference p95"
+            value="142ms"
+            helper="−4ms vs baseline"
+            delta="down"
+            status="success"
+          />
+          <KpiCard
+            label="Mức rủi ro"
+            value={`${highRisks} cao · ${medRisks} vừa`}
+            helper="Quét cách đây 2 phút"
+            status={highRisks > 0 ? "danger" : "warning"}
+            tabular={false}
+          />
+          <KpiCard
+            label="Thí nghiệm đang chạy"
+            value={String(runningExperiments)}
+            helper="1 chờ phát hành"
+            status="neutral"
+          />
+        </section>
 
-        {/* ============ 3-COLUMN OPS LAYOUT ============ */}
-        <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr_340px] gap-4">
-          {/* ============ LEFT: Model config ============ */}
-          <div className="space-y-3 min-w-0">
-            <ActiveModelCard env={env} />
-            <PresetCard preset={preset} setPreset={setPreset} dirty={() => setDirty(true)} />
-            <FeatureImportance signals={signals} reduce={reduce ?? false} />
-            <DeploymentTargeting trafficPct={trafficPct} setTrafficPct={setTrafficPct} />
-          </div>
+        {/* ============ MODEL CONFIGURATION ============ */}
+        <SectionHeader
+          title="Cấu hình mô hình"
+          subtitle="Phiên bản đang phục vụ production và chế độ tuning áp dụng."
+          className="mt-8"
+        />
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <ActiveModelCard env={env} className="lg:col-span-2" />
+          <PresetCard
+            preset={preset}
+            setPreset={(p) => {
+              setPreset(p);
+              setDirty(true);
+            }}
+          />
+        </div>
 
-          {/* ============ CENTER: Tuning + Simulation ============ */}
-          <div className="space-y-3 min-w-0">
-            {/* Projected impact strip */}
-            <ProjectedImpact projected={projected} />
+        {/* ============ DEPLOYMENT TARGETING ============ */}
+        <SectionHeader
+          title="Triển khai có mục tiêu"
+          subtitle="Phạm vi lưu lượng, vùng địa lý và nhóm đối chứng cho lần phát hành kế tiếp."
+          className="mt-8"
+        />
+        <DeploymentTargeting
+          trafficPct={trafficPct}
+          setTrafficPct={(v) => {
+            setTrafficPct(v);
+            setDirty(true);
+          }}
+          className="mt-4"
+        />
 
-            {/* Signal weights with explainability */}
-            <SignalsPanel
-              signals={signals}
-              updateSignal={updateSignal}
-              reduce={reduce ?? false}
-            />
+        {/* ============ PERFORMANCE & EXPLAINABILITY ============ */}
+        <SectionHeader
+          title="Hiệu năng & Giải thích"
+          subtitle="Tầm quan trọng của các tín hiệu và trọng số ranking có thể điều chỉnh."
+          className="mt-8"
+        />
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <FeatureImportanceCard
+            signals={signals}
+            reduce={reduce ?? false}
+            className="lg:col-span-2"
+          />
+          <SignalWeightsCard
+            signals={signals}
+            updateSignal={updateSignal}
+            projected={projected}
+            reduce={reduce ?? false}
+            className="lg:col-span-3"
+          />
+        </div>
 
-            {/* Simulation: ranking before/after */}
-            <SimulationPanel
-              signals={signals}
-              shadow={shadow}
-              setShadow={(v) => {
-                setShadow(v);
-                setDirty(true);
-              }}
-              reduce={reduce ?? false}
-            />
+        {/* ============ RANKING SIMULATION ============ */}
+        <SectionHeader
+          title="Mô phỏng xếp hạng"
+          subtitle="So sánh ranking mô hình hiện tại với cấu hình đề xuất trước khi deploy."
+          className="mt-8"
+        />
+        <SimulationCard
+          shadow={shadow}
+          setShadow={(v) => {
+            setShadow(v);
+            setDirty(true);
+          }}
+          className="mt-4"
+        />
 
-            {/* Experiment tracking */}
-            <ExperimentTracker reduce={reduce ?? false} />
-          </div>
+        {/* ============ EXPERIMENTS ============ */}
+        <SectionHeader
+          title="Thí nghiệm đang chạy"
+          subtitle="Shadow test và A/B variant trên lưu lượng thật."
+          className="mt-8"
+          action={
+            <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] bg-surface-container-lowest hover:bg-surface-container-low/60 text-[12.5px] font-medium transition-colors">
+              <Sparkles size={12} />
+              Tạo thí nghiệm
+            </button>
+          }
+        />
+        <ExperimentTable reduce={reduce ?? false} className="mt-4" />
 
-          {/* ============ RIGHT: Observability + Governance ============ */}
-          <aside className="space-y-3">
-            <RiskCenter reduce={reduce ?? false} />
-            <Governance guards={guards} toggleGuard={toggleGuard} />
-            <ActivityFeed />
-            <DeployHistory />
-          </aside>
+        {/* ============ RISK & GUARDRAILS ============ */}
+        <SectionHeader
+          title="Trung tâm rủi ro & Guardrails"
+          subtitle="Các bất thường đang theo dõi và chính sách an toàn đang được thực thi."
+          className="mt-8"
+        />
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <RiskCenter reduce={reduce ?? false} className="lg:col-span-3" />
+          <GuardrailsCard
+            guards={guards}
+            toggleGuard={toggleGuard}
+            className="lg:col-span-2"
+          />
+        </div>
+
+        {/* ============ ACTIVITY + DEPLOY HISTORY ============ */}
+        <SectionHeader
+          title="Nhật ký & Lịch sử triển khai"
+          subtitle="Theo dõi mọi thay đổi cấu hình và mọi lần phát hành mô hình."
+          className="mt-8"
+        />
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <ActivityFeedCard className="lg:col-span-2" />
+          <DeployHistoryCard className="lg:col-span-3" />
         </div>
       </div>
 
@@ -514,6 +645,43 @@ export default function AISettingsPage() {
 }
 
 // ============================================================================
+// Section header
+// ============================================================================
+
+function SectionHeader({
+  title,
+  subtitle,
+  action,
+  className,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-end justify-between gap-3 flex-wrap",
+        className,
+      )}
+    >
+      <div>
+        <h2 className="text-[17px] font-semibold tracking-tight text-on-surface">
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// ============================================================================
 // Env switcher
 // ============================================================================
 
@@ -528,24 +696,25 @@ function EnvSwitcher({
 }) {
   const ENVS: Env[] = ["production", "canary", "staging", "sandbox"];
   return (
-    <div className="inline-flex items-center gap-0.5 p-0.5 bg-surface-container-low rounded-md border border-[var(--color-border-soft)]">
+    <div className="inline-flex items-center gap-0.5 p-1 bg-surface-container-low rounded-lg border border-[var(--color-border-soft)]">
       {ENVS.map((e) => {
         const meta = ENV_META[e];
+        const active = env === e;
         return (
           <button
             key={e}
             onClick={() => setEnv(e)}
             className={cn(
-              "relative inline-flex items-center gap-1 px-2 h-7 text-[11px] font-semibold rounded-[5px] transition-colors",
-              env === e
+              "relative inline-flex items-center gap-1.5 px-3 h-8 text-[12.5px] font-medium rounded-md transition-colors",
+              active
                 ? "text-on-surface"
                 : "text-on-surface-variant hover:text-on-surface",
             )}
           >
-            {env === e && (
+            {active && (
               <motion.span
                 layoutId="envPill"
-                className="absolute inset-0 bg-surface-container-lowest rounded-[5px] shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
+                className="absolute inset-0 bg-surface-container-lowest rounded-md shadow-[0_1px_2px_rgba(15,15,30,0.08)]"
                 transition={{
                   type: "spring",
                   duration: reduce ? 0 : 0.35,
@@ -553,7 +722,7 @@ function EnvSwitcher({
                 }}
               />
             )}
-            <span className="relative inline-flex items-center gap-1">
+            <span className="relative inline-flex items-center gap-1.5">
               <span className={cn("w-1.5 h-1.5 rounded-full", meta.dot)} />
               {meta.label}
             </span>
@@ -565,175 +734,169 @@ function EnvSwitcher({
 }
 
 // ============================================================================
-// Telemetry strip
+// KPI Card
 // ============================================================================
 
-const TELEMETRY = [
-  {
-    label: "Inference p95",
-    value: "142ms",
-    delta: "−4ms",
-    deltaDir: "down" as const,
-    spark: seedSpark(1, 140, 12),
-    color: "#10b981",
-    tone: "good" as const,
-  },
-  {
-    label: "Throughput",
-    value: "8.4K rps",
-    delta: "+6%",
-    deltaDir: "up" as const,
-    spark: seedSpark(2, 8000, 600),
-    color: "#4f46e5",
-    tone: "neutral" as const,
-  },
-  {
-    label: "Fallback rate",
-    value: "2.1%",
-    delta: "+0.3 pp",
-    deltaDir: "up" as const,
-    spark: seedSpark(3, 2.0, 0.4),
-    color: "#f59e0b",
-    tone: "warn" as const,
-  },
-  {
-    label: "Drift (PSI)",
-    value: "0.18",
-    delta: "+0.04",
-    deltaDir: "up" as const,
-    spark: seedSpark(4, 0.16, 0.04),
-    color: "#f59e0b",
-    tone: "warn" as const,
-  },
-  {
-    label: "Error rate",
-    value: "0.06%",
-    delta: "−0.02 pp",
-    deltaDir: "down" as const,
-    spark: seedSpark(5, 0.07, 0.02),
-    color: "#10b981",
-    tone: "good" as const,
-  },
-  {
-    label: "Token spend",
-    value: "$1.24K",
-    delta: "+8%",
-    deltaDir: "up" as const,
-    spark: seedSpark(6, 1100, 80),
-    color: "#4f46e5",
-    tone: "neutral" as const,
-  },
-  {
-    label: "Ranking stability",
-    value: "0.94",
-    delta: "−0.02",
-    deltaDir: "down" as const,
-    spark: seedSpark(7, 0.96, 0.04),
-    color: "#94a3b8",
-    tone: "neutral" as const,
-  },
-];
+type KpiStatus = "success" | "warning" | "danger" | "neutral";
 
-function TelemetryStrip() {
-  return (
-    <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-px bg-[var(--color-border-soft)] rounded-[10px] border border-[var(--color-border-soft)] overflow-hidden">
-      {TELEMETRY.map((t, i) => (
-        <TelemetryTile key={i} t={t} />
-      ))}
-    </section>
-  );
-}
+function KpiCard({
+  label,
+  value,
+  helper,
+  status = "neutral",
+  statusLabel,
+  delta,
+  tabular = true,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+  status?: KpiStatus;
+  statusLabel?: string;
+  delta?: "up" | "down";
+  tabular?: boolean;
+}) {
+  const statusColor =
+    status === "success"
+      ? "text-[#0c6b3c] bg-[#0c8a4d]/10"
+      : status === "warning"
+        ? "text-[#a3530a] bg-[#d97706]/10"
+        : status === "danger"
+          ? "text-[#9d1414] bg-[#dc2626]/10"
+          : "text-on-surface-variant bg-surface-container-low";
 
-function TelemetryTile({ t }: { t: (typeof TELEMETRY)[number] }) {
-  const deltaColor =
-    t.tone === "warn"
-      ? "text-[#b95000]"
-      : t.tone === "good"
-        ? "text-[#1f7a4d]"
+  const dotColor =
+    status === "success"
+      ? "bg-[#0c8a4d]"
+      : status === "warning"
+        ? "bg-[#d97706]"
+        : status === "danger"
+          ? "bg-[#dc2626]"
+          : "bg-on-surface-variant/60";
+
+  const helperColor =
+    delta === "up"
+      ? "text-[#0c6b3c]"
+      : delta === "down"
+        ? "text-[#0c6b3c]" /* lower latency = good */
         : "text-on-surface-variant";
+
   return (
-    <div className="bg-surface-container-lowest p-3 hover:bg-surface-container-low/40 transition-colors group">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[9.5px] uppercase tracking-wider font-bold text-on-surface-variant">
-          {t.label}
+    <div className="rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[12px] font-medium text-on-surface-variant leading-tight">
+          {label}
         </p>
-        <CircleDot
-          size={8}
-          className={cn(
-            "shrink-0",
-            t.tone === "warn"
-              ? "text-[#f59e0b]"
-              : t.tone === "good"
-                ? "text-[#10b981]"
-                : "text-on-surface-variant/50",
-          )}
-        />
-      </div>
-      <p className="text-[16px] font-bold tabular-nums leading-none">
-        {t.value}
-      </p>
-      <div className="flex items-center justify-between mt-1.5">
         <span
           className={cn(
-            "text-[10px] font-bold tabular-nums",
-            deltaColor,
+            "inline-flex items-center gap-1 px-2 h-5 rounded-full text-[10.5px] font-semibold",
+            statusColor,
           )}
         >
-          {t.delta}
+          <span className={cn("w-1.5 h-1.5 rounded-full", dotColor)} />
+          {statusLabel ?? statusDot(status)}
         </span>
-        <div className="w-14 h-5 -mr-1">
-          <ClientOnly fallback={<div className="h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={t.spark} margin={{ top: 1, right: 1, bottom: 0, left: 1 }}>
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke={t.color}
-                  strokeWidth={1.25}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-        </div>
       </div>
+      <p
+        className={cn(
+          "text-[24px] sm:text-[26px] font-semibold leading-none text-on-surface",
+          tabular && "tabular-nums",
+        )}
+      >
+        {value}
+      </p>
+      {helper && (
+        <p className={cn("text-[12.5px] leading-snug", helperColor)}>
+          {helper}
+        </p>
+      )}
     </div>
   );
 }
 
+function statusDot(s: KpiStatus) {
+  return s === "success"
+    ? "Ổn định"
+    : s === "warning"
+      ? "Theo dõi"
+      : s === "danger"
+        ? "Cảnh báo"
+        : "Neutral";
+}
+
 // ============================================================================
-// Active model card
+// Active model
 // ============================================================================
 
-function ActiveModelCard({ env }: { env: Env }) {
+function ActiveModelCard({ env, className }: { env: Env; className?: string }) {
   const meta = ENV_META[env];
+  const rows: { label: string; value: string; mono?: boolean }[] = [
+    { label: "Phiên bản", value: "v3.2.1", mono: true },
+    { label: "Kiến trúc", value: "Hybrid · ranker + LLM" },
+    { label: "Huấn luyện", value: "12/05/2026 · 06:14" },
+    { label: "Mẫu huấn luyện", value: "1.4M" },
+    { label: "Độ chính xác", value: "94.2%" },
+    { label: "Inference p95", value: "142ms" },
+    { label: "Vùng phục vụ", value: "us-east-1, eu-west-1", mono: true },
+    { label: "Cập nhật bởi", value: "ops@sportico.ai" },
+  ];
+
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <Cpu size={12} className="text-primary" />
-          Active Model
-        </h3>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider",
-            meta.bg,
-            meta.tone,
-          )}
-        >
-          <span className={cn("w-1.5 h-1.5 rounded-full", meta.dot)} />
-          {meta.label}
-        </span>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04)] overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-6 flex items-start justify-between gap-4 border-b border-[var(--color-border-soft)]">
+        <div className="flex items-start gap-4 min-w-0">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Cpu size={20} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wider">
+              Mô hình đang chạy
+            </p>
+            <h3 className="text-[20px] font-semibold tracking-tight mt-1 font-mono">
+              recommender_v3.2.1
+            </h3>
+            <div className="flex items-center gap-2 mt-2">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2 h-6 rounded-md text-[11.5px] font-semibold",
+                  meta.chipBg,
+                  meta.chipText,
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full", meta.dot)} />
+                {meta.label}
+              </span>
+              <span className="text-[12px] text-on-surface-variant">
+                ·
+              </span>
+              <span className="text-[12px] text-on-surface-variant">
+                Cập nhật 2 giờ trước
+              </span>
+            </div>
+          </div>
+        </div>
+        <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low/60 text-[12.5px] font-medium text-on-surface transition-colors shrink-0">
+          <FileText size={13} />
+          Xem cấu hình
+        </button>
       </div>
-      <div className="p-3 space-y-1.5 text-[11.5px]">
-        <KV label="Version" value="v3.2.1" mono />
-        <KV label="Architecture" value="Hybrid · ranker + LLM" />
-        <KV label="Trained" value="2026-05-12 06:14" />
-        <KV label="Samples" value="1.4M" />
-        <KV label="Accuracy" value="94.2%" highlight />
-        <KV label="Inference p95" value="142ms" />
-        <KV label="Region" value="us-east-1, eu-west-1" mono />
-      </div>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border-soft)]">
+        <div className="grid grid-cols-2 gap-y-3 p-6 sm:border-b border-[var(--color-border-soft)]">
+          {rows.slice(0, 4).map((r) => (
+            <KV key={r.label} {...r} />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-y-3 p-6 sm:border-b border-[var(--color-border-soft)]">
+          {rows.slice(4).map((r) => (
+            <KV key={r.label} {...r} />
+          ))}
+        </div>
+      </dl>
     </section>
   );
 }
@@ -741,120 +904,122 @@ function ActiveModelCard({ env }: { env: Env }) {
 function KV({
   label,
   value,
-  highlight,
   mono,
 }: {
   label: string;
   value: string;
-  highlight?: boolean;
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-on-surface-variant">{label}</span>
-      <span
+    <div>
+      <dt className="text-[12px] text-on-surface-variant leading-tight">
+        {label}
+      </dt>
+      <dd
         className={cn(
-          "text-right font-semibold tabular-nums",
-          mono && "font-mono text-[11px]",
-          highlight ? "text-primary" : "text-on-surface",
+          "text-[14px] font-medium text-on-surface mt-0.5 leading-snug",
+          mono && "font-mono text-[13px]",
         )}
       >
         {value}
-      </span>
+      </dd>
     </div>
   );
 }
 
 // ============================================================================
-// Preset card
+// Preset
 // ============================================================================
 
 function PresetCard({
   preset,
   setPreset,
-  dirty,
 }: {
   preset: string;
   setPreset: (p: string) => void;
-  dirty: () => void;
 }) {
   const PRESETS = [
     {
       id: "accuracy",
       label: "Accuracy-first",
-      desc: "Highest match quality",
+      desc: "Tối ưu chất lượng match tối đa.",
       icon: ShieldCheck,
     },
     {
       id: "balanced",
       label: "Balanced",
-      desc: "Recommended for prod",
+      desc: "Khuyến nghị cho production.",
       icon: Bot,
       recommended: true,
     },
     {
       id: "fresh",
       label: "Freshness-first",
-      desc: "Bias toward new coaches",
+      desc: "Ưu tiên coach mới và slot mới mở.",
       icon: Sparkles,
     },
     {
       id: "custom",
       label: "Custom",
-      desc: "Your tuned weights",
+      desc: "Trọng số được điều chỉnh thủ công.",
       icon: Settings2,
     },
   ];
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)]">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <FlaskConical size={12} className="text-primary" />
-          Model Preset
-        </h3>
+    <section className="rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-[15px] font-semibold tracking-tight">
+            Chế độ mô hình
+          </h3>
+          <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+            Mặc định nhanh cho từng tình huống.
+          </p>
+        </div>
+        <FlaskConical size={16} className="text-on-surface-variant shrink-0" />
       </div>
-      <div className="p-2 space-y-1">
+      <div className="space-y-2">
         {PRESETS.map((p) => {
           const active = preset === p.id;
           return (
             <button
               key={p.id}
-              onClick={() => {
-                setPreset(p.id);
-                dirty();
-              }}
+              onClick={() => setPreset(p.id)}
+              aria-pressed={active}
               className={cn(
-                "w-full text-left flex items-center gap-2.5 px-2 py-2 rounded-md transition-colors",
+                "w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors",
                 active
-                  ? "bg-primary/[0.06] border border-primary/20"
-                  : "border border-transparent hover:bg-surface-container-low/40",
+                  ? "bg-primary/[0.05] border-primary/40"
+                  : "border-[var(--color-border-soft)] hover:bg-surface-container-low/40",
               )}
             >
               <div
                 className={cn(
-                  "w-7 h-7 rounded-md flex items-center justify-center shrink-0",
+                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
                   active
                     ? "bg-primary text-on-primary"
                     : "bg-surface-container-low text-on-surface-variant",
                 )}
               >
-                <p.icon size={12} />
+                <p.icon size={15} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11.5px] font-bold flex items-center gap-1.5">
-                  {p.label}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-[13.5px] font-semibold text-on-surface">
+                    {p.label}
+                  </p>
                   {p.recommended && (
-                    <span className="text-[9px] uppercase tracking-wider font-bold text-primary bg-primary/10 px-1 py-0.5 rounded">
-                      Rec.
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                      Đề xuất
                     </span>
                   )}
-                </p>
-                <p className="text-[10.5px] text-on-surface-variant truncate">
+                </div>
+                <p className="text-[12.5px] text-on-surface-variant mt-0.5 leading-snug">
                   {p.desc}
                 </p>
               </div>
               {active && (
-                <Check size={12} className="text-primary shrink-0" />
+                <Check size={14} className="text-primary shrink-0 mt-1" />
               )}
             </button>
           );
@@ -865,59 +1030,186 @@ function PresetCard({
 }
 
 // ============================================================================
-// Feature importance
+// Deployment Targeting
 // ============================================================================
 
-function FeatureImportance({
+function DeploymentTargeting({
+  trafficPct,
+  setTrafficPct,
+  className,
+}: {
+  trafficPct: number;
+  setTrafficPct: (v: number) => void;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-6",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3 mb-5 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Radio size={15} />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight">
+              Phạm vi triển khai
+            </h3>
+            <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+              Các thay đổi sẽ được áp dụng cho lần phát hành kế tiếp.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low/60 text-[12.5px] font-medium transition-colors">
+            Huỷ thay đổi
+          </button>
+          <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg bg-on-surface text-white hover:bg-on-surface/90 text-[12.5px] font-semibold transition-colors">
+            Lưu thay đổi
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        <div className="lg:col-span-2 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low/30 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[13px] font-medium text-on-surface">
+              Lưu lượng canary
+            </p>
+            <span className="text-[18px] font-semibold tabular-nums text-on-surface">
+              {trafficPct}
+              <span className="text-on-surface-variant">%</span>
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={trafficPct}
+            onChange={(e) => setTrafficPct(Number(e.target.value))}
+            aria-label="Tỉ lệ lưu lượng canary"
+            className="w-full h-1.5 bg-surface-container rounded-full appearance-none accent-primary cursor-pointer"
+          />
+          <div className="flex justify-between text-[11px] text-on-surface-variant mt-2 tabular-nums">
+            <span>0%</span>
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <TargetField label="Vùng triển khai" value="us-east-1, eu-west-1" mono />
+        <TargetField label="Nhóm người dùng" value="Logged-in users" />
+        <TargetField label="Nhóm đối chứng" value="5% holdout" />
+        <TargetField label="Rollback tự động" value="Bật · 8 phút" />
+      </div>
+    </section>
+  );
+}
+
+function TargetField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low/30 p-4">
+      <p className="text-[12px] text-on-surface-variant">{label}</p>
+      <p
+        className={cn(
+          "mt-1 text-[14px] font-medium text-on-surface",
+          mono && "font-mono text-[13px]",
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// Feature Importance
+// ============================================================================
+
+function FeatureImportanceCard({
   signals,
   reduce,
+  className,
 }: {
   signals: Signal[];
   reduce: boolean;
+  className?: string;
 }) {
   const data = [...signals]
     .sort((a, b) => b.value - a.value)
-    .slice(0, 6)
-    .map((s) => ({
-      name: s.label.replace(/Weight| Match|Compatibility|Proximity|Engagement/g, "").trim(),
-      v: s.value,
-    }));
+    .map((s) => ({ name: s.label, v: s.value, id: s.id }));
+
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)]">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <FileBarChart size={12} className="text-primary" />
-          Feature Importance
-        </h3>
-        <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-          SHAP attribution · current model
-        </p>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-6",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between mb-5 gap-2">
+        <div>
+          <h3 className="text-[15px] font-semibold tracking-tight">
+            Tầm quan trọng tín hiệu
+          </h3>
+          <p className="text-[12.5px] text-on-surface-variant mt-0.5 leading-snug">
+            SHAP attribution của mô hình hiện tại. Cao hơn = ảnh hưởng nhiều hơn
+            đến ranking.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 text-[11px] text-on-surface-variant">
+          <Info size={11} />
+          v3.2.1
+        </span>
       </div>
-      <div className="px-3 py-2 h-[170px]">
+      <div className="h-[260px]">
         <ClientOnly fallback={<div className="h-full" />}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
               layout="vertical"
-              margin={{ left: -8, right: 8, top: 4, bottom: 0 }}
+              margin={{ left: 0, right: 24, top: 4, bottom: 4 }}
             >
+              <XAxis type="number" hide domain={[0, 100]} />
               <YAxis
                 type="category"
                 dataKey="name"
                 tickLine={false}
                 axisLine={false}
-                fontSize={10}
-                width={70}
-                stroke="#777587"
+                fontSize={12}
+                width={130}
+                stroke="#5b5a6a"
               />
               <Bar
                 dataKey="v"
-                radius={[0, 3, 3, 0]}
+                radius={[0, 6, 6, 0]}
+                barSize={18}
                 isAnimationActive={!reduce}
                 animationDuration={reduce ? 0 : 700}
+                label={{
+                  position: "right",
+                  fill: "#1a1c1c",
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
               >
-                {data.map((_, i) => (
-                  <Cell key={i} fill={i === 0 ? "#4f46e5" : "#c7c4d8"} />
+                {data.map((d, i) => (
+                  <Cell
+                    key={d.id}
+                    fill={i === 0 ? "#3525cd" : i < 3 ? "#7064e6" : "#cbc7e8"}
+                  />
                 ))}
               </Bar>
             </BarChart>
@@ -929,152 +1221,58 @@ function FeatureImportance({
 }
 
 // ============================================================================
-// Deployment targeting
+// Signal Weights
 // ============================================================================
 
-function DeploymentTargeting({
-  trafficPct,
-  setTrafficPct,
-}: {
-  trafficPct: number;
-  setTrafficPct: (v: number) => void;
-}) {
-  return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)]">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <Radio size={12} className="text-primary" />
-          Deployment Targeting
-        </h3>
-      </div>
-      <div className="p-3 space-y-3">
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] text-on-surface-variant">
-              Canary traffic
-            </span>
-            <span className="text-[12px] font-bold tabular-nums text-primary">
-              {trafficPct}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={trafficPct}
-            onChange={(e) => setTrafficPct(Number(e.target.value))}
-            className="w-full h-1 bg-surface-container-low rounded-full appearance-none accent-primary cursor-pointer"
-          />
-          <div className="flex justify-between text-[9.5px] text-on-surface-variant/60 mt-1">
-            <span>0%</span>
-            <span>50%</span>
-            <span>100%</span>
-          </div>
-        </div>
-        <div className="space-y-1.5 text-[11px]">
-          <KV label="Regions" value="us-east-1, eu-west-1" mono />
-          <KV label="Cohort" value="Logged-in users" />
-          <KV label="Holdout" value="5% control" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ============================================================================
-// Projected impact strip
-// ============================================================================
-
-function ProjectedImpact({
-  projected,
-}: {
-  projected: { match: number; repeat: number; diversity: number };
-}) {
-  const items = [
-    { label: "Match quality", value: projected.match, dir: projected.match >= 0 ? "up" : "down" },
-    { label: "Repeat bookings", value: projected.repeat, dir: projected.repeat >= 0 ? "up" : "down" },
-    {
-      label: "Recommendation diversity",
-      value: projected.diversity,
-      dir: projected.diversity >= 0 ? "up" : "down",
-    },
-  ];
-  return (
-    <section className="rounded-[10px] border border-primary/15 bg-gradient-to-br from-primary/[0.04] via-surface-container-lowest to-[#7d6dff]/[0.03] p-3">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10.5px] uppercase tracking-wider font-bold text-primary inline-flex items-center gap-1.5">
-          <Brain size={11} />
-          Projected impact · simulated vs current production
-        </p>
-        <span className="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
-          <Info size={10} />
-          AI-projected
-        </span>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {items.map((it) => {
-          const color =
-            it.dir === "up" && it.label !== "Recommendation diversity"
-              ? "text-[#1f7a4d]"
-              : it.dir === "down" && it.label !== "Recommendation diversity"
-                ? "text-[#ba1a1a]"
-                : it.dir === "up"
-                  ? "text-[#1f7a4d]"
-                  : "text-[#b95000]";
-          const Icon = it.dir === "up" ? TrendingUp : TrendingDown;
-          return (
-            <div
-              key={it.label}
-              className="rounded-md bg-surface-container-lowest border border-[var(--color-border-soft)] p-2.5"
-            >
-              <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">
-                {it.label}
-              </p>
-              <div className={cn("flex items-baseline gap-1 mt-1", color)}>
-                <Icon size={13} />
-                <span className="text-[18px] font-bold tabular-nums leading-none">
-                  {it.value > 0 ? "+" : ""}
-                  {it.value.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-// ============================================================================
-// Signals panel
-// ============================================================================
-
-function SignalsPanel({
+function SignalWeightsCard({
   signals,
   updateSignal,
+  projected,
   reduce,
+  className,
 }: {
   signals: Signal[];
   updateSignal: (id: string, v: number) => void;
+  projected: { match: number; repeat: number; diversity: number };
   reduce: boolean;
+  className?: string;
 }) {
-  const [openId, setOpenId] = useState<string | null>(signals[0]?.id ?? null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-5 flex items-start justify-between gap-3 border-b border-[var(--color-border-soft)] flex-wrap">
         <div>
-          <h3 className="text-[13px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-            <Settings2 size={12} className="text-primary" />
-            Signal Weights &amp; Explainability
+          <h3 className="text-[15px] font-semibold tracking-tight">
+            Trọng số tín hiệu
           </h3>
-          <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-            Each adjustment shows expected impact, tradeoffs &amp; confidence
+          <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+            Điều chỉnh có ảnh hưởng tới ranking. Mở rộng từng dòng để xem tác
+            động dự kiến.
           </p>
         </div>
-        <span className="text-[10.5px] text-on-surface-variant inline-flex items-center gap-1">
-          <Lightbulb size={10} />
-          Click row to expand
-        </span>
+        <div className="flex items-center gap-4 text-[12px] text-on-surface-variant flex-wrap">
+          <ProjectedPill
+            label="Match"
+            value={projected.match}
+            beneficial
+          />
+          <ProjectedPill
+            label="Repeat"
+            value={projected.repeat}
+            beneficial
+          />
+          <ProjectedPill
+            label="Diversity"
+            value={projected.diversity}
+            inverse
+          />
+        </div>
       </div>
 
       <ul className="divide-y divide-[var(--color-border-soft)]">
@@ -1082,53 +1280,60 @@ function SignalsPanel({
           const isOpen = openId === s.id;
           const delta = s.value - s.default;
           return (
-            <li key={s.id} className="px-3 py-2.5">
-              <button
-                onClick={() => setOpenId(isOpen ? null : s.id)}
-                className="w-full text-left"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <ChevronRight
-                      size={11}
-                      className={cn(
-                        "text-on-surface-variant transition-transform shrink-0",
-                        isOpen && "rotate-90 text-primary",
-                      )}
-                    />
-                    <p className="text-[12.5px] font-bold truncate">
+            <li key={s.id} className="px-5 py-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setOpenId(isOpen ? null : s.id)}
+                  className="flex-1 text-left flex items-center gap-2 min-w-0"
+                  aria-expanded={isOpen}
+                >
+                  <ChevronRight
+                    size={13}
+                    className={cn(
+                      "text-on-surface-variant transition-transform shrink-0",
+                      isOpen && "rotate-90 text-primary",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-semibold text-on-surface truncate">
                       {s.label}
                     </p>
-                    {delta !== 0 && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-bold tabular-nums px-1 py-0.5 rounded",
-                          delta > 0
-                            ? "bg-primary/10 text-primary"
-                            : "bg-[#fff5d6] text-[#b95000]",
-                        )}
-                      >
-                        {delta > 0 ? "+" : ""}
-                        {delta}
-                      </span>
-                    )}
+                    <p className="text-[12px] text-on-surface-variant truncate mt-0.5">
+                      {s.desc}
+                    </p>
                   </div>
-                  <span className="text-[13px] font-bold tabular-nums text-primary tabular-nums shrink-0">
-                    {s.value}%
+                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  {delta !== 0 && (
+                    <span
+                      className={cn(
+                        "text-[11.5px] font-semibold tabular-nums px-1.5 py-0.5 rounded",
+                        delta > 0
+                          ? "bg-primary/10 text-primary"
+                          : "bg-[#d97706]/10 text-[#a3530a]",
+                      )}
+                    >
+                      {delta > 0 ? "+" : ""}
+                      {delta}
+                    </span>
+                  )}
+                  <span className="text-[15px] font-semibold tabular-nums text-on-surface w-10 text-right">
+                    {s.value}
                   </span>
                 </div>
-              </button>
+              </div>
 
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={s.value}
-                onChange={(e) =>
-                  updateSignal(s.id, Number(e.target.value))
-                }
-                className="w-full mt-2 h-1 bg-surface-container-low rounded-full appearance-none accent-primary cursor-pointer"
-              />
+              <div className="mt-3 pl-5">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={s.value}
+                  onChange={(e) => updateSignal(s.id, Number(e.target.value))}
+                  aria-label={`${s.label} weight`}
+                  className="w-full h-1 bg-surface-container rounded-full appearance-none accent-primary cursor-pointer"
+                />
+              </div>
 
               <AnimatePresence>
                 {isOpen && (
@@ -1136,15 +1341,15 @@ function SignalsPanel({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: reduce ? 0 : 0.25, ease: EASE }}
+                    transition={{ duration: reduce ? 0 : 0.22, ease: EASE }}
                     className="overflow-hidden"
                   >
-                    <div className="pt-3 pl-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="pt-4 pl-5 grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant mb-1">
-                          Expected impact
+                        <p className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                          Tác động dự kiến
                         </p>
-                        <ul className="space-y-1 text-[11.5px]">
+                        <ul className="space-y-1.5 text-[13px]">
                           <ImpactLine
                             label="Match quality"
                             value={s.impact.match}
@@ -1163,26 +1368,26 @@ function SignalsPanel({
                         </ul>
                       </div>
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant mb-1">
-                          Model confidence
+                        <p className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-2">
+                          Độ tin cậy mô hình
                         </p>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 rounded-full bg-surface-container-low overflow-hidden">
+                          <div className="flex-1 h-1.5 rounded-full bg-surface-container overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff]"
+                              className="h-full rounded-full bg-primary"
                               style={{ width: `${s.confidence}%` }}
                             />
                           </div>
-                          <span className="text-[12px] font-bold tabular-nums">
+                          <span className="text-[13px] font-semibold tabular-nums">
                             {s.confidence}%
                           </span>
                         </div>
-                        <p className="text-[11px] text-on-surface-variant leading-relaxed mt-2">
-                          {s.desc} · Affects ranking position for{" "}
+                        <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-3">
+                          {s.desc}. Ảnh hưởng vị trí ranking của{" "}
                           <span className="text-on-surface font-semibold">
                             ~82%
                           </span>{" "}
-                          of queries.
+                          truy vấn matching.
                         </p>
                       </div>
                     </div>
@@ -1194,6 +1399,38 @@ function SignalsPanel({
         })}
       </ul>
     </section>
+  );
+}
+
+function ProjectedPill({
+  label,
+  value,
+  beneficial,
+  inverse,
+}: {
+  label: string;
+  value: number;
+  beneficial?: boolean;
+  inverse?: boolean;
+}) {
+  const positive = value > 0;
+  const isGood = beneficial ? positive : inverse ? !positive : positive;
+  const color =
+    value === 0
+      ? "text-on-surface-variant"
+      : isGood
+        ? "text-[#0c6b3c]"
+        : "text-[#a3530a]";
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-[11px] uppercase tracking-wider font-semibold">
+        {label}
+      </span>
+      <span className={cn("text-[12.5px] font-semibold tabular-nums", color)}>
+        {value > 0 ? "+" : ""}
+        {value.toFixed(1)}%
+      </span>
+    </span>
   );
 }
 
@@ -1210,18 +1447,17 @@ function ImpactLine({
 }) {
   const positive = value > 0;
   const isGood = beneficial ? positive : inverse ? !positive : positive;
-  const color = isGood ? "text-[#1f7a4d]" : "text-[#b95000]";
+  const color = isGood ? "text-[#0c6b3c]" : "text-[#a3530a]";
   return (
     <li className="flex items-center justify-between gap-3">
       <span className="text-on-surface-variant">{label}</span>
       <span
-        className={cn("font-bold tabular-nums inline-flex items-center gap-1", color)}
-      >
-        {positive ? (
-          <TrendingUp size={11} />
-        ) : (
-          <TrendingDown size={11} />
+        className={cn(
+          "font-semibold tabular-nums inline-flex items-center gap-1",
+          color,
         )}
+      >
+        {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
         {positive ? "+" : ""}
         {value}%
       </span>
@@ -1230,10 +1466,14 @@ function ImpactLine({
 }
 
 // ============================================================================
-// Simulation panel
+// Simulation
 // ============================================================================
 
-const SIM_LEARNERS = ["Tennis · Intermediate", "Strength · Beginner", "Recovery · All"];
+const SIM_LEARNERS = [
+  "Tennis · Trung cấp",
+  "Strength · Mới bắt đầu",
+  "Recovery · Tất cả cấp độ",
+];
 const COACHES_BEFORE = [
   { name: "Sarah Jenkins", score: 94 },
   { name: "Elena Voss", score: 89 },
@@ -1242,89 +1482,102 @@ const COACHES_BEFORE = [
   { name: "Noah Park", score: 78 },
 ];
 const COACHES_AFTER = [
-  { name: "Sarah Jenkins", score: 97, change: 3 },
-  { name: "Marcus Reed", score: 92, change: 4, up: true },
+  { name: "Sarah Jenkins", score: 97, change: 0 },
+  { name: "Marcus Reed", score: 92, change: 1 },
   { name: "Elena Voss", score: 88, change: -1 },
-  { name: "Noah Park", score: 85, change: 7, up: true },
-  { name: "Aiden Foster", score: 80, change: 0, isNew: true },
+  { name: "Noah Park", score: 85, change: 1 },
+  { name: "Aiden Foster", score: 80, isNew: true, change: 0 },
 ];
 
-function SimulationPanel({
-  signals,
+function SimulationCard({
   shadow,
   setShadow,
+  className,
 }: {
-  signals: Signal[];
   shadow: boolean;
   setShadow: (v: boolean) => void;
-  reduce: boolean;
+  className?: string;
 }) {
   const [learner, setLearner] = useState(SIM_LEARNERS[0]);
-  void signals;
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h3 className="text-[13px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-            <Beaker size={12} className="text-primary" />
-            Ranking Simulation
-          </h3>
-          <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-            Test before deploy · live model vs your config
-          </p>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-5 flex items-center justify-between gap-3 border-b border-[var(--color-border-soft)] flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Beaker size={15} />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight">
+              So sánh ranking
+            </h3>
+            <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+              Mô hình hiện tại vs cấu hình đề xuất.
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={learner}
-            onChange={(e) => setLearner(e.target.value)}
-            className="h-7 px-2.5 pr-6 appearance-none bg-surface-container-low border border-[var(--color-border-soft)] rounded-md text-[11px] font-semibold outline-none focus:border-primary/40 cursor-pointer"
-          >
-            {SIM_LEARNERS.map((l) => (
-              <option key={l} value={l}>
-                Sample learner: {l}
-              </option>
-            ))}
-          </select>
-          <label className="inline-flex items-center gap-1.5 text-[11px] cursor-pointer">
+          <div className="relative">
+            <select
+              value={learner}
+              onChange={(e) => setLearner(e.target.value)}
+              className="h-9 pl-3 pr-9 appearance-none bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-lg text-[13px] font-medium outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 cursor-pointer"
+              aria-label="Sample learner"
+            >
+              {SIM_LEARNERS.map((l) => (
+                <option key={l} value={l}>
+                  Learner mẫu: {l}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+            />
+          </div>
+          <label className="inline-flex items-center gap-2 px-3 h-9 rounded-lg border border-[var(--color-border-soft)] bg-surface-container-lowest text-[13px] cursor-pointer">
             <Switch checked={shadow} onChange={() => setShadow(!shadow)} />
-            <span className="font-semibold">Shadow test</span>
+            <span className="font-medium">Shadow test</span>
           </label>
-          <button className="h-7 px-2.5 inline-flex items-center gap-1 rounded-md bg-primary text-on-primary text-[11px] font-bold hover:bg-[#3a2db5] transition-colors">
-            <Play size={10} />
-            Run simulation
+          <button className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg bg-primary text-on-primary text-[13px] font-semibold hover:bg-[#2c1eaa] transition-colors">
+            <Play size={12} />
+            Chạy mô phỏng
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--color-border-soft)]">
-        {/* Before */}
-        <div className="p-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">
-              Current Model (v3.2.1)
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[12px] uppercase tracking-wider font-semibold text-on-surface-variant">
+              Mô hình hiện tại
             </p>
-            <span className="inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider bg-surface-container-low text-on-surface-variant px-1 py-0.5 rounded">
-              Live
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0c8a4d]" />
+              Live · v3.2.1
             </span>
           </div>
-          <ol className="space-y-1.5">
+          <ol className="space-y-1">
             {COACHES_BEFORE.map((c, i) => (
               <RankRow key={c.name} rank={i + 1} name={c.name} score={c.score} />
             ))}
           </ol>
         </div>
-
-        {/* After */}
-        <div className="p-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-primary">
-              Proposed Config
+        <div className="p-5 bg-primary/[0.015]">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[12px] uppercase tracking-wider font-semibold text-primary">
+              Cấu hình đề xuất
             </p>
-            <span className="inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1 py-0.5 rounded">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               Simulated
             </span>
           </div>
-          <ol className="space-y-1.5">
+          <ol className="space-y-1">
             {COACHES_AFTER.map((c, i) => (
               <RankRow
                 key={c.name}
@@ -1333,8 +1586,6 @@ function SimulationPanel({
                 score={c.score}
                 change={c.change}
                 isNew={c.isNew}
-                up={c.up}
-                accent
               />
             ))}
           </ol>
@@ -1350,56 +1601,38 @@ function RankRow({
   score,
   change,
   isNew,
-  up,
-  accent,
 }: {
   rank: number;
   name: string;
   score: number;
   change?: number;
   isNew?: boolean;
-  up?: boolean;
-  accent?: boolean;
 }) {
+  const moveLabel =
+    isNew
+      ? { text: "Mới", tone: "bg-primary/10 text-primary" }
+      : change && change > 0
+        ? { text: `↑ ${change}`, tone: "bg-[#0c8a4d]/10 text-[#0c6b3c]" }
+        : change && change < 0
+          ? { text: `↓ ${Math.abs(change)}`, tone: "bg-[#d97706]/10 text-[#a3530a]" }
+          : null;
   return (
-    <li
-      className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded-md",
-        accent && up && "bg-success-container/40",
-        accent && isNew && "bg-primary/[0.06]",
-      )}
-    >
-      <span
-        className={cn(
-          "w-5 h-5 rounded text-[10px] font-bold tabular-nums flex items-center justify-center shrink-0",
-          rank === 1
-            ? "bg-gradient-to-br from-[#f59e0b] to-[#fb923c] text-white"
-            : "bg-surface-container-low text-on-surface-variant",
-        )}
-      >
+    <li className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-container-low/40 transition-colors">
+      <span className="w-6 h-6 rounded-md text-[12px] font-semibold tabular-nums flex items-center justify-center shrink-0 bg-surface-container-low text-on-surface-variant">
         {rank}
       </span>
-      <p className="text-[11.5px] font-semibold truncate flex-1">
-        {name}
-        {isNew && (
-          <span className="ml-1.5 text-[9.5px] uppercase tracking-wider font-bold text-primary">
-            New
-          </span>
-        )}
-      </p>
-      {change !== undefined && change !== 0 && (
+      <p className="text-[13.5px] font-medium truncate flex-1">{name}</p>
+      {moveLabel && (
         <span
           className={cn(
-            "text-[10px] font-bold tabular-nums inline-flex items-center gap-0.5",
-            change > 0 ? "text-[#1f7a4d]" : "text-[#ba1a1a]",
+            "text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded",
+            moveLabel.tone,
           )}
         >
-          {change > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-          {change > 0 ? "+" : ""}
-          {change}
+          {moveLabel.text}
         </span>
       )}
-      <span className="text-[11px] font-bold tabular-nums w-9 text-right">
+      <span className="text-[13.5px] font-semibold tabular-nums w-10 text-right">
         {score}
       </span>
     </li>
@@ -1409,23 +1642,28 @@ function RankRow({
 function Switch({
   checked,
   onChange,
+  disabled,
 }: {
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
-      onClick={onChange}
-      aria-pressed={checked}
+      onClick={disabled ? undefined : onChange}
+      disabled={disabled}
+      role="switch"
+      aria-checked={checked}
       className={cn(
-        "relative w-7 h-4 rounded-full transition-colors shrink-0",
-        checked ? "bg-primary" : "bg-surface-container-highest",
+        "relative w-8 h-[18px] rounded-full transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+        checked ? "bg-primary" : "bg-surface-container-high",
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       <span
         className={cn(
-          "absolute top-0.5 inline-block w-3 h-3 rounded-full bg-white shadow-sm transition-transform",
-          checked ? "translate-x-3.5" : "translate-x-0.5",
+          "absolute top-0.5 inline-block w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-[16px]" : "translate-x-0.5",
         )}
       />
     </button>
@@ -1433,154 +1671,145 @@ function Switch({
 }
 
 // ============================================================================
-// Experiment tracker
+// Experiments
 // ============================================================================
 
-const EXPERIMENTS = [
-  {
-    id: "exp-2046",
-    name: "rating_v2 shadow",
-    status: "running" as const,
-    traffic: "12%",
-    progress: 64,
-    lift: "+3.2%",
-    age: "2d",
-  },
-  {
-    id: "exp-2042",
-    name: "intent_classifier_v4",
-    status: "running" as const,
-    traffic: "5%",
-    progress: 28,
-    lift: "+0.8%",
-    age: "8h",
-  },
-  {
-    id: "exp-2038",
-    name: "diversity_boost",
-    status: "promoted" as const,
-    traffic: "100%",
-    progress: 100,
-    lift: "+1.4%",
-    age: "Promoted 1d ago",
-  },
-  {
-    id: "exp-2035",
-    name: "freshness_decay_v3",
-    status: "rolled-back" as const,
-    traffic: "0%",
-    progress: 100,
-    lift: "−0.6%",
-    age: "Rolled back 3d ago",
-  },
-];
-
-function ExperimentTracker({ reduce }: { reduce: boolean }) {
+function ExperimentTable({
+  reduce,
+  className,
+}: {
+  reduce: boolean;
+  className?: string;
+}) {
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-        <div>
-          <h3 className="text-[13px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-            <FlaskConical size={12} className="text-primary" />
-            Active Experiments
-          </h3>
-          <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-            Shadow tests &amp; A/B variants on live traffic
-          </p>
-        </div>
-        <button className="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[11px] font-semibold transition-colors">
-          <Sparkles size={11} />
-          New experiment
-        </button>
-      </div>
-      <table className="w-full text-left">
-        <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[9.5px] uppercase tracking-wider text-on-surface-variant">
-          <tr>
-            <th className="px-3 py-2 font-bold">Experiment</th>
-            <th className="px-2 py-2 font-bold">Status</th>
-            <th className="px-2 py-2 font-bold">Traffic</th>
-            <th className="px-2 py-2 font-bold">Progress</th>
-            <th className="px-2 py-2 font-bold text-right">Lift</th>
-            <th className="px-3 py-2 font-bold text-right">Age</th>
-          </tr>
-        </thead>
-        <tbody>
-          {EXPERIMENTS.map((e, i) => {
-            const tone =
-              e.status === "running"
-                ? "bg-primary/10 text-primary"
-                : e.status === "promoted"
-                  ? "bg-success-container text-[#1f7a4d]"
-                  : "bg-[#ffdad6] text-[#ba1a1a]";
-            const liftPositive = !e.lift.startsWith("−");
-            return (
-              <motion.tr
-                key={e.id}
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  duration: reduce ? 0 : 0.3,
-                  delay: reduce ? 0 : i * 0.04,
-                  ease: EASE,
-                }}
-                className="border-b border-[var(--color-border-soft)] last:border-b-0 hover:bg-surface-container-low/30 transition-colors cursor-pointer"
-              >
-                <td className="px-3 py-2">
-                  <p className="text-[12px] font-bold">{e.name}</p>
-                  <p className="text-[10px] text-on-surface-variant font-mono">
-                    {e.id}
-                  </p>
-                </td>
-                <td className="px-2 py-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider",
-                      tone,
-                    )}
-                  >
-                    {e.status}
-                  </span>
-                </td>
-                <td className="px-2 py-2 text-[11px] font-bold tabular-nums">
-                  {e.traffic}
-                </td>
-                <td className="px-2 py-2">
-                  <div className="flex items-center gap-1.5 w-[100px]">
-                    <div className="flex-1 h-1 rounded-full bg-surface-container-low overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full",
-                          e.status === "rolled-back"
-                            ? "bg-[#ef4444]"
-                            : "bg-gradient-to-r from-primary to-[#7d6dff]",
-                        )}
-                        style={{ width: `${e.progress}%` }}
-                      />
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[720px]">
+          <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[11.5px] uppercase tracking-wider text-on-surface-variant">
+            <tr>
+              <th className="px-5 py-3 font-semibold">Thí nghiệm</th>
+              <th className="px-4 py-3 font-semibold">Trạng thái</th>
+              <th className="px-4 py-3 font-semibold text-right">Lưu lượng</th>
+              <th className="px-4 py-3 font-semibold">Tiến độ</th>
+              <th className="px-4 py-3 font-semibold text-right">Lift</th>
+              <th className="px-5 py-3 font-semibold text-right">Tuổi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {EXPERIMENTS.map((e, i) => {
+              const status = experimentStatus(e.status);
+              const liftPositive = !e.lift.startsWith("−");
+              return (
+                <motion.tr
+                  key={e.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: reduce ? 0 : 0.3,
+                    delay: reduce ? 0 : i * 0.04,
+                    ease: EASE,
+                  }}
+                  className="border-b last:border-b-0 border-[var(--color-border-soft)] hover:bg-surface-container-low/30 transition-colors"
+                >
+                  <td className="px-5 py-4 align-middle">
+                    <p className="text-[13.5px] font-semibold text-on-surface">
+                      {e.name}
+                    </p>
+                    <p className="text-[11.5px] text-on-surface-variant font-mono mt-0.5">
+                      {e.id}
+                    </p>
+                  </td>
+                  <td className="px-4 py-4 align-middle">
+                    <StatusBadge tone={status.tone} label={status.label} />
+                  </td>
+                  <td className="px-4 py-4 align-middle text-right text-[13px] font-semibold tabular-nums text-on-surface">
+                    {e.traffic}
+                  </td>
+                  <td className="px-4 py-4 align-middle">
+                    <div className="flex items-center gap-2 max-w-[160px]">
+                      <div className="flex-1 h-1.5 rounded-full bg-surface-container overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full",
+                            e.status === "rolled-back"
+                              ? "bg-[#dc2626]"
+                              : e.status === "promoted"
+                                ? "bg-[#0c8a4d]"
+                                : "bg-primary",
+                          )}
+                          style={{ width: `${e.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[11.5px] font-semibold tabular-nums text-on-surface-variant w-8 text-right">
+                        {e.progress}%
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold tabular-nums text-on-surface-variant w-7 text-right">
-                      {e.progress}%
+                  </td>
+                  <td className="px-4 py-4 align-middle text-right">
+                    <span
+                      className={cn(
+                        "text-[13px] font-semibold tabular-nums",
+                        liftPositive ? "text-[#0c6b3c]" : "text-[#9d1414]",
+                      )}
+                    >
+                      {e.lift}
                     </span>
-                  </div>
-                </td>
-                <td className="px-2 py-2 text-right">
-                  <span
-                    className={cn(
-                      "text-[11.5px] font-bold tabular-nums",
-                      liftPositive ? "text-[#1f7a4d]" : "text-[#ba1a1a]",
-                    )}
-                  >
-                    {e.lift}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-right text-[10.5px] text-on-surface-variant tabular-nums whitespace-nowrap">
-                  {e.age}
-                </td>
-              </motion.tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </td>
+                  <td className="px-5 py-4 align-middle text-right text-[12.5px] text-on-surface-variant whitespace-nowrap">
+                    {e.age}
+                  </td>
+                </motion.tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
+  );
+}
+
+function experimentStatus(s: (typeof EXPERIMENTS)[number]["status"]) {
+  if (s === "running") return { label: "Đang chạy", tone: "info" as const };
+  if (s === "promoted") return { label: "Phát hành", tone: "success" as const };
+  return { label: "Hoàn tác", tone: "danger" as const };
+}
+
+function StatusBadge({
+  tone,
+  label,
+}: {
+  tone: "success" | "info" | "warning" | "danger" | "neutral";
+  label: string;
+}) {
+  const tones: Record<typeof tone, string> = {
+    success: "bg-[#0c8a4d]/10 text-[#0c6b3c]",
+    info: "bg-primary/10 text-primary",
+    warning: "bg-[#d97706]/10 text-[#a3530a]",
+    danger: "bg-[#dc2626]/10 text-[#9d1414]",
+    neutral: "bg-surface-container-low text-on-surface-variant",
+  };
+  const dots: Record<typeof tone, string> = {
+    success: "bg-[#0c8a4d]",
+    info: "bg-primary",
+    warning: "bg-[#d97706]",
+    danger: "bg-[#dc2626]",
+    neutral: "bg-on-surface-variant/60",
+  };
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 h-6 rounded-md text-[11.5px] font-semibold",
+        tones[tone],
+      )}
+    >
+      <span className={cn("w-1.5 h-1.5 rounded-full", dots[tone])} />
+      {label}
+    </span>
   );
 }
 
@@ -1588,163 +1817,237 @@ function ExperimentTracker({ reduce }: { reduce: boolean }) {
 // Risk Center
 // ============================================================================
 
-function RiskCenter({ reduce }: { reduce: boolean }) {
+function RiskCenter({
+  reduce,
+  className,
+}: {
+  reduce: boolean;
+  className?: string;
+}) {
+  const groups: { key: "high" | "med" | "info"; label: string }[] = [
+    { key: "high", label: "Rủi ro cao" },
+    { key: "med", label: "Cảnh báo" },
+    { key: "info", label: "Thông tin" },
+  ];
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-        <div>
-          <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-            <ShieldAlert size={12} className="text-primary" />
-            AI Risk Center
-          </h3>
-          <p className="text-[10px] text-on-surface-variant mt-0.5">
-            Live anomalies · scanned 2m ago
-          </p>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-5 flex items-center justify-between border-b border-[var(--color-border-soft)]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-[#dc2626]/10 text-[#9d1414] flex items-center justify-center shrink-0">
+            <ShieldAlert size={15} />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight">
+              Trung tâm rủi ro
+            </h3>
+            <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+              Quét tự động · cập nhật 2 phút trước.
+            </p>
+          </div>
         </div>
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#ffdad6] text-[9.5px] font-bold text-[#ba1a1a]">
-          {RISK_ALERTS.filter((a) => a.severity === "high").length} high
-        </span>
+        <button className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5">
+          Xem tất cả
+          <ChevronRight size={12} />
+        </button>
       </div>
-      <ul className="divide-y divide-[var(--color-border-soft)]">
-        {RISK_ALERTS.map((a, i) => {
-          const tone =
-            a.severity === "high"
-              ? { dot: "bg-[#ef4444]", text: "text-[#ba1a1a]" }
-              : a.severity === "med"
-                ? { dot: "bg-[#f59e0b]", text: "text-[#b95000]" }
-                : { dot: "bg-primary", text: "text-primary" };
+
+      <div className="divide-y divide-[var(--color-border-soft)]">
+        {groups.map((g) => {
+          const items = RISK_ALERTS.filter((r) => r.severity === g.key);
+          if (items.length === 0) return null;
           return (
-            <motion.li
-              key={i}
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: reduce ? 0 : 0.3,
-                delay: reduce ? 0 : i * 0.05,
-                ease: EASE,
-              }}
-              className="group px-3 py-2 hover:bg-surface-container-low/40 cursor-pointer transition-colors"
-            >
-              <div className="flex items-start gap-2">
-                <span
-                  className={cn(
-                    "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
-                    tone.dot,
-                  )}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11.5px] font-bold truncate">
-                      {a.title}
-                    </p>
-                    <span className="text-[10px] text-on-surface-variant whitespace-nowrap shrink-0">
-                      {a.age}
-                    </span>
-                  </div>
-                  <p className="text-[10.5px] text-on-surface-variant leading-snug mt-0.5">
-                    {a.body}
-                  </p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span
-                      className={cn(
-                        "text-[10px] font-bold font-mono tabular-nums",
-                        tone.text,
-                      )}
-                    >
-                      {a.metric}
-                    </span>
-                    <button
-                      className={cn(
-                        "text-[10px] font-bold inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
-                        tone.text,
-                      )}
-                    >
-                      Investigate
-                      <ChevronRight size={10} />
-                    </button>
-                  </div>
-                </div>
+            <div key={g.key}>
+              <div className="px-5 pt-4 pb-2">
+                <p className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant">
+                  {g.label} ({items.length})
+                </p>
               </div>
-            </motion.li>
+              <ul className="pb-2">
+                {items.map((a, i) => (
+                  <RiskItem
+                    key={a.id}
+                    alert={a}
+                    delay={reduce ? 0 : i * 0.04}
+                    reduce={reduce}
+                  />
+                ))}
+              </ul>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </section>
   );
 }
 
+function RiskItem({
+  alert,
+  delay,
+  reduce,
+}: {
+  alert: (typeof RISK_ALERTS)[number];
+  delay: number;
+  reduce: boolean;
+}) {
+  const tone =
+    alert.severity === "high"
+      ? { dot: "bg-[#dc2626]", text: "text-[#9d1414]", iconBg: "bg-[#dc2626]/10" }
+      : alert.severity === "med"
+        ? {
+            dot: "bg-[#d97706]",
+            text: "text-[#a3530a]",
+            iconBg: "bg-[#d97706]/10",
+          }
+        : { dot: "bg-primary", text: "text-primary", iconBg: "bg-primary/10" };
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.3, delay, ease: EASE }}
+      className="group px-5 py-3 hover:bg-surface-container-low/30 transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+            tone.iconBg,
+          )}
+        >
+          <AlertTriangle size={14} className={tone.text} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-[13.5px] font-semibold text-on-surface">
+              {alert.title}
+            </p>
+            <span className="text-[12px] text-on-surface-variant whitespace-nowrap shrink-0">
+              {alert.age}
+            </span>
+          </div>
+          <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-1">
+            {alert.body}
+          </p>
+          <div className="flex items-center justify-between mt-2 gap-3 flex-wrap">
+            <span
+              className={cn(
+                "text-[12px] font-semibold font-mono tabular-nums",
+                tone.text,
+              )}
+            >
+              {alert.metric}
+            </span>
+            <button
+              className={cn(
+                "text-[12px] font-semibold inline-flex items-center gap-0.5 hover:underline",
+                tone.text,
+              )}
+            >
+              Điều tra
+              <ChevronRight size={12} />
+            </button>
+          </div>
+          <p className="text-[12px] text-on-surface-variant mt-1.5 leading-relaxed">
+            <span className="font-semibold text-on-surface">Đề xuất:</span>{" "}
+            {alert.action}
+          </p>
+        </div>
+      </div>
+    </motion.li>
+  );
+}
+
 // ============================================================================
-// Governance
+// Guardrails
 // ============================================================================
 
-function Governance({
+function GuardrailsCard({
   guards,
   toggleGuard,
+  className,
 }: {
   guards: typeof GUARDS;
   toggleGuard: (id: string) => void;
+  className?: string;
 }) {
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)]">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <Lock size={12} className="text-primary" />
-          Governance &amp; Guardrails
-        </h3>
-        <p className="text-[10px] text-on-surface-variant mt-0.5">
-          Changes audited &amp; logged
-        </p>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-5 flex items-center justify-between border-b border-[var(--color-border-soft)]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Lock size={15} />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight">
+              Chính sách & Guardrails
+            </h3>
+            <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+              Mọi thay đổi được audit và log.
+            </p>
+          </div>
+        </div>
       </div>
       <ul className="divide-y divide-[var(--color-border-soft)]">
         {guards.map((g) => {
           const sev =
             g.severity === "critical"
-              ? { label: "CRIT", color: "bg-[#ef4444] text-white" }
+              ? { label: "Critical", tone: "bg-[#dc2626]/10 text-[#9d1414]" }
               : g.severity === "high"
-                ? { label: "HIGH", color: "bg-[#fff5d6] text-[#b95000]" }
+                ? { label: "High", tone: "bg-[#d97706]/10 text-[#a3530a]" }
                 : g.severity === "med"
-                  ? { label: "MED", color: "bg-primary/10 text-primary" }
-                  : { label: "LOW", color: "bg-surface-container-low text-on-surface-variant" };
+                  ? { label: "Med", tone: "bg-primary/10 text-primary" }
+                  : {
+                      label: "Low",
+                      tone: "bg-surface-container-low text-on-surface-variant",
+                    };
           return (
-            <li
-              key={g.id}
-              className={cn(
-                "p-2.5 transition-colors",
-                !g.enabled && g.severity === "critical" && "bg-[#ffdad6]/30",
-              )}
-            >
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span
-                    className={cn(
-                      "text-[8.5px] font-bold uppercase tracking-wider px-1 py-0.5 rounded shrink-0",
-                      sev.color,
+            <li key={g.id} className="px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={cn(
+                        "text-[10.5px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                        sev.tone,
+                      )}
+                    >
+                      {sev.label}
+                    </span>
+                    <p className="text-[13.5px] font-semibold text-on-surface">
+                      {g.label}
+                    </p>
+                    {g.locked && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-on-surface-variant">
+                        <Lock size={10} />
+                        Khoá
+                      </span>
                     )}
-                  >
-                    {sev.label}
-                  </span>
-                  <p className="text-[11.5px] font-bold truncate">{g.label}</p>
+                  </div>
+                  <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-1">
+                    {g.desc}
+                  </p>
+                  {g.compliance && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-on-surface-variant">
+                      <FileText size={11} />
+                      <span className="font-mono">{g.compliance}</span>
+                    </div>
+                  )}
                 </div>
-                <Switch checked={g.enabled} onChange={() => toggleGuard(g.id)} />
+                <Switch
+                  checked={g.enabled}
+                  onChange={() => toggleGuard(g.id)}
+                  disabled={g.locked}
+                />
               </div>
-              <p className="text-[10.5px] text-on-surface-variant leading-snug">
-                {g.desc}
-              </p>
-              {g.compliance && (
-                <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-on-surface-variant">
-                  <FileText size={10} />
-                  <span className="font-mono">{g.compliance}</span>
-                </div>
-              )}
-              {!g.enabled && g.severity === "critical" && (
-                <div className="mt-1.5 flex items-start gap-1 text-[10px] text-[#ba1a1a] bg-[#ffdad6]/60 border border-[#ffbbb3] rounded px-1.5 py-1">
-                  <AlertTriangle size={10} className="mt-0.5 shrink-0" />
-                  <span>
-                    Disabling this may violate{" "}
-                    <span className="font-bold">{g.compliance}</span>
-                  </span>
-                </div>
-              )}
             </li>
           );
         })}
@@ -1757,43 +2060,50 @@ function Governance({
 // Activity feed
 // ============================================================================
 
-function ActivityFeed() {
+function ActivityFeedCard({ className }: { className?: string }) {
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <Activity size={12} className="text-primary" />
-          Activity Feed
-        </h3>
-        <button className="text-[10px] font-medium text-primary hover:underline inline-flex items-center gap-0.5">
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-5 flex items-center justify-between border-b border-[var(--color-border-soft)]">
+        <div className="flex items-center gap-2.5">
+          <Activity size={15} className="text-on-surface-variant" />
+          <h3 className="text-[15px] font-semibold tracking-tight">
+            Nhật ký hoạt động
+          </h3>
+        </div>
+        <button className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5">
           Audit log
-          <ChevronRight size={10} />
+          <ChevronRight size={12} />
         </button>
       </div>
-      <ul className="px-2 py-1.5 space-y-0.5">
+      <ul className="px-2 py-2">
         {ACTIVITY_FEED.map((it, i) => {
           const tone =
             it.tone === "good"
-              ? "text-[#1f7a4d] bg-success-container"
+              ? "text-[#0c6b3c] bg-[#0c8a4d]/10"
               : "text-primary bg-primary/10";
           return (
             <li
               key={i}
-              className="flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-surface-container-low/40 transition-colors"
+              className="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-container-low/30 transition-colors"
             >
               <div
                 className={cn(
-                  "w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5",
+                  "w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5",
                   tone,
                 )}
               >
-                <it.icon size={10} />
+                <it.icon size={13} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold truncate">
+                <p className="text-[13px] font-medium text-on-surface leading-snug">
                   {it.label}
                 </p>
-                <p className="text-[10px] text-on-surface-variant truncate">
+                <p className="text-[11.5px] text-on-surface-variant mt-0.5">
                   {it.meta}
                 </p>
               </div>
@@ -1809,55 +2119,88 @@ function ActivityFeed() {
 // Deploy History
 // ============================================================================
 
-function DeployHistory() {
+function DeployHistoryCard({ className }: { className?: string }) {
   return (
-    <section className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="px-3 py-2.5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-        <h3 className="text-[12.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
-          <GitBranch size={12} className="text-primary" />
-          Deploy History
-        </h3>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden",
+        className,
+      )}
+    >
+      <div className="p-5 flex items-center justify-between border-b border-[var(--color-border-soft)]">
+        <div className="flex items-center gap-2.5">
+          <GitBranch size={15} className="text-on-surface-variant" />
+          <h3 className="text-[15px] font-semibold tracking-tight">
+            Lịch sử triển khai
+          </h3>
+        </div>
       </div>
-      <ul className="divide-y divide-[var(--color-border-soft)]">
-        {DEPLOY_HISTORY.map((d) => {
-          const status =
-            d.status === "active"
-              ? { label: "Active", tone: "bg-success-container text-[#1f7a4d]" }
-              : d.status === "rolled-back"
-                ? { label: "Rolled back", tone: "bg-[#ffdad6] text-[#ba1a1a]" }
-                : { label: "Archived", tone: "bg-surface-container-low text-on-surface-variant" };
-          return (
-            <li key={d.version} className="p-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-mono text-[11.5px] font-bold">
-                  {d.version}
-                </p>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider",
-                    status.tone,
-                  )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[640px]">
+          <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[11.5px] uppercase tracking-wider text-on-surface-variant">
+            <tr>
+              <th className="px-5 py-3 font-semibold">Phiên bản</th>
+              <th className="px-4 py-3 font-semibold">Thời gian</th>
+              <th className="px-4 py-3 font-semibold text-right">Accuracy</th>
+              <th className="px-4 py-3 font-semibold">Người triển khai</th>
+              <th className="px-4 py-3 font-semibold">Trạng thái</th>
+              <th className="px-5 py-3 font-semibold text-right">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DEPLOY_HISTORY.map((d) => {
+              const status =
+                d.status === "active"
+                  ? { label: "Đang chạy", tone: "success" as const }
+                  : d.status === "rolled-back"
+                    ? { label: "Đã hoàn tác", tone: "danger" as const }
+                    : { label: "Lưu trữ", tone: "neutral" as const };
+              return (
+                <tr
+                  key={d.version}
+                  className="border-b last:border-b-0 border-[var(--color-border-soft)] hover:bg-surface-container-low/30 transition-colors"
                 >
-                  {status.label}
-                </span>
-              </div>
-              <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-                {d.time} · {d.samples} samples · {d.accuracy}% acc
-              </p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <button className="h-6 px-2 inline-flex items-center gap-1 rounded text-[10px] font-semibold hover:bg-surface-container-low text-on-surface-variant transition-colors">
-                  <RotateCcw size={9} />
-                  Rollback
-                </button>
-                <button className="h-6 px-2 inline-flex items-center gap-1 rounded text-[10px] font-semibold hover:bg-surface-container-low text-on-surface-variant transition-colors">
-                  <FileText size={9} />
-                  Diff
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                  <td className="px-5 py-3.5 font-mono text-[13px] font-semibold">
+                    {d.version}
+                  </td>
+                  <td className="px-4 py-3.5 text-[13px] text-on-surface-variant whitespace-nowrap">
+                    {d.time}
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-[13px] font-semibold tabular-nums">
+                    {d.accuracy}%
+                  </td>
+                  <td className="px-4 py-3.5 text-[13px] font-mono text-on-surface-variant">
+                    {d.by}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <StatusBadge tone={status.tone} label={status.label} />
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        className="h-7 px-2 inline-flex items-center gap-1 rounded text-[12px] font-medium hover:bg-surface-container-low text-on-surface-variant transition-colors"
+                        title="Xem diff"
+                      >
+                        <FileText size={11} />
+                        Diff
+                      </button>
+                      {d.status !== "rolled-back" && (
+                        <button
+                          className="h-7 px-2 inline-flex items-center gap-1 rounded text-[12px] font-medium hover:bg-[#dc2626]/10 text-[#9d1414] transition-colors"
+                          title="Hoàn tác phiên bản này"
+                        >
+                          <RotateCcw size={11} />
+                          Hoàn tác
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -1886,7 +2229,6 @@ function DeployModal({
     setTimeout(onConfirm, 1600);
   };
 
-  // Esc to close
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1905,42 +2247,46 @@ function DeployModal({
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.96, y: 6 }}
+        initial={{ scale: 0.96, y: 8 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: 6 }}
+        exit={{ scale: 0.96, y: 8 }}
         transition={{ duration: reduce ? 0 : 0.25, ease: EASE }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl rounded-[14px] bg-surface-container-lowest shadow-[0_20px_50px_-12px_rgba(15,15,30,0.35)] overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deploy-modal-title"
+        className="w-full max-w-2xl rounded-2xl bg-surface-container-lowest shadow-[0_20px_50px_-12px_rgba(15,15,30,0.35)] overflow-hidden"
       >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--color-border-soft)] flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary text-on-primary flex items-center justify-center shrink-0">
-            <Play size={17} />
+        <div className="px-6 py-5 border-b border-[var(--color-border-soft)] flex items-start gap-3">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Brain size={18} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[15px] font-bold tracking-tight">
-              Deploy model configuration
+            <h3
+              id="deploy-modal-title"
+              className="text-[18px] font-semibold tracking-tight"
+            >
+              Xem & triển khai cấu hình mô hình
             </h3>
-            <p className="text-[12px] text-on-surface-variant mt-0.5">
-              Review impact and target environment before promoting v3.2.2.
+            <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
+              Kiểm tra môi trường, ảnh hưởng và các kiểm tra an toàn trước khi
+              promote v3.2.2.
             </p>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
-            className="w-8 h-8 rounded-md hover:bg-surface-container-low text-on-surface-variant transition-colors flex items-center justify-center"
+            aria-label="Đóng"
+            className="w-9 h-9 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors flex items-center justify-center shrink-0"
           >
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Body */}
         {step === "review" && (
-          <div className="p-5 space-y-4">
-            {/* Environment */}
+          <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
             <div>
-              <p className="text-[10.5px] uppercase tracking-wider font-bold text-on-surface-variant mb-2">
-                Target environment
+              <p className="text-[12px] uppercase tracking-wider font-semibold text-on-surface-variant mb-3">
+                Môi trường đích
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(["sandbox", "staging", "canary", "production"] as Env[]).map(
@@ -1951,25 +2297,24 @@ function DeployModal({
                       <button
                         key={e}
                         onClick={() => setTarget(e)}
+                        aria-pressed={active}
                         className={cn(
-                          "text-left rounded-md border p-2.5 transition-colors",
+                          "text-left rounded-xl border p-3 transition-colors",
                           active
-                            ? "border-primary bg-primary/[0.04]"
+                            ? "border-primary bg-primary/[0.05]"
                             : "border-[var(--color-border-soft)] hover:bg-surface-container-low/40",
                         )}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className={cn("w-1.5 h-1.5 rounded-full", meta.dot)} />
-                          <p className="text-[11.5px] font-bold">{meta.label}</p>
+                          <span
+                            className={cn("w-1.5 h-1.5 rounded-full", meta.dot)}
+                          />
+                          <p className="text-[13px] font-semibold">
+                            {meta.label}
+                          </p>
                         </div>
-                        <p className="text-[10px] text-on-surface-variant leading-snug">
-                          {e === "production"
-                            ? "100% live traffic"
-                            : e === "canary"
-                              ? "Gradual rollout · 5–25%"
-                              : e === "staging"
-                                ? "Internal QA"
-                                : "Isolated sandbox"}
+                        <p className="text-[12px] text-on-surface-variant leading-snug">
+                          {meta.desc}
                         </p>
                       </button>
                     );
@@ -1978,59 +2323,54 @@ function DeployModal({
               </div>
             </div>
 
-            {/* Estimates */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <Estimate icon={Clock} label="Train time" value="~6m" />
               <Estimate icon={Cpu} label="GPU usage" value="8 × A100" />
-              <Estimate icon={Database} label="Cost" value="~$42" />
-              <Estimate
-                icon={Zap}
-                label="Affected services"
-                value="3 services"
-              />
+              <Estimate icon={Database} label="Chi phí ước tính" value="~$42" />
+              <Estimate icon={Zap} label="Dịch vụ ảnh hưởng" value="3" />
             </div>
 
-            {/* Safety checks */}
-            <div className="rounded-md border border-[var(--color-border-soft)] divide-y divide-[var(--color-border-soft)]">
+            <div className="rounded-xl border border-[var(--color-border-soft)] divide-y divide-[var(--color-border-soft)]">
               <SafetyCheck label="Pre-deployment tests" status="passed" />
               <SafetyCheck label="Bias audit" status="passed" />
               <SafetyCheck
                 label="Diversity threshold"
                 status="warn"
-                note="Projected −4% diversity"
+                note="Dự kiến −4% diversity"
               />
-              <SafetyCheck label="Rollback plan ready" status="passed" />
+              <SafetyCheck label="Rollback plan sẵn sàng" status="passed" />
             </div>
 
-            {/* Options */}
-            <div className="space-y-2">
-              <label className="flex items-start gap-2 cursor-pointer">
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={requireApproval}
                   onChange={() => setRequireApproval(!requireApproval)}
-                  className="mt-0.5 accent-primary"
+                  className="mt-1 accent-primary"
                 />
                 <div>
-                  <p className="text-[11.5px] font-bold">
-                    Require additional approval
+                  <p className="text-[13px] font-semibold">
+                    Yêu cầu phê duyệt bổ sung
                   </p>
-                  <p className="text-[10.5px] text-on-surface-variant">
-                    Send to ops@ for sign-off before promoting beyond canary.
+                  <p className="text-[12px] text-on-surface-variant leading-relaxed mt-0.5">
+                    Gửi sign-off đến ops@ trước khi promote ra ngoài canary.
                   </p>
                 </div>
               </label>
 
               {target === "production" && (
-                <div className="rounded-md bg-[#ffdad6]/40 border border-[#ffbbb3] p-2.5 flex items-start gap-2">
+                <div className="rounded-xl bg-[#dc2626]/[0.05] border border-[#dc2626]/20 p-3.5 flex items-start gap-2.5">
                   <AlertTriangle
-                    size={12}
-                    className="text-[#ba1a1a] mt-0.5 shrink-0"
+                    size={14}
+                    className="text-[#9d1414] mt-0.5 shrink-0"
                   />
-                  <p className="text-[11px] text-[#ba1a1a] leading-relaxed">
-                    <span className="font-bold">High-stakes deploy.</span>{" "}
-                    Production receives 100% traffic. Recommend deploying to
-                    canary first.
+                  <p className="text-[12.5px] text-[#9d1414] leading-relaxed">
+                    <span className="font-semibold">
+                      Đây là deploy có rủi ro cao.
+                    </span>{" "}
+                    Production nhận 100% lưu lượng. Đề xuất triển khai sang
+                    canary trước.
                   </p>
                 </div>
               )}
@@ -2040,37 +2380,35 @@ function DeployModal({
 
         {step === "deploying" && (
           <div className="p-10 flex flex-col items-center text-center">
-            <Loader2
-              size={32}
-              className="animate-spin text-primary mb-3"
-            />
-            <p className="text-[14px] font-bold">Promoting to {target}…</p>
-            <p className="text-[12px] text-on-surface-variant mt-1">
-              Running pre-deployment checks &amp; warming caches.
+            <Loader2 size={32} className="animate-spin text-primary mb-3" />
+            <p className="text-[15px] font-semibold">
+              Đang promote sang {ENV_META[target].label}…
+            </p>
+            <p className="text-[13px] text-on-surface-variant mt-1.5">
+              Chạy pre-deployment checks và làm nóng cache.
             </p>
           </div>
         )}
 
-        {/* Footer */}
         {step === "review" && (
-          <div className="px-5 py-3 border-t border-[var(--color-border-soft)] bg-surface-container-low/40 flex items-center justify-between">
-            <span className="text-[10.5px] text-on-surface-variant inline-flex items-center gap-1">
-              <Info size={10} />
-              Esc to cancel · auto rollback if health checks fail
+          <div className="px-6 py-4 border-t border-[var(--color-border-soft)] bg-surface-container-low/40 flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-[12px] text-on-surface-variant inline-flex items-center gap-1.5">
+              <Info size={11} />
+              Esc để huỷ · auto rollback nếu health check fail
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="h-8 px-3 rounded-md border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[11.5px] font-semibold transition-colors"
+                className="h-9 px-4 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13px] font-semibold transition-colors"
               >
-                Cancel
+                Huỷ
               </button>
               <button
                 onClick={confirm}
-                className="h-8 px-4 inline-flex items-center gap-1.5 rounded-md bg-primary text-on-primary text-[11.5px] font-bold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.4)] hover:bg-[#3a2db5] transition-colors"
+                className="h-9 px-4 inline-flex items-center gap-1.5 rounded-lg bg-primary text-on-primary text-[13px] font-semibold shadow-[0_1px_2px_rgba(53,37,205,0.2),0_4px_12px_-4px_rgba(53,37,205,0.32)] hover:bg-[#2c1eaa] transition-colors"
               >
-                <Play size={11} strokeWidth={2.5} />
-                Deploy to {ENV_META[target].label}
+                Xác nhận triển khai
+                <ArrowRight size={13} />
               </button>
             </div>
           </div>
@@ -2090,12 +2428,12 @@ function Estimate({
   value: string;
 }) {
   return (
-    <div className="rounded-md border border-[var(--color-border-soft)] p-2.5">
-      <div className="inline-flex items-center gap-1 text-[9.5px] uppercase tracking-wider font-bold text-on-surface-variant">
-        <Icon size={10} />
+    <div className="rounded-xl border border-[var(--color-border-soft)] p-3">
+      <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-on-surface-variant">
+        <Icon size={11} />
         {label}
       </div>
-      <p className="text-[14px] font-bold tabular-nums mt-1 leading-none">
+      <p className="text-[15px] font-semibold tabular-nums mt-1 leading-none">
         {value}
       </p>
     </div>
@@ -2113,24 +2451,24 @@ function SafetyCheck({
 }) {
   const meta =
     status === "passed"
-      ? { icon: Check, tone: "text-[#1f7a4d]", label: "Passed" }
+      ? { icon: Check, tone: "text-[#0c6b3c]", label: "Passed" }
       : status === "warn"
-        ? { icon: AlertTriangle, tone: "text-[#b95000]", label: "Warning" }
-        : { icon: X, tone: "text-[#ba1a1a]", label: "Failed" };
+        ? { icon: AlertTriangle, tone: "text-[#a3530a]", label: "Warning" }
+        : { icon: X, tone: "text-[#9d1414]", label: "Failed" };
   return (
-    <div className="px-3 py-2 flex items-center justify-between gap-3">
+    <div className="px-4 py-3 flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 min-w-0">
-        <meta.icon size={12} className={meta.tone} />
-        <p className="text-[11.5px] font-semibold truncate">{label}</p>
+        <meta.icon size={13} className={meta.tone} />
+        <p className="text-[13px] font-semibold truncate">{label}</p>
         {note && (
-          <span className="text-[10.5px] text-on-surface-variant truncate">
+          <span className="text-[12px] text-on-surface-variant truncate">
             · {note}
           </span>
         )}
       </div>
       <span
         className={cn(
-          "text-[9.5px] uppercase tracking-wider font-bold",
+          "text-[11px] uppercase tracking-wider font-semibold",
           meta.tone,
         )}
       >
@@ -2165,35 +2503,34 @@ function SaveBar({
       }}
       className="fixed bottom-4 left-4 right-4 lg:left-[calc(16rem+1rem)] lg:right-6 z-30"
     >
-      <div className="max-w-[1500px] mx-auto rounded-[12px] border border-[var(--color-border-soft)] bg-on-surface/95 backdrop-blur-md text-white py-2 pl-4 pr-2 flex items-center justify-between gap-3 shadow-[0_12px_32px_-8px_rgba(15,15,30,0.4)]">
+      <div className="mx-auto max-w-[1400px] rounded-xl border border-on-surface/10 bg-on-surface/95 backdrop-blur-md text-white py-2.5 pl-4 pr-2 flex items-center justify-between gap-3 shadow-[0_12px_32px_-8px_rgba(15,15,30,0.4)] flex-wrap">
         <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
-          <p className="text-[12.5px] font-semibold">
-            Unsaved configuration changes
+          <span className="w-2 h-2 rounded-full bg-[#fbbf24] animate-pulse" />
+          <p className="text-[13px] font-semibold">
+            Có thay đổi cấu hình chưa lưu
           </p>
-          <span className="text-[10.5px] text-white/60">
-            · Deploy to apply
+          <span className="text-[12px] text-white/60">
+            · Triển khai để áp dụng
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={onDiscard}
-            className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md bg-white/10 hover:bg-white/15 text-[11.5px] font-bold transition-colors"
+            className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-[12.5px] font-semibold transition-colors"
           >
-            <Undo2 size={11} />
-            Discard
+            <Undo2 size={12} />
+            Huỷ thay đổi
           </button>
-          <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md bg-white/10 hover:bg-white/15 text-[11.5px] font-bold transition-colors">
-            <Save size={11} />
-            Save draft
+          <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-[12.5px] font-semibold transition-colors">
+            <Save size={12} />
+            Lưu nháp
           </button>
           <button
             onClick={onDeploy}
-            className="h-8 px-4 inline-flex items-center gap-1.5 rounded-md bg-primary text-on-primary text-[11.5px] font-bold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.5)] hover:bg-[#3a2db5] transition-colors"
+            className="h-8 px-3.5 inline-flex items-center gap-1.5 rounded-lg bg-primary text-on-primary text-[12.5px] font-semibold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.5)] hover:bg-[#2c1eaa] transition-colors"
           >
-            <Play size={11} strokeWidth={2.5} />
-            Deploy
-            <ArrowRight size={11} />
+            Xem & Triển khai
+            <ArrowRight size={12} />
           </button>
         </div>
       </div>
@@ -2201,7 +2538,3 @@ function SaveBar({
   );
 }
 
-// Silence unused imports for reserved widgets
-void Area;
-void AreaChart;
-void LogOut;

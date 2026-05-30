@@ -12,9 +12,16 @@ export const backendEndpoints = {
       `/api/auth/verify-email?token=${encodeURIComponent(token)}`,
     refreshToken: "/api/auth/refresh-token",
     me: "/api/auth/me",
+    changePassword: "/api/auth/change-password",
   },
 
+  // ---- Users -------------------------------------------------------------
+  usersMe: "/api/users/me",
+
   // ---- Coaches -----------------------------------------------------------
+  publicCoaches: "/api/public/coaches",
+  publicCoachById: (id: string) =>
+    `/api/public/coaches/${encodeURIComponent(id)}`,
   coachRegister: "/api/coaches/register",
   coachMe: "/api/coaches/me",
   coachMedia: "/api/coaches/me/media",

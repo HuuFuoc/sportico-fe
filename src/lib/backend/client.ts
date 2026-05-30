@@ -12,21 +12,26 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
   BookingResponse,
+  ChangePasswordRequest,
   ChatMessageResponse,
   ChatRoomResponse,
   CoachPayoutAccountResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
+  CurrentUserResponse,
   LearnerAssessmentResponse,
   NotificationResponse,
   PagedResult,
   PostResponse,
   ProgressCheckInResponse,
+  PublicCoachDetailResponse,
+  PublicCoachListItemResponse,
   PurchasePayOsResponse,
   Result,
   TrainingPackageResponse,
   TrainingPlanResponse,
   TrainingSessionResponse,
+  UpdateMeRequest,
   WithdrawalRequestResponse,
 } from "@/lib/backend/dto";
 
@@ -96,6 +101,18 @@ export interface ListParams {
   coachId?: string;
 }
 
+export interface PublicCoachListParams {
+  pageNumber?: number;
+  pageSize?: number;
+  keyword?: string;
+  sportId?: number;
+  city?: string;
+  district?: string;
+  isOnlineAvailable?: boolean;
+  isOfflineAvailable?: boolean;
+  minRating?: number;
+}
+
 function listQuery(p: ListParams = {}): string {
   return qs({
     PageNumber: p.pageNumber,
@@ -122,6 +139,49 @@ const POST = <T>(path: string, body?: unknown) =>
 // ---- client ----------------------------------------------------------------
 
 export const backend = {
+  // ---- Current user ------------------------------------------------------
+  async usersMe() {
+    return unwrap(await GET<CurrentUserResponse>(ep.usersMe));
+  },
+  async updateMe(body: UpdateMeRequest) {
+    return unwrap(await PUT<CurrentUserResponse>(ep.usersMe, body));
+  },
+  async changePassword(body: ChangePasswordRequest) {
+    const result = await POST<unknown>(ep.auth.changePassword, body);
+    if (!result?.isSuccess) {
+      throw new ApiError(
+        result?.error?.message ?? "Đổi mật khẩu không thành công.",
+        0,
+        result?.error,
+      );
+    }
+  },
+
+  // ---- Public coach directory -------------------------------------------
+  async publicCoaches(p?: PublicCoachListParams) {
+    const query = qs({
+      Keyword: p?.keyword,
+      SportId: p?.sportId,
+      City: p?.city,
+      District: p?.district,
+      IsOnlineAvailable: p?.isOnlineAvailable,
+      IsOfflineAvailable: p?.isOfflineAvailable,
+      MinRating: p?.minRating,
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+    });
+    return unwrapPage(
+      await GET<PagedResult<PublicCoachListItemResponse>>(
+        ep.publicCoaches + query,
+      ),
+    );
+  },
+  async publicCoach(id: string) {
+    return unwrap(
+      await GET<PublicCoachDetailResponse>(ep.publicCoachById(id)),
+    );
+  },
+
   // ---- Training packages (public marketplace + coach's own) -------------
   async publicTrainingPackages(p?: ListParams) {
     return unwrapPage(

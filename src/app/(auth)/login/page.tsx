@@ -32,6 +32,17 @@ function roleFromBackend(roles: string[]): Role {
   return "learner";
 }
 
+/** Post-login destination by role:
+ *  - admin  → /admin/dashboard (operations console)
+ *  - coach  → /coach/dashboard (in-app home)
+ *  - learner → / (marketing homepage; navbar shows their identity right away).
+ */
+function postLoginHref(role: Role): string {
+  if (role === "admin") return "/admin/dashboard";
+  if (role === "coach") return "/coach/dashboard";
+  return "/";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const setRole = useAppStore((s) => s.setRole);
@@ -84,7 +95,7 @@ export default function LoginPage() {
       }
 
       setRole(role);
-      router.push(`/${role}/dashboard`);
+      router.push(postLoginHref(role));
     } catch (err) {
       setServerError(
         err instanceof AuthError

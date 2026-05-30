@@ -11,6 +11,7 @@ import type {
   Coach,
   CoachPost,
   EarningPoint,
+  Learner,
   LearnerAssessment,
   Message,
   MessageThread,
@@ -32,10 +33,13 @@ import type {
   CoachPayoutAccountResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
+  CurrentUserResponse,
   LearnerAssessmentResponse,
   NotificationResponse,
   PostResponse,
   ProgressCheckInResponse,
+  PublicCoachDetailResponse,
+  PublicCoachListItemResponse,
   TrainingPackageResponse,
   TrainingPlanResponse,
   TrainingSessionResponse,
@@ -71,31 +75,102 @@ function coachDisplayName(coachId: string): string {
   return `Coach ${coachId.slice(0, 4).toUpperCase()}`;
 }
 
-// ---- Training package → Coach card -----------------------------------------
-// Backend has no coach directory; we surface each public training package as a
-// browsable "coach card" so the existing CoachCard UI keeps working.
-export function packageToCoach(p: TrainingPackageResponse): Coach {
-  const perSession = p.sessionCount > 0 ? p.price / p.sessionCount : p.price;
+// ---- Public coach directory → Coach ----------------------------------------
+
+function joinLocation(city?: string | null, district?: string | null): string {
+  return [district?.trim(), city?.trim()].filter(Boolean).join(", ");
+}
+
+function splitSpecialties(s?: string | null): string[] {
+  if (!s) return [];
+  return s
+    .split(/[,;|]/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+/** Cheapest per-session price across packages that are still bookable. */
+function pickActivePackage(
+  pkgs: NonNullable<PublicCoachDetailResponse["trainingPackages"]>,
+) {
+  const bookable = pkgs.filter((p) => {
+    const s = (p.status ?? "").toLowerCase();
+    return !s || s === "approved" || s === "active";
+  });
+  if (bookable.length === 0) return undefined;
+  return bookable.reduce((cheapest, p) => {
+    const a = cheapest.sessionCount > 0
+      ? cheapest.price / cheapest.sessionCount
+      : cheapest.price;
+    const b = p.sessionCount > 0 ? p.price / p.sessionCount : p.price;
+    return b < a ? p : cheapest;
+  });
+}
+
+export function publicCoachListItemToCoach(
+  c: PublicCoachListItemResponse,
+): Coach {
+  const location = joinLocation(c.teachingCity, c.teachingDistrict);
   return {
-    id: p.coachId,
-    packageId: p.id,
-    name: coachDisplayName(p.coachId),
-    avatarUrl: avatarFor(p.coachId),
+    id: c.coachId,
+    name: c.fullName?.trim() || coachDisplayName(c.coachId),
+    avatarUrl: c.avatarUrl || avatarFor(c.coachId),
     email: "",
-    joinedAt: p.createdAt,
+    joinedAt: "",
     role: "coach",
-    headline: p.title ?? "Gói huấn luyện",
-    bio: p.description ?? "",
-    hourlyRate: Math.round(perSession),
+    headline: c.headline?.trim() || "Huấn luyện viên Sportico",
+    bio: c.bio ?? "",
+    hourlyRate: 0,
     currency: "VND",
-    rating: 0,
-    reviewCount: 0,
-    sport: toSport(p.sportName),
-    specialties: [p.goalType, p.level].filter(Boolean) as string[],
-    yearsExperience: 0,
-    verified: p.status === "Approved" || p.status === "Active",
-    location: p.location ?? (p.isOnline ? "Online" : ""),
+    rating: c.rating ?? 0,
+    reviewCount: c.totalReviews ?? 0,
+    sport: toSport(c.sports?.[0]?.name),
+    specialties: splitSpecialties(c.specialties),
+    yearsExperience: c.experienceYears ?? 0,
+    verified: true,
+    location: location || (c.isOnlineAvailable ? "Online" : ""),
+    coverImage: c.coverImageUrl ?? undefined,
     activeLearners: 0,
+  };
+}
+
+// ---- Current user → UI Learner ---------------------------------------------
+// Backend `CurrentUserResponse` only carries identity fields (fullName, email,
+// avatarUrl). The UI `Learner` shape needs sport preferences, streak, goals etc.
+// We merge real backend identity over a sensible default so the page renders.
+export function currentUserToLearner(
+  u: CurrentUserResponse,
+  fallback?: Partial<Learner>,
+): Learner {
+  return {
+    id: u.id,
+    name: u.fullName?.trim() || fallback?.name || "Học viên Sportico",
+    avatarUrl: u.avatarUrl || fallback?.avatarUrl || avatarFor(u.id),
+    email: u.email,
+    joinedAt: fallback?.joinedAt ?? "",
+    role: "learner",
+    totalHoursTrained: fallback?.totalHoursTrained ?? 0,
+    upcomingSessions: fallback?.upcomingSessions ?? 0,
+    streakDays: fallback?.streakDays ?? 0,
+    goals: fallback?.goals ?? [],
+    preferredSports: fallback?.preferredSports ?? [],
+    matchRate: fallback?.matchRate,
+  };
+}
+
+export function publicCoachDetailToCoach(c: PublicCoachDetailResponse): Coach {
+  const base = publicCoachListItemToCoach(c);
+  const cheapest = pickActivePackage(c.trainingPackages ?? []);
+  const perSession = cheapest
+    ? cheapest.sessionCount > 0
+      ? cheapest.price / cheapest.sessionCount
+      : cheapest.price
+    : 0;
+  return {
+    ...base,
+    hourlyRate: Math.round(perSession),
+    location: base.location || c.teachingAddress || "",
+    packageId: cheapest?.id,
   };
 }
 

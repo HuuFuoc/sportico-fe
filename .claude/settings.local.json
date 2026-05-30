@@ -90,7 +90,19 @@
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
       "Bash(echo \"=== EXIT: $? ===\")",
       "Bash(node -e \"const s=require\\('./swagger_tmp.json'\\); for\\(const p of Object.keys\\(s.paths\\)\\){ if\\(/purchase|bookings/.test\\(p\\)\\){ console.log\\('PATH', p\\); for\\(const m of Object.keys\\(s.paths[p]\\)\\){ const op=s.paths[p][m]; console.log\\('  ',m.toUpperCase\\(\\), op.summary||''\\); const rb=op.requestBody&&op.requestBody.content&&op.requestBody.content['application/json']; if\\(rb&&rb.schema\\){ console.log\\('   reqSchema:', JSON.stringify\\(rb.schema\\)\\); } } } }\")",
-      "Bash(pnpm build *)"
+      "Bash(pnpm build *)",
+      "WebFetch(domain:sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__press_key",
+      "Bash(curl -s -o swagger.json \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/api/public/coaches?PageSize=2\")",
+      "Bash(grep -q \"----\\\\|error\\\\|Error\\\\|warning\" \"C:/Users/DELL/AppData/Local/Temp/claude/d--FPT-Ky8-EXE202-sportico/474b9a6f-6aa1-43ec-8dc6-f2c28a0ccf96/tasks/bslb2zd81.output\")",
+      "Bash(curl -s -o /tmp/swagger.json \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -o swagger.json \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\")",
+      "mcp__chrome-devtools__list_network_requests",
+      "Bash(rm -f swagger.json)"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

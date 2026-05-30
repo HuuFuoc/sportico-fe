@@ -1,11 +1,16 @@
+"use client";
+
+import { use, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { AIBadge } from "@/components/common/AIBadge";
 import { BookSessionButton } from "@/components/common/BookSessionButton";
+import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -41,14 +46,58 @@ const MOCK_REVIEWS = [
   },
 ];
 
-export async function generateStaticParams() {
-  const coaches = await api.fetchCoaches();
-  return coaches.map((c) => ({ id: c.id }));
-}
+export default function CoachProfilePage({ params }: PageProps) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [messaging, setMessaging] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+  const {
+    data: coach,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchCoach(id), [id]);
 
-export default async function CoachProfilePage({ params }: PageProps) {
-  const { id } = await params;
-  const coach = await api.fetchCoach(id);
+  const handleMessage = async () => {
+    if (messaging) return;
+    setMessaging(true);
+    setMessageError(null);
+    try {
+      const roomId = await api.findChatRoomWith(id);
+      if (roomId) {
+        router.push(`/learner/messages?thread=${encodeURIComponent(roomId)}`);
+      } else {
+        setMessageError(
+          "Bạn chưa có cuộc trò chuyện với HLV này. Backend hiện chưa hỗ trợ tạo cuộc trò chuyện mới — vui lòng quay lại sau.",
+        );
+      }
+    } catch (err) {
+      setMessageError(
+        err instanceof Error
+          ? err.message
+          : "Không mở được tin nhắn. Vui lòng thử lại.",
+      );
+    } finally {
+      setMessaging(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppShell role="learner" title="Hồ sơ huấn luyện viên">
+        <LoadingState label="Đang tải hồ sơ huấn luyện viên…" />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="learner" title="Hồ sơ huấn luyện viên">
+        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
   if (!coach) notFound();
 
   return (
@@ -85,10 +134,12 @@ export default async function CoachProfilePage({ params }: PageProps) {
               {coach.headline}
             </p>
             <div className="flex flex-wrap gap-4 text-body-sm text-on-surface-variant">
-              <span className="inline-flex items-center gap-1">
-                <MaterialIcon name="location_on" size={16} />
-                {coach.location}
-              </span>
+              {coach.location && (
+                <span className="inline-flex items-center gap-1">
+                  <MaterialIcon name="location_on" size={16} />
+                  {coach.location}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1">
                 <MaterialIcon
                   name="star"
@@ -109,10 +160,32 @@ export default async function CoachProfilePage({ params }: PageProps) {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row md:flex-col gap-2 md:items-end shrink-0 md:min-w-[180px]">
-            <button className="px-5 py-2.5 border border-[var(--color-border-soft)] rounded-[6px] text-body-base font-medium hover:bg-surface-container-low transition-colors">
-              Message
+            <button
+              type="button"
+              onClick={handleMessage}
+              disabled={messaging}
+              className={cn(
+                "px-5 py-2.5 border border-[var(--color-border-soft)] rounded-[6px] text-body-base font-medium hover:bg-surface-container-low transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5",
+              )}
+            >
+              {messaging && (
+                <MaterialIcon
+                  name="progress_activity"
+                  size={16}
+                  className="animate-spin"
+                />
+              )}
+              {messaging ? "Đang mở…" : "Message"}
             </button>
             <BookSessionButton coachId={id} packageId={coach.packageId} />
+            {messageError && (
+              <p
+                role="alert"
+                className="text-body-sm text-error md:text-right max-w-[260px]"
+              >
+                {messageError}
+              </p>
+            )}
           </div>
         </section>
 
@@ -138,24 +211,26 @@ export default async function CoachProfilePage({ params }: PageProps) {
             </div>
 
             {/* Specialties */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {coach.specialties.map((sp) => (
-                <div
-                  key={sp}
-                  className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4"
-                >
-                  <MaterialIcon
-                    name="fitness_center"
-                    size={20}
-                    className="text-primary mb-2"
-                  />
-                  <p className="text-h3 mb-1">{sp}</p>
-                  <p className="text-body-sm text-on-surface-variant">
-                    Specialized training in {sp.toLowerCase()}.
-                  </p>
-                </div>
-              ))}
-            </section>
+            {coach.specialties.length > 0 && (
+              <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {coach.specialties.map((sp) => (
+                  <div
+                    key={sp}
+                    className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4"
+                  >
+                    <MaterialIcon
+                      name="fitness_center"
+                      size={20}
+                      className="text-primary mb-2"
+                    />
+                    <p className="text-h3 mb-1">{sp}</p>
+                    <p className="text-body-sm text-on-surface-variant">
+                      Specialized training in {sp.toLowerCase()}.
+                    </p>
+                  </div>
+                ))}
+              </section>
+            )}
 
             {/* About */}
             <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[12px] p-6">
@@ -227,7 +302,7 @@ export default async function CoachProfilePage({ params }: PageProps) {
                         ))}
                       </div>
                       <p className="text-body-base text-on-surface-variant italic">
-                        "{r.text}"
+                        &quot;{r.text}&quot;
                       </p>
                     </div>
                   </article>
@@ -274,15 +349,23 @@ export default async function CoachProfilePage({ params }: PageProps) {
                     {coach.headline}
                   </p>
                   <div className="flex items-baseline gap-1">
-                    <span
-                      className="text-h1 text-primary"
-                      style={{ letterSpacing: "-0.02em" }}
-                    >
-                      {formatCurrency(coach.hourlyRate, coach.currency)}
-                    </span>
-                    <span className="text-body-sm text-on-surface-variant">
-                      / buổi
-                    </span>
+                    {coach.hourlyRate > 0 ? (
+                      <>
+                        <span
+                          className="text-h1 text-primary"
+                          style={{ letterSpacing: "-0.02em" }}
+                        >
+                          {formatCurrency(coach.hourlyRate, coach.currency)}
+                        </span>
+                        <span className="text-body-sm text-on-surface-variant">
+                          / buổi
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-body-base text-on-surface-variant">
+                        Liên hệ để biết giá
+                      </span>
+                    )}
                   </div>
                 </div>
                 <BookSessionButton

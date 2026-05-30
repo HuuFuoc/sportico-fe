@@ -6,7 +6,6 @@ import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { AVAILABLE_SPORTS } from "@/lib/constants";
-import { devUserIdForRole } from "@/lib/auth";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 
@@ -20,19 +19,24 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+type FeedbackTone = "success" | "error";
+interface Feedback {
+  tone: FeedbackTone;
+  text: string;
+}
+
 export default function LearnerSettingsPage() {
-  // TODO(auth): hard-coded current learner until real session auth lands.
-  const learnerId = devUserIdForRole("learner");
   const {
     data: learner,
     loading,
     error,
     refetch,
-  } = useApiResource(() => api.fetchLearner(learnerId), [learnerId]);
+  } = useApiResource(() => api.fetchCurrentLearner(), []);
 
   const [tab, setTab] = useState<TabId>("profile");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState(
     "Recreational athlete focused on consistency and mobility.",
   );
@@ -41,13 +45,89 @@ export default function LearnerSettingsPage() {
   const [pushNotif, setPushNotif] = useState(false);
   const [aiSuggestions, setAISuggestions] = useState(true);
 
+  // Account tab fields
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+
   // Seed editable fields once the learner profile loads from the API.
   useEffect(() => {
     if (!learner) return;
     setName(learner.name);
     setEmail(learner.email);
+    setAvatarUrl(learner.avatarUrl);
     setSports(new Set(learner.preferredSports));
   }, [learner]);
+
+  // Auto-dismiss feedback after 4s so it doesn't linger.
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(t);
+  }, [feedback]);
+
+  const saveProfile = async () => {
+    if (!learner || savingProfile) return;
+    setSavingProfile(true);
+    setFeedback(null);
+    try {
+      await api.updateMyProfile({
+        fullName: name.trim() || undefined,
+        avatarUrl: avatarUrl || undefined,
+      });
+      setFeedback({ tone: "success", text: "Đã cập nhật hồ sơ." });
+      refetch();
+    } catch (err) {
+      setFeedback({
+        tone: "error",
+        text:
+          err instanceof Error
+            ? err.message
+            : "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const submitPasswordChange = async () => {
+    if (savingPassword) return;
+    if (!currentPassword || !newPassword) {
+      setFeedback({
+        tone: "error",
+        text: "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.",
+      });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setFeedback({
+        tone: "error",
+        text: "Mật khẩu mới phải có ít nhất 6 ký tự.",
+      });
+      return;
+    }
+    setSavingPassword(true);
+    setFeedback(null);
+    try {
+      await api.changePassword({ currentPassword, newPassword });
+      setFeedback({ tone: "success", text: "Đã đổi mật khẩu." });
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err) {
+      setFeedback({
+        tone: "error",
+        text:
+          err instanceof Error
+            ? err.message
+            : "Đổi mật khẩu thất bại. Vui lòng thử lại.",
+      });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
 
   const toggleSport = (s: string) => {
     setSports((prev) => {
@@ -84,6 +164,27 @@ export default function LearnerSettingsPage() {
           </p>
         </header>
 
+        {feedback && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "mb-4 flex items-start gap-2 rounded-[8px] border px-4 py-2.5 text-body-sm",
+              feedback.tone === "success"
+                ? "border-[#0c8a4d]/30 bg-[#0c8a4d]/10 text-[#0c6b3c]"
+                : "border-error/30 bg-error/8 text-error",
+            )}
+          >
+            <MaterialIcon
+              name={feedback.tone === "success" ? "check_circle" : "error"}
+              size={16}
+              filled
+              className="mt-0.5 shrink-0"
+            />
+            <span>{feedback.text}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5">
           {/* Tabs */}
           <nav className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-1.5 h-fit md:sticky md:top-20 space-y-0.5">
@@ -115,16 +216,18 @@ export default function LearnerSettingsPage() {
                 <div className="p-6 space-y-5">
                   <div className="flex items-center gap-4">
                     <img
-                      src={learner.avatarUrl}
+                      src={avatarUrl || learner.avatarUrl}
                       alt={learner.name}
                       className="w-20 h-20 rounded-full object-cover"
                     />
-                    <div>
-                      <button className="px-3 py-1.5 border border-[var(--color-border-soft)] rounded-[6px] text-body-sm hover:bg-surface-container-low">
-                        Upload new photo
-                      </button>
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        value={avatarUrl}
+                        onChange={(e) => setAvatarUrl(e.target.value)}
+                        placeholder="https://… (đường dẫn ảnh đại diện)"
+                      />
                       <p className="text-body-sm text-on-surface-variant mt-1">
-                        JPG, GIF or PNG. Max 2MB.
+                        Dán đường dẫn ảnh đại diện (JPG/PNG).
                       </p>
                     </div>
                   </div>
@@ -135,7 +238,10 @@ export default function LearnerSettingsPage() {
                       onChange={(e) => setName(e.target.value)}
                     />
                   </Field>
-                  <Field label="Bio" hint="Brief description for your profile.">
+                  <Field label="Email" hint="Email được dùng để đăng nhập, không thể chỉnh sửa.">
+                    <Input value={email} readOnly disabled />
+                  </Field>
+                  <Field label="Bio" hint="Bio chỉ lưu cục bộ — backend chưa hỗ trợ.">
                     <textarea
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
@@ -145,7 +251,7 @@ export default function LearnerSettingsPage() {
                   </Field>
                   <Field
                     label="Preferred sports"
-                    hint="Used to tune AI matching."
+                    hint="Tuỳ chọn để tinh chỉnh AI matching — chưa lưu lên backend."
                   >
                     <div className="flex flex-wrap gap-2">
                       {AVAILABLE_SPORTS.map((s) => {
@@ -169,7 +275,7 @@ export default function LearnerSettingsPage() {
                     </div>
                   </Field>
                 </div>
-                <SaveBar />
+                <SaveBar onSave={saveProfile} saving={savingProfile} />
               </div>
             )}
 
@@ -181,18 +287,35 @@ export default function LearnerSettingsPage() {
                 />
                 <div className="p-6 space-y-5">
                   <Field label="Email">
-                    <Input
-                      value={email}
-                      type="email"
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                    <Input value={email} type="email" readOnly disabled />
                   </Field>
                   <Field label="Current password">
-                    <Input type="password" placeholder="••••••••" />
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      autoComplete="current-password"
+                    />
                   </Field>
-                  <Field label="New password">
-                    <Input type="password" placeholder="••••••••" />
+                  <Field label="New password" hint="Tối thiểu 6 ký tự.">
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
                   </Field>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={submitPasswordChange}
+                      disabled={savingPassword}
+                      className="px-4 py-2 bg-primary text-on-primary rounded-[6px] text-body-sm font-medium hover:bg-[#2d20b8] disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {savingPassword ? "Đang đổi mật khẩu…" : "Đổi mật khẩu"}
+                    </button>
+                  </div>
                   <div className="border-t border-[var(--color-border-soft)] pt-5">
                     <p className="text-h3 text-on-surface mb-3">
                       Connected accounts
@@ -217,7 +340,6 @@ export default function LearnerSettingsPage() {
                     </button>
                   </div>
                 </div>
-                <SaveBar />
               </div>
             )}
 
@@ -261,7 +383,6 @@ export default function LearnerSettingsPage() {
                     <Input value="America/Los_Angeles" readOnly />
                   </Field>
                 </div>
-                <SaveBar />
               </div>
             )}
 
@@ -291,7 +412,6 @@ export default function LearnerSettingsPage() {
                     onChange={() => {}}
                   />
                 </div>
-                <SaveBar />
               </div>
             )}
 
@@ -477,14 +597,28 @@ function ConnectedRow({
   );
 }
 
-function SaveBar() {
+function SaveBar({
+  onSave,
+  saving = false,
+}: {
+  onSave: () => void;
+  saving?: boolean;
+}) {
   return (
     <div className="px-6 py-3 border-t border-[var(--color-border-soft)] flex items-center justify-end gap-2 bg-surface-container-low/40">
-      <button className="px-4 py-2 text-body-sm text-on-surface-variant hover:text-on-surface">
+      <button
+        type="button"
+        className="px-4 py-2 text-body-sm text-on-surface-variant hover:text-on-surface"
+      >
         Cancel
       </button>
-      <button className="px-4 py-2 bg-primary text-on-primary rounded-[6px] text-body-sm font-medium hover:bg-[#2d20b8]">
-        Save changes
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saving}
+        className="px-4 py-2 bg-primary text-on-primary rounded-[6px] text-body-sm font-medium hover:bg-[#2d20b8] disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {saving ? "Đang lưu…" : "Save changes"}
       </button>
     </div>
   );
