@@ -3,17 +3,22 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  BadgeCheck,
   CheckCircle2,
   ExternalLink,
+  FileText,
   Image as ImageIcon,
   Link2,
   Loader2,
   Pencil,
   Plus,
+  ShieldCheck,
   Trash2,
+  Trophy,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { TiltedCard } from "@/components/ui/TiltedCard";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import {
   getMyCoachMedia,
@@ -23,15 +28,64 @@ import {
 } from "@/lib/coach-api";
 import {
   COACH_MEDIA_TYPES,
-  coachMediaLabel,
   type CoachMediaType,
 } from "@/lib/constants/coach-media";
 import { messageForApiError } from "@/lib/errors-vi";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { cn } from "@/lib/utils";
 import type {
   CoachProfileMediaResponse,
   CoachProfileMediaRequest,
 } from "@/lib/types/coach";
+
+// ── Type-specific palette ────────────────────────────────────────────────────
+
+const TYPE_CONFIG: Record<
+  string,
+  {
+    gradient: string;
+    badge: string;
+    icon: React.ElementType;
+    label: string;
+  }
+> = {
+  certificate: {
+    gradient: "from-indigo-500 via-violet-500 to-purple-600",
+    badge: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    icon: BadgeCheck,
+    label: "Chứng chỉ",
+  },
+  award: {
+    gradient: "from-amber-400 via-orange-500 to-rose-500",
+    badge: "bg-amber-50 text-amber-700 border-amber-200",
+    icon: Trophy,
+    label: "Giải thưởng",
+  },
+  gallery: {
+    gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    icon: ImageIcon,
+    label: "Thư viện",
+  },
+  identity: {
+    gradient: "from-rose-400 via-pink-500 to-fuchsia-600",
+    badge: "bg-rose-50 text-rose-700 border-rose-200",
+    icon: ShieldCheck,
+    label: "Xác minh",
+  },
+  other: {
+    gradient: "from-slate-400 via-slate-500 to-slate-600",
+    badge: "bg-slate-100 text-slate-600 border-slate-200",
+    icon: FileText,
+    label: "Khác",
+  },
+};
+
+function typeConfig(mediaType: string | null | undefined) {
+  return TYPE_CONFIG[(mediaType ?? "other").toLowerCase()] ?? TYPE_CONFIG.other;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -46,25 +100,35 @@ function looksLikeImage(url: string): boolean {
   return /\.(png|jpe?g|gif|webp|avif|svg|bmp)(\?.*)?$/i.test(url.trim());
 }
 
-export default function CoachMediaPage() {
-  const { data: media, loading, error, refetch } = useApiResource(
-    () => getMyCoachMedia(),
-    [],
-  );
+const EASE = [0.16, 1, 0.3, 1] as const;
 
-  const [editing, setEditing] = useState<CoachProfileMediaResponse | null>(null);
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default function CoachMediaPage() {
+  const {
+    data: media,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => getMyCoachMedia(), []);
+
+  const [editing, setEditing] = useState<CoachProfileMediaResponse | null>(
+    null,
+  );
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] =
     useState<CoachProfileMediaResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>("all");
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2600);
   };
 
+  // Sort + group
   const grouped = useMemo(() => {
     const list = [...(media ?? [])].sort(
       (a, b) => a.orderIndex - b.orderIndex,
@@ -78,6 +142,36 @@ export default function CoachMediaPage() {
     }
     return map;
   }, [media]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = (media ?? []).length;
+    const byType: Record<string, number> = {};
+    for (const t of COACH_MEDIA_TYPES) {
+      byType[t.value] = grouped.get(t.value)?.length ?? 0;
+    }
+    return { total, byType };
+  }, [media, grouped]);
+
+  // Filter tabs (only show types with items, plus "Tất cả")
+  const activeTabs = useMemo(() => {
+    const tabs: { value: string; label: string; count: number }[] = [
+      { value: "all", label: "Tất cả", count: stats.total },
+    ];
+    for (const t of COACH_MEDIA_TYPES) {
+      const count = stats.byType[t.value] ?? 0;
+      if (count > 0)
+        tabs.push({ value: t.value, label: typeConfig(t.value).label, count });
+    }
+    return tabs;
+  }, [stats]);
+
+  // Filtered display list
+  const displayItems = useMemo(() => {
+    if (activeFilter === "all")
+      return [...(media ?? [])].sort((a, b) => a.orderIndex - b.orderIndex);
+    return grouped.get(activeFilter) ?? [];
+  }, [media, grouped, activeFilter]);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -96,33 +190,39 @@ export default function CoachMediaPage() {
   };
 
   return (
-    <AppShell role="coach" title="Quản lý media">
-      <div className="max-w-[960px] mx-auto pb-16">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-on-primary shrink-0">
-              <ImageIcon size={20} />
+    <AppShell role="coach" title="Bộ sưu tập media">
+      <div className="mx-auto max-w-[1040px] pb-20">
+        {/* ── Page header ─────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE }}
+          className="mb-6 flex flex-wrap items-start justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-primary to-[#7d6dff] text-on-primary shadow-[0_8px_20px_-6px_rgba(53,37,205,0.45)]">
+              <ImageIcon size={22} />
             </div>
             <div>
-              <h1 className="text-[22px] font-bold tracking-tight">
-                Quản lý media huấn luyện viên
+              <h1 className="text-[22px] font-bold tracking-tight text-on-surface">
+                Bộ sưu tập media huấn luyện viên
               </h1>
-              <p className="text-body-sm text-on-surface-variant">
-                Thêm chứng chỉ, giải thưởng, hình ảnh và tài liệu xác minh.
+              <p className="mt-0.5 text-[13px] text-on-surface-variant">
+                Quản lý chứng chỉ, giải thưởng, hình ảnh thi đấu và tài liệu
+                xác minh của bạn.
               </p>
             </div>
           </div>
           <button
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-[10px] bg-primary text-on-primary text-[13px] font-semibold hover:bg-[#2d20b8] transition-colors shrink-0"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary shadow-[0_6px_18px_-6px_rgba(53,37,205,0.55)] transition-all hover:-translate-y-[1px] hover:bg-[#2d20b8] hover:shadow-[0_8px_22px_-6px_rgba(53,37,205,0.6)]"
           >
             <Plus size={16} />
             Thêm media
           </button>
-        </div>
+        </motion.div>
 
-        {/* Toast */}
+        {/* ── Toast ───────────────────────────────────────────────────── */}
         <AnimatePresence>
           {toast && (
             <motion.div
@@ -147,38 +247,125 @@ export default function CoachMediaPage() {
             className="mx-auto mt-10 max-w-md"
           />
         ) : (media ?? []).length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest py-16 text-center">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-surface-container-low flex items-center justify-center">
-              <ImageIcon size={20} className="text-on-surface-variant" />
+          /* ── Empty state ─────────────────────────────────────────── */
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: EASE }}
+            className="flex flex-col items-center justify-center rounded-[20px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest px-8 py-20 text-center"
+          >
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-[#7d6dff]/10 ring-8 ring-primary/5">
+              <ImageIcon size={28} className="text-primary/60" />
             </div>
-            <p className="text-body-sm text-on-surface-variant mb-4">
-              Bạn chưa có media nào.
+            <h2 className="text-[17px] font-semibold text-on-surface">
+              Chưa có media nào
+            </h2>
+            <p className="mt-2 max-w-[380px] text-[13px] leading-relaxed text-on-surface-variant">
+              Hãy thêm chứng chỉ, giải thưởng hoặc hình ảnh để tăng độ tin cậy
+              cho hồ sơ huấn luyện viên và thu hút học viên.
             </p>
             <button
               onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[8px] border border-primary/30 bg-primary/[0.06] text-primary text-[13px] font-semibold hover:bg-primary/10 transition-colors"
+              className="mt-6 inline-flex items-center gap-1.5 rounded-[10px] border border-primary/30 bg-primary/[0.06] px-5 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
             >
               <Plus size={15} />
               Thêm media đầu tiên
             </button>
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-6">
-            {COACH_MEDIA_TYPES.map((t) => {
-              const items = grouped.get(t.value) ?? [];
-              if (items.length === 0) return null;
-              return (
-                <section key={t.value}>
-                  <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-on-surface-variant/80 mb-2.5">
-                    {t.label}{" "}
-                    <span className="tabular-nums text-on-surface-variant/60">
-                      ({items.length})
+          <>
+            {/* ── Stats strip ───────────────────────────────────────── */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.06, ease: EASE }}
+              className="mb-5 flex flex-wrap items-center gap-2"
+            >
+              <StatChip
+                label="Tổng cộng"
+                count={stats.total}
+                className="bg-surface-container-low"
+              />
+              {COACH_MEDIA_TYPES.map((t) => {
+                const count = stats.byType[t.value] ?? 0;
+                if (count === 0) return null;
+                const cfg = typeConfig(t.value);
+                return (
+                  <StatChip
+                    key={t.value}
+                    label={cfg.label}
+                    count={count}
+                    className={cfg.badge}
+                  />
+                );
+              })}
+            </motion.div>
+
+            {/* ── Filter tabs ───────────────────────────────────────── */}
+            {activeTabs.length > 2 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="mb-6 flex flex-wrap gap-1"
+              >
+                {activeTabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    onClick={() => setActiveFilter(tab.value)}
+                    className={cn(
+                      "relative h-8 rounded-full px-4 text-[12.5px] font-medium transition-colors",
+                      activeFilter === tab.value
+                        ? "text-on-primary"
+                        : "text-on-surface-variant hover:text-on-surface",
+                    )}
+                  >
+                    {activeFilter === tab.value && (
+                      <motion.span
+                        layoutId="media-filter-pill"
+                        className="absolute inset-0 rounded-full bg-primary"
+                        transition={{ duration: 0.22, ease: EASE }}
+                      />
+                    )}
+                    <span className="relative">
+                      {tab.label}{" "}
+                      <span className="tabular-nums opacity-70">
+                        ({tab.count})
+                      </span>
                     </span>
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {items.map((m) => (
-                      <MediaCard
-                        key={m.id}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+
+            {/* ── Media grid ────────────────────────────────────────── */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFilter}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {displayItems.map((m, i) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: 0.04 + i * 0.04,
+                      ease: EASE,
+                    }}
+                  >
+                    <TiltedCard
+                      containerClassName="h-full"
+                      className="h-full"
+                      maxTilt={10}
+                      scaleOnHover={1.02}
+                    >
+                      <MediaPortfolioCard
                         item={m}
                         onEdit={() => setEditing(m)}
                         onDelete={() => {
@@ -186,16 +373,16 @@ export default function CoachMediaPage() {
                           setDeleteTarget(m);
                         }}
                       />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+                    </TiltedCard>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </>
         )}
       </div>
 
-      {/* Create / edit modal */}
+      {/* ── Create / edit modal ─────────────────────────────────────────── */}
       <AnimatePresence>
         {(creating || editing) && (
           <MediaFormModal
@@ -215,32 +402,38 @@ export default function CoachMediaPage() {
         )}
       </AnimatePresence>
 
-      {/* Delete confirm */}
+      {/* ── Delete confirm ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {deleteTarget && (
           <Modal onClose={() => !deleting && setDeleteTarget(null)}>
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#ffdad6]">
+              <Trash2 size={18} className="text-[#ba1a1a]" />
+            </div>
             <h3 className="text-[16px] font-semibold">Xóa media</h3>
-            <p className="text-[13px] text-on-surface-variant mt-1.5">
-              Bạn có chắc muốn xóa media này không? Hành động này không thể hoàn
-              tác.
+            <p className="mt-1.5 text-[13px] text-on-surface-variant">
+              Bạn có chắc muốn xóa{" "}
+              <strong className="text-on-surface">
+                {deleteTarget.title ?? "media này"}
+              </strong>
+              ? Hành động này không thể hoàn tác.
             </p>
             {deleteError && (
               <p className="mt-3 text-[12.5px] text-rose-600" role="alert">
                 {deleteError}
               </p>
             )}
-            <div className="flex justify-end gap-2 mt-5">
+            <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="h-10 px-4 rounded-[9px] border border-[var(--color-border-soft)] text-[13px] font-medium hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                className="h-10 rounded-[9px] border border-[var(--color-border-soft)] px-4 text-[13px] font-medium transition-colors hover:bg-surface-container-low disabled:opacity-50"
               >
                 Hủy
               </button>
               <button
                 onClick={() => void confirmDelete()}
                 disabled={deleting}
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-[9px] bg-[#ba1a1a] text-white text-[13px] font-semibold hover:bg-[#9f1414] transition-colors disabled:opacity-60"
+                className="inline-flex h-10 items-center gap-1.5 rounded-[9px] bg-[#ba1a1a] px-4 text-[13px] font-semibold text-white transition-colors hover:bg-[#9f1414] disabled:opacity-60"
               >
                 {deleting ? (
                   <>
@@ -262,9 +455,33 @@ export default function CoachMediaPage() {
   );
 }
 
-// ---- Media card ------------------------------------------------------------
+// ── Stat chip ────────────────────────────────────────────────────────────────
 
-function MediaCard({
+function StatChip({
+  label,
+  count,
+  className,
+}: {
+  label: string;
+  count: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium",
+        className,
+      )}
+    >
+      <span>{label}</span>
+      <span className="tabular-nums font-semibold">{count}</span>
+    </span>
+  );
+}
+
+// ── Portfolio card ────────────────────────────────────────────────────────────
+
+function MediaPortfolioCard({
   item,
   onEdit,
   onDelete,
@@ -275,70 +492,114 @@ function MediaCard({
 }) {
   const url = item.mediaUrl ?? "";
   const isImage = looksLikeImage(url);
+  const cfg = typeConfig(item.mediaType);
+  const Icon = cfg.icon;
+
   return (
-    <article className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden flex flex-col">
-      {isImage ? (
-        <img
-          src={url}
-          alt={item.title ?? coachMediaLabel(item.mediaType)}
-          className="w-full h-36 object-cover bg-surface-container-low"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-      ) : (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3.5 h-36 bg-surface-container-low/60 text-[12.5px] text-primary hover:underline"
-        >
-          <Link2 size={15} className="shrink-0" />
-          <span className="truncate">{url}</span>
-        </a>
-      )}
-      <div className="p-3.5 flex-1 flex flex-col">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10.5px] font-semibold">
-            {coachMediaLabel(item.mediaType)}
-          </span>
-          <span className="text-[10.5px] text-on-surface-variant tabular-nums">
-            #{item.orderIndex}
+    <article className="group flex h-full flex-col overflow-hidden rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,15,30,0.04),0_4px_16px_-6px_rgba(15,15,30,0.06)] transition-shadow duration-200 group-hover:shadow-[0_2px_8px_rgba(15,15,30,0.06),0_12px_32px_-8px_rgba(15,15,30,0.12)]">
+      {/* Visual area */}
+      <div className="relative h-44 overflow-hidden">
+        {isImage ? (
+          <img
+            src={url}
+            alt={item.title ?? cfg.label}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          /* Gradient placeholder for non-image links */
+          <div
+            className={cn(
+              "flex h-full w-full items-center justify-center bg-gradient-to-br",
+              cfg.gradient,
+            )}
+          >
+            <Icon size={40} className="text-white/80" />
+          </div>
+        )}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+        {/* Type badge — top right */}
+        <div className="absolute right-3 top-3">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10.5px] font-semibold backdrop-blur-sm",
+              cfg.badge,
+            )}
+          >
+            <Icon size={10} />
+            {cfg.label}
           </span>
         </div>
-        {item.title && (
-          <p className="text-[13.5px] font-semibold leading-snug">
-            {item.title}
-          </p>
-        )}
-        {item.description && (
-          <p className="text-[12px] text-on-surface-variant line-clamp-2 mt-0.5">
-            {item.description}
-          </p>
-        )}
-        <div className="mt-3 pt-3 border-t border-[var(--color-border-soft)] flex items-center justify-between">
+
+        {/* Order index — top left */}
+        <span className="absolute left-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-medium tabular-nums text-white/80 backdrop-blur-sm">
+          #{item.orderIndex}
+        </span>
+
+        {/* Link indicator overlay — for non-image */}
+        {!isImage && (
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-primary transition-colors"
+            aria-label="Mở đường dẫn"
+            className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-slate-700 shadow-sm">
+              <Link2 size={11} />
+              <span className="max-w-[180px] truncate">{url}</span>
+            </span>
+          </a>
+        )}
+      </div>
+
+      {/* Content area */}
+      <div className="flex flex-1 flex-col p-4">
+        {item.title && (
+          <p className="text-[14px] font-semibold leading-snug text-on-surface">
+            {item.title}
+          </p>
+        )}
+        {item.description && (
+          <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-on-surface-variant">
+            {item.description}
+          </p>
+        )}
+        {!item.title && !item.description && (
+          <p className="text-[12.5px] italic text-on-surface-variant/60">
+            Chưa có tiêu đề
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="mt-auto flex items-center justify-between pt-3">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant transition-colors hover:text-primary"
           >
             <ExternalLink size={12} />
             Mở
           </a>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={onEdit}
-              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-[7px] text-[12px] text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
+              className="inline-flex items-center gap-1 rounded-[7px] px-2.5 py-1.5 text-[12px] text-on-surface-variant transition-colors hover:bg-primary/[0.07] hover:text-primary"
             >
-              <Pencil size={13} />
+              <Pencil size={12} />
               Sửa
             </button>
             <button
               onClick={onDelete}
-              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-[7px] text-[12px] text-on-surface-variant hover:bg-[#ffdad6] hover:text-[#ba1a1a] transition-colors"
+              className="inline-flex items-center gap-1 rounded-[7px] px-2.5 py-1.5 text-[12px] text-on-surface-variant transition-colors hover:bg-[#ffdad6] hover:text-[#ba1a1a]"
             >
-              <Trash2 size={13} />
+              <Trash2 size={12} />
               Xóa
             </button>
           </div>
@@ -348,7 +609,7 @@ function MediaCard({
   );
 }
 
-// ---- Create / edit modal ---------------------------------------------------
+// ── Create / edit modal ───────────────────────────────────────────────────────
 
 function MediaFormModal({
   initial,
@@ -416,15 +677,27 @@ function MediaFormModal({
     }
   };
 
+  const selectedCfg = typeConfig(mediaType);
+
   return (
     <Modal onClose={() => !saving && onClose()}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[16px] font-semibold">
-          {isEdit ? "Cập nhật media" : "Thêm media"}
-        </h3>
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br",
+              selectedCfg.gradient,
+            )}
+          >
+            <selectedCfg.icon size={17} className="text-white" />
+          </div>
+          <h3 className="text-[16px] font-semibold">
+            {isEdit ? "Cập nhật media" : "Thêm media"}
+          </h3>
+        </div>
         <button
           onClick={() => !saving && onClose()}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low"
           aria-label="Đóng"
         >
           <X size={16} />
@@ -432,13 +705,13 @@ function MediaFormModal({
       </div>
 
       <div className="space-y-4">
-        {/* Media type — COMBOBOX (never free text) */}
+        {/* Media type — COMBOBOX (never free text; backend receives English constants) */}
         <FieldLabel label="Loại media" required>
           <div className="relative">
             <select
               value={mediaType}
               onChange={(e) => setMediaType(e.target.value as CoachMediaType)}
-              className="w-full h-11 pl-3.5 pr-9 appearance-none bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px] cursor-pointer"
+              className="w-full h-11 cursor-pointer appearance-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low pl-3.5 pr-9 text-[14px] outline-none focus:border-primary"
             >
               {COACH_MEDIA_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -454,7 +727,7 @@ function MediaFormModal({
             value={mediaUrl}
             onChange={(e) => setMediaUrl(e.target.value)}
             placeholder="https://…"
-            className="w-full h-11 px-3.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px]"
+            className="h-11 w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 text-[14px] outline-none focus:border-primary"
           />
         </FieldLabel>
 
@@ -463,7 +736,7 @@ function MediaFormModal({
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, 200))}
             placeholder="VD: Chứng chỉ HLV cấp 1"
-            className="w-full h-11 px-3.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px]"
+            className="h-11 w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 text-[14px] outline-none focus:border-primary"
           />
         </FieldLabel>
 
@@ -473,7 +746,7 @@ function MediaFormModal({
             onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
             rows={3}
             placeholder="Mô tả ngắn gọn…"
-            className="w-full px-3.5 py-2.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px] resize-none leading-relaxed"
+            className="w-full resize-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 py-2.5 text-[14px] leading-relaxed outline-none focus:border-primary"
           />
         </FieldLabel>
 
@@ -483,7 +756,7 @@ function MediaFormModal({
             min={0}
             value={orderIndex}
             onChange={(e) => setOrderIndex(e.target.value)}
-            className="w-full h-11 px-3.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px] tabular-nums"
+            className="h-11 w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 text-[14px] tabular-nums outline-none focus:border-primary"
           />
         </FieldLabel>
 
@@ -494,18 +767,18 @@ function MediaFormModal({
         )}
       </div>
 
-      <div className="flex justify-end gap-2 mt-5">
+      <div className="mt-5 flex justify-end gap-2">
         <button
           onClick={() => !saving && onClose()}
           disabled={saving}
-          className="h-10 px-4 rounded-[9px] border border-[var(--color-border-soft)] text-[13px] font-medium hover:bg-surface-container-low transition-colors disabled:opacity-50"
+          className="h-10 rounded-[9px] border border-[var(--color-border-soft)] px-4 text-[13px] font-medium transition-colors hover:bg-surface-container-low disabled:opacity-50"
         >
           Hủy
         </button>
         <button
           onClick={() => void submit()}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 h-10 px-5 rounded-[9px] bg-primary text-on-primary text-[13px] font-semibold hover:bg-[#2d20b8] transition-colors disabled:opacity-60"
+          className="inline-flex h-10 items-center gap-1.5 rounded-[9px] bg-primary px-5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] disabled:opacity-60"
         >
           {saving ? (
             <>
@@ -523,7 +796,7 @@ function MediaFormModal({
   );
 }
 
-// ---- Shared modal + field --------------------------------------------------
+// ── Shared modal ─────────────────────────────────────────────────────────────
 
 function Modal({
   children,
@@ -544,17 +817,19 @@ function Modal({
         onClick={onClose}
       />
       <motion.div
-        initial={{ opacity: 0, scale: 0.97, y: 8 }}
+        initial={{ opacity: 0, scale: 0.97, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97, y: 8 }}
+        exit={{ opacity: 0, scale: 0.97, y: 10 }}
         transition={{ duration: 0.2 }}
-        className="relative w-full max-w-[460px] max-h-[90vh] overflow-y-auto rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_20px_60px_-12px_rgba(15,15,30,0.3)]"
+        className="relative max-h-[90vh] w-full max-w-[460px] overflow-y-auto rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_24px_64px_-12px_rgba(15,15,30,0.3)]"
       >
         {children}
       </motion.div>
     </motion.div>
   );
 }
+
+// ── Field label ───────────────────────────────────────────────────────────────
 
 function FieldLabel({
   label,
@@ -569,10 +844,10 @@ function FieldLabel({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1.5">
+      <div className="mb-1.5 flex items-baseline justify-between">
         <label className="text-[13px] font-semibold text-on-surface">
           {label}
-          {required && <span className="text-primary ml-0.5">*</span>}
+          {required && <span className="ml-0.5 text-primary">*</span>}
         </label>
         {hint && (
           <span className="text-[11px] text-on-surface-variant">{hint}</span>

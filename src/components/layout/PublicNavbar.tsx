@@ -3,19 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { avatarFor, cn } from "@/lib/utils";
-import { logout } from "@/lib/auth-api";
-import {
-  getCurrentUser as getJwtUser,
-  type CurrentUser,
-} from "@/lib/auth-session";
-import {
-  useAuthStore,
-  userIsAdmin,
-  userIsCoach,
-} from "@/lib/store/useAuthStore";
-import type { Role } from "@/types";
+import { StaggeredMenuButton } from "@/components/landing/StaggeredMenu";
+import { cn } from "@/lib/utils";
 
 interface PublicNavbarProps {
   /**
@@ -62,23 +51,6 @@ function settingsHref(role: Role): string {
 export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Two auth sources merged for resilience:
-  //  • JWT (sync) — flips the navbar to "authenticated" immediately on mount
-  //    so the user does not see a flash of "Đăng nhập".
-  //  • useAuthStore — canonical /api/auth/me payload (fullName, avatarUrl, roles).
-  const [jwtUser, setJwtUser] = useState<CurrentUser | null>(null);
-  const storeUser = useAuthStore((s) => s.user);
-  const storeStatus = useAuthStore((s) => s.status);
-  const clearStoreAuth = useAuthStore((s) => s.clear);
-
-  useEffect(() => {
-    setJwtUser(getJwtUser());
-    void useAuthStore.getState().hydrate();
-  }, []);
 
   // Scroll-aware: transparent variant flips to solid after 40px.
   useEffect(() => {
@@ -88,60 +60,6 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [variant]);
-
-  // Lock body scroll while the mobile drawer is open.
-  useEffect(() => {
-    document.body.style.overflow = drawerOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [drawerOpen]);
-
-  // Close the user dropdown on outside click + Esc.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
-
-  // ---- Derived auth state -------------------------------------------------
-  const isAuthenticated =
-    Boolean(storeUser) || storeStatus === "authenticated" || Boolean(jwtUser);
-  const role: Role = storeUser
-    ? userIsAdmin(storeUser)
-      ? "admin"
-      : userIsCoach(storeUser)
-        ? "coach"
-        : "learner"
-    : (jwtUser?.role ?? "learner");
-  const showBecomeCoach = canShowBecomeCoach(role, isAuthenticated);
-
-  const displayName =
-    storeUser?.fullName?.trim() || jwtUser?.email || "Tài khoản";
-  const avatarSrc =
-    storeUser?.avatarUrl ||
-    avatarFor(storeUser?.id ?? jwtUser?.userId ?? "guest");
-
-  const handleLogout = () => {
-    logout();
-    clearStoreAuth();
-    setJwtUser(null);
-    setMenuOpen(false);
-    setDrawerOpen(false);
-    router.push("/");
-  };
 
   const transparent = variant === "transparent" && !scrolled;
 
@@ -243,157 +161,12 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
           )}
         </div>
 
-        {/* Hamburger — mobile only */}
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Mở menu"
-          className={cn(
-            "-mr-2 rounded-[6px] p-2 transition-colors md:hidden",
-            transparent
-              ? "text-white hover:bg-white/10"
-              : "text-on-surface hover:bg-surface-container-low",
-          )}
-        >
-          <MaterialIcon name="menu" size={24} />
-        </button>
-      </div>
-
-      {/* Mobile drawer */}
-      <div
-        className={cn(
-          "fixed inset-0 z-[60] md:hidden",
-          drawerOpen ? "" : "pointer-events-none",
-        )}
-      >
-        {/* Overlay */}
-        <div
-          onClick={() => setDrawerOpen(false)}
-          aria-hidden
-          className={cn(
-            "absolute inset-0 bg-black/40 transition-opacity duration-200",
-            drawerOpen ? "opacity-100" : "opacity-0",
-          )}
-        />
-        {/* Panel */}
-        <div
-          className={cn(
-            "absolute right-0 top-0 flex h-full w-[320px] max-w-[88vw] flex-col bg-surface-container-lowest transition-transform duration-200",
-            drawerOpen ? "translate-x-0" : "translate-x-full",
-          )}
-        >
-          <div className="flex h-16 items-center justify-between border-b border-[var(--color-border-soft)] px-5">
-            <span className="text-h3 font-semibold text-primary">Sportico</span>
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Đóng menu"
-              className="-mr-2 rounded-[6px] p-2 text-on-surface hover:bg-surface-container-low"
-            >
-              <MaterialIcon name="close" size={22} />
-            </button>
-          </div>
-
-          {/* User identity block (only when authenticated) */}
-          {isAuthenticated && (
-            <div className="flex items-center gap-3 border-b border-[var(--color-border-soft)] px-5 py-4">
-              <img
-                src={avatarSrc}
-                alt={displayName}
-                className="h-10 w-10 shrink-0 rounded-full object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-body-base font-semibold text-on-surface">
-                  {displayName}
-                </p>
-                <p className="text-body-sm capitalize text-on-surface-variant">
-                  {role === "learner"
-                    ? "Học viên"
-                    : role === "coach"
-                      ? "Huấn luyện viên"
-                      : "Quản trị viên"}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <nav className="flex flex-col gap-1 p-4">
-            {BASE_LINKS.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                onClick={() => setDrawerOpen(false)}
-                className="rounded-[6px] px-3 py-2.5 text-body-base text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
-              >
-                {link.label}
-              </Link>
-            ))}
-            {showBecomeCoach && (
-              <Link
-                href={BECOME_COACH_HREF}
-                onClick={() => setDrawerOpen(false)}
-                className="rounded-[6px] border border-primary/30 bg-primary/[0.06] px-3 py-2.5 text-body-base font-semibold text-primary transition-colors hover:bg-primary/10"
-              >
-                Trở Thành Huấn Luyện Viên
-              </Link>
-            )}
-            {isAuthenticated && (
-              <>
-                <Link
-                  href={dashboardHref(role)}
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-[6px] px-3 py-2.5 text-body-base text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
-                >
-                  Bảng điều khiển
-                </Link>
-                <Link
-                  href={settingsHref(role)}
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-[6px] px-3 py-2.5 text-body-base text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
-                >
-                  Cài đặt
-                </Link>
-              </>
-            )}
-          </nav>
-
-          <div className="mt-auto flex flex-col gap-2 border-t border-[var(--color-border-soft)] p-4">
-            {isAuthenticated ? (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-[6px] border border-[var(--color-border-soft)] px-3.5 py-2.5 text-body-base font-semibold text-on-surface transition-colors hover:bg-surface-container-low"
-              >
-                Đăng xuất
-              </button>
-            ) : (
-              <>
-                <Link
-                  href={LOGIN_HREF}
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-[6px] border border-[var(--color-border-soft)] px-3.5 py-2.5 text-center text-body-base font-semibold text-on-surface transition-colors hover:bg-surface-container-low"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  href={REGISTER_HREF}
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-[6px] bg-primary px-3.5 py-2.5 text-center text-body-base font-semibold text-on-primary transition-colors hover:bg-[#2d20b8]"
-                >
-                  Bắt đầu
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
+        {/* Hamburger / StaggeredMenu — mobile only */}
+        <StaggeredMenuButton transparent={transparent} className="md:hidden" />
       </div>
     </header>
   );
 }
-
-// ============================================================================
-// User dropdown (desktop)
-// ============================================================================
 
 function UserMenu({
   displayName,
@@ -520,11 +293,7 @@ function MenuItem({
       onClick={onSelect}
       className="flex items-center gap-2.5 px-4 py-2.5 text-body-base text-on-surface transition-colors hover:bg-surface-container-low"
     >
-      <MaterialIcon
-        name={icon}
-        size={18}
-        className="text-on-surface-variant"
-      />
+      <MaterialIcon name={icon} size={18} className="text-on-surface-variant" />
       {label}
     </Link>
   );

@@ -68,6 +68,7 @@ const COACH_NAV: NavGroup[] = [
       { href: "/coach/media", label: "Media", icon: "collections" },
       { href: "/coach/earnings", label: "Thu nhập", icon: "payments" },
       { href: "/coach/profile", label: "Hồ sơ", icon: "account_circle" },
+      { href: "/coach/preview", label: "Xem hồ sơ", icon: "visibility" },
     ],
   },
 ];
