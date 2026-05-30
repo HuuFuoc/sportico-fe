@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { formatCurrency } from "@/lib/utils";
 import type { Coach } from "@/types";
 
-/**
- * Data-rich coach card for the landing showcase — leads with verifiable
- * trust signals (rating, reviews, experience, athletes) rather than a bare
- * portrait, so the marketplace reads as real and credible.
- */
 export function CoachShowcaseCard({ coach }: { coach: Coach }) {
+  const hasRating = coach.rating > 0 && coach.reviewCount > 0;
+  const hasLocation = Boolean(coach.location?.trim());
+
   return (
     <Link
       href={`/learner/coaches/${coach.id}`}
@@ -40,31 +37,43 @@ export function CoachShowcaseCard({ coach }: { coach: Coach }) {
 
       {/* rating + match */}
       <div className="mt-3.5 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1 text-[13px]">
-          <MaterialIcon
-            name="star"
-            filled
-            size={15}
-            className="text-amber-500"
-          />
-          <span className="font-semibold text-on-surface">
-            {coach.rating.toFixed(1)}
+        {hasRating ? (
+          <span className="inline-flex items-center gap-1 text-[13px]">
+            <MaterialIcon
+              name="star"
+              filled
+              size={15}
+              className="text-amber-500"
+            />
+            <span className="font-semibold text-on-surface">
+              {coach.rating.toFixed(1)}
+            </span>
+            <span className="text-on-surface-variant">
+              ({coach.reviewCount})
+            </span>
           </span>
-          <span className="text-on-surface-variant">
-            ({coach.reviewCount})
+        ) : (
+          <span className="text-[12px] text-on-surface-variant/70">
+            Chưa có đánh giá
           </span>
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary/8 px-2.5 py-1 text-[12px] font-semibold text-primary">
-          <MaterialIcon name="auto_awesome" filled size={12} />
-          {coach.matchPercent}% match
-        </span>
+        )}
+        {typeof coach.matchPercent === "number" && coach.matchPercent > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/8 px-2.5 py-1 text-[12px] font-semibold text-primary">
+            <MaterialIcon name="auto_awesome" filled size={12} />
+            {coach.matchPercent}% phù hợp
+          </span>
+        )}
       </div>
 
       {/* stat row */}
       <div className="mt-4 grid grid-cols-3 divide-x divide-[var(--color-border-soft)] overflow-hidden rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-low/60">
-        <Stat value={`${coach.yearsExperience} yrs`} label="Experience" />
-        <Stat value={coach.activeLearners} label="Athletes" />
-        <Stat value={coach.sport} label="Discipline" />
+        {coach.yearsExperience > 0 && (
+          <Stat value={`${coach.yearsExperience} năm`} label="Kinh nghiệm" />
+        )}
+        {coach.activeLearners > 0 && (
+          <Stat value={coach.activeLearners} label="Học viên" />
+        )}
+        <Stat value={coach.sport} label="Bộ môn" />
       </div>
 
       {/* specialties */}
@@ -81,15 +90,16 @@ export function CoachShowcaseCard({ coach }: { coach: Coach }) {
 
       {/* footer */}
       <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border-soft)] pt-4">
-        <span className="text-[15px] font-semibold text-on-surface">
-          {formatCurrency(coach.hourlyRate, coach.currency)}
-          <span className="text-[13px] font-normal text-on-surface-variant">
-            {" "}
-            /hr
+        {hasLocation ? (
+          <span className="inline-flex items-center gap-1 text-[12px] text-on-surface-variant">
+            <MaterialIcon name="location_on" size={13} />
+            {coach.location}
           </span>
-        </span>
+        ) : (
+          <span />
+        )}
         <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary">
-          View profile
+          Xem chi tiết
           <MaterialIcon
             name="arrow_forward"
             size={15}

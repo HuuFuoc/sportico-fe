@@ -16,7 +16,7 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import type { Coach } from "@/types";
@@ -366,10 +366,14 @@ function CoachCard({
 
         {/* Meta row */}
         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[11.5px]">
-          <span className="inline-flex items-center gap-1 text-slate-500">
-            <MapPin size={11} />
-            {coach.location.split(",")[0]}
-          </span>
+          {coach.location?.trim() ? (
+            <span className="inline-flex items-center gap-1 text-slate-500">
+              <MapPin size={11} />
+              {coach.location.split(",")[0]}
+            </span>
+          ) : (
+            <span />
+          )}
           <span className="inline-flex items-center gap-1 text-emerald-700">
             <Calendar size={11} />
             <span className="tabular-nums font-semibold">{slots}</span>
@@ -377,24 +381,13 @@ function CoachCard({
           </span>
         </div>
 
-        {/* Price + action */}
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Từ
-            </p>
-            <p className="text-[16px] font-semibold leading-none text-slate-900">
-              {formatCurrency(coach.hourlyRate, coach.currency)}
-              <span className="text-[11.5px] font-normal text-slate-500">
-                /giờ
-              </span>
-            </p>
-          </div>
+        {/* Action */}
+        <div className="mt-3 flex items-center justify-end">
           <Link
             href={`/learner/coaches/${coach.id}`}
             className="group/cta inline-flex items-center gap-1 rounded-[10px] bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(15,23,42,0.3)] transition-all hover:bg-violet-600 hover:shadow-[0_6px_18px_-2px_rgba(124,58,237,0.5)]"
           >
-            Xem
+            Xem chi tiết
             <ArrowRight
               size={12}
               className="transition-transform group-hover/cta:translate-x-0.5"
