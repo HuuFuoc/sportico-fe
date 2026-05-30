@@ -64,7 +64,7 @@ export const mockNotifications: NotificationItem[] = [
     createdAt: new Date(NOW.getTime() - 1000 * 60 * 15).toISOString(),
     read: false,
     icon: "auto_awesome",
-    href: "/learner/coaches/coach-1",
+    href: "/coaches/coach-1",
   },
   {
     id: "n-2",

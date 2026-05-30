@@ -4,10 +4,10 @@ import { useState } from "react";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 
 const PROMPTS = [
-  "Plan my training week",
-  "Why low-intensity today?",
-  "How's my recovery trending?",
-  "Adjust my goal",
+  "Lập kế hoạch tập tuần này",
+  "Tại sao hôm nay cường độ thấp?",
+  "Phục hồi của tôi đang như thế nào?",
+  "Điều chỉnh mục tiêu",
 ];
 
 /**
@@ -43,7 +43,7 @@ export function AICoachCard({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-400" />
             </span>
-            Analyzing your training data
+            Đang phân tích dữ liệu tập luyện
           </p>
         </div>
         <button
@@ -58,18 +58,17 @@ export function AICoachCard({
       <div className="relative mt-5 flex-1 space-y-3">
         <div className="rounded-[14px] rounded-tl-[4px] border border-white/10 bg-white/[0.04] p-3.5">
           <p className="text-[13px] leading-relaxed text-white/85">
-            Morning, Alex. Your{" "}
-            <span className="font-semibold text-white">readiness is 78%</span> —
-            recovery held up well overnight, so you&apos;re cleared for a
-            moderate session.
+            Xin chào! Chỉ số{" "}
+            <span className="font-semibold text-white">sẵn sàng là 78%</span> —
+            phục hồi qua đêm tốt, bạn có thể tập buổi cường độ trung bình.
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
               <MaterialIcon name="verified" filled size={11} />
-              {recommendation.confidence}% confidence
+              {recommendation.confidence}% độ tin cậy
             </span>
             <span className="text-[11px] text-white/40">
-              based on 14-day trends
+              dựa trên xu hướng 14 ngày
             </span>
           </div>
         </div>
@@ -77,7 +76,7 @@ export function AICoachCard({
         <div className="rounded-[14px] rounded-tl-[4px] border border-indigo-300/15 bg-indigo-400/[0.08] p-3.5">
           <p className="flex items-center gap-1.5 text-[12px] font-semibold text-indigo-200">
             <MaterialIcon name="bolt" filled size={13} />
-            Recommended for today
+            Đề xuất cho hôm nay
           </p>
           <p className="mt-1.5 text-[13.5px] font-medium text-white">
             {recommendation.title}
@@ -86,7 +85,7 @@ export function AICoachCard({
             onClick={() => setExpanded((v) => !v)}
             className="mt-1 inline-flex items-center gap-0.5 text-[12px] font-medium text-indigo-300 transition-colors hover:text-indigo-200"
           >
-            {expanded ? "Hide reasoning" : "Why this?"}
+            {expanded ? "Ẩn lý do" : "Vì sao vậy?"}
             <MaterialIcon
               name={expanded ? "expand_less" : "expand_more"}
               size={15}
@@ -133,7 +132,7 @@ export function AICoachCard({
           onChange={(e) => setInput(e.target.value)}
           name="ai-coach-input"
           aria-label="Ask the AI coach"
-          placeholder="Ask your AI coach anything…"
+          placeholder="Hỏi AI coach bất cứ điều gì…"
           className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/35"
         />
         <button

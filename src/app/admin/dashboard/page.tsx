@@ -57,9 +57,9 @@ import type {
 } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const RANGE_OPTIONS = ["Today", "Week", "Month", "All"] as const;
+const RANGE_OPTIONS = ["Hôm nay", "Tuần", "Tháng", "Tất cả"] as const;
 type Range = (typeof RANGE_OPTIONS)[number];
-const TAB_OPTIONS = ["Coaches", "Learners"] as const;
+const TAB_OPTIONS = ["HLV", "Học viên"] as const;
 type Tab = (typeof TAB_OPTIONS)[number];
 
 const TOTAL_USERS = 24_592;
@@ -123,8 +123,8 @@ export default function AdminDashboardPage() {
   const allLearners = useMemo(() => data?.[3] ?? [], [data]);
 
   const reduce = useReducedMotion();
-  const [range, setRange] = useState<Range>("Month");
-  const [tab, setTab] = useState<Tab>("Coaches");
+  const [range, setRange] = useState<Range>("Tháng");
+  const [tab, setTab] = useState<Tab>("HLV");
 
   // Verification with synthetic risk score
   const verifications = useMemo<VerificationWithRisk[]>(
@@ -178,25 +178,25 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
                 <Terminal size={11} />
-                Command Center
+                Trung tâm điều hành
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-semibold text-[#1f7a4d]">
                 <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                 Live
               </span>
               <span className="text-[12px] text-on-surface-variant">
-                Updated{" "}
-                {new Date().toLocaleTimeString("en-US", {
+                Cập nhật lúc{" "}
+                {new Date().toLocaleTimeString("vi-VN", {
                   hour: "numeric",
                   minute: "2-digit",
                 })}
               </span>
             </div>
             <h1 className="text-[30px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
-              Platform Overview
+              Tổng quan nền tảng
             </h1>
             <p className="text-[14px] text-on-surface-variant mt-1.5">
-              Real-time analytics across users, sessions, and revenue.
+              Phân tích theo thời gian thực: người dùng, buổi tập và doanh thu.
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export default function AdminDashboardPage() {
             </div>
             <button className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
               <Filter size={13} />
-              Region
+              Khu vực
             </button>
             <button
               aria-label="Refresh"
@@ -241,7 +241,7 @@ export default function AdminDashboardPage() {
             </button>
             <button className="h-10 px-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
               <Download size={13} />
-              Export
+              Xuất
             </button>
           </div>
         </motion.header>
@@ -259,11 +259,11 @@ export default function AdminDashboardPage() {
         <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <KpiCard
             icon={Users}
-            label="Total Users"
+            label="Tổng người dùng"
             value={formatNumber(TOTAL_USERS)}
             trend="+12%"
             trendDir="up"
-            trendLabel="MoM growth"
+            trendLabel="tăng trưởng tháng"
             accent="indigo"
             spark={seedSpark(1, 18000, 2000)}
             delay={0.05}
@@ -271,11 +271,11 @@ export default function AdminDashboardPage() {
           />
           <KpiCard
             icon={ShieldCheck}
-            label="Active Coaches"
+            label="HLV đang hoạt động"
             value={formatNumber(ACTIVE_COACHES)}
-            trend="84 new"
+            trend="84 mới"
             trendDir="up"
-            trendLabel="this week"
+            trendLabel="tuần này"
             accent="violet"
             spark={seedSpark(2, 1100, 60)}
             delay={0.1}
@@ -283,11 +283,11 @@ export default function AdminDashboardPage() {
           />
           <KpiCard
             icon={Activity}
-            label="Sessions Today"
+            label="Buổi tập hôm nay"
             value={formatNumber(SESSIONS_TODAY)}
-            trend="Peak 2pm"
+            trend="Đỉnh 14h"
             trendDir="neutral"
-            trendLabel="live now"
+            trendLabel="hiện tại"
             accent="emerald"
             spark={seedSpark(3, 380, 60)}
             delay={0.15}
@@ -295,11 +295,11 @@ export default function AdminDashboardPage() {
           />
           <KpiCard
             icon={DollarSign}
-            label="Revenue MTD"
+            label="Doanh thu tháng"
             value={formatCurrency(PLATFORM_REVENUE_MTD)}
             trend="+18%"
             trendDir="up"
-            trendLabel="MoM"
+            trendLabel="so tháng trước"
             accent="amber"
             spark={seedSpark(4, 700000, 60000)}
             delay={0.2}
@@ -307,11 +307,11 @@ export default function AdminDashboardPage() {
           />
           <KpiCard
             icon={Brain}
-            label="AI Match Accuracy"
+            label="Độ chính xác ghép AI"
             value={`${AI_ACCURACY}%`}
             trend="+1.1%"
             trendDir="up"
-            trendLabel="w/w"
+            trendLabel="tuần/tuần"
             accent="rose"
             spark={seedSpark(5, 91, 2)}
             delay={0.25}
@@ -399,11 +399,11 @@ function HeroCommand({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] uppercase tracking-wider font-bold text-primary">
-              Platform Revenue · Month-to-date
+              Doanh thu nền tảng · Tháng hiện tại
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-bold text-[#1f7a4d]">
               <TrendingUp size={11} />
-              +18% this month
+              +18% tháng này
             </span>
           </div>
 
@@ -415,19 +415,19 @@ function HeroCommand({
           </div>
 
           <p className="text-[13.5px] text-on-surface-variant mt-3 max-w-xl leading-relaxed">
-            On pace for a record month. AI matching efficiency is up{" "}
+            Đang trên đà ghi kỷ lục tháng này. Hiệu suất ghép AI tăng{" "}
             <span className="text-on-surface font-semibold">+1.1%</span>{" "}
-            week-over-week, driving session conversion.
+            mỗi tuần, thúc đẩy tỷ lệ chuyển đổi buổi tập.
           </p>
 
           <div className="flex items-center gap-2 mt-5 flex-wrap">
             <button className="inline-flex items-center gap-1.5 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13.5px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
               <FileBarChart size={14} />
-              Full Report
+              Báo cáo đầy đủ
             </button>
             <button className="inline-flex items-center gap-1.5 h-11 px-5 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-lowest hover:bg-surface-container-low text-[13.5px] font-medium transition-colors">
               <Search size={14} />
-              Drill down
+              Xem chi tiết
             </button>
           </div>
         </div>
@@ -436,17 +436,17 @@ function HeroCommand({
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <HeroStat
             icon={Users}
-            label="Total Users"
+            label="Tổng người dùng"
             value={formatNumber(users)}
           />
           <HeroStat
             icon={Activity}
-            label="Sessions Today"
+            label="Buổi tập hôm nay"
             value={formatNumber(sessions)}
           />
           <HeroStat
             icon={ShieldCheck}
-            label="Active Coaches"
+            label="HLV đang hoạt động"
             value={formatNumber(coaches)}
           />
         </div>
@@ -651,17 +651,17 @@ function DAUChart({
       <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
         <div>
           <h3 className="text-[17px] font-semibold tracking-tight">
-            Daily Active Users
+            Người dùng hoạt động hàng ngày
           </h3>
           <p className="text-[12px] text-on-surface-variant mt-0.5">
-            Past 30 days · today highlighted
+            30 ngày qua · hôm nay được đánh dấu
           </p>
           <div className="flex items-baseline gap-2 mt-3">
             <span className="text-[28px] font-bold tracking-tight tabular-nums leading-none">
               {formatNumber(today)}
             </span>
             <span className="text-[11.5px] text-on-surface-variant">
-              today · {formatNumber(total)} cumulative
+              hôm nay · {formatNumber(total)} tổng cộng
             </span>
           </div>
         </div>
@@ -731,7 +731,7 @@ function DAUChart({
                         {formatNumber(p.activeUsers)}
                       </p>
                       <p className="text-[10.5px] text-on-surface-variant tabular-nums">
-                        {p.sessions} sessions
+                        {p.sessions} buổi
                       </p>
                     </div>
                   );
@@ -783,10 +783,10 @@ function RevenueChart({
       <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
         <div>
           <h3 className="text-[17px] font-semibold tracking-tight">
-            Revenue Trend
+            Xu hướng doanh thu
           </h3>
           <p className="text-[12px] text-on-surface-variant mt-0.5">
-            Last 12 months · gross
+            12 tháng qua · doanh thu gộp
           </p>
           <p className="text-[28px] font-bold tracking-tight tabular-nums leading-none mt-3">
             {formatCurrency(last)}
@@ -894,14 +894,14 @@ function SessionHeatmap({ reduce }: { reduce: boolean }) {
       <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
         <div>
           <h3 className="text-[17px] font-semibold tracking-tight">
-            Session Heatmap
+            Biểu đồ nhiệt buổi tập
           </h3>
           <p className="text-[12px] text-on-surface-variant mt-0.5">
-            Activity intensity · day × time bucket
+            Cường độ hoạt động · ngày × khung giờ
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-[10.5px] text-on-surface-variant">
-          <span>Less</span>
+          <span>Ít</span>
           {[0.15, 0.35, 0.55, 0.75, 0.95].map((o, i) => (
             <span
               key={i}
@@ -909,7 +909,7 @@ function SessionHeatmap({ reduce }: { reduce: boolean }) {
               style={{ background: `rgba(79, 70, 229, ${o})` }}
             />
           ))}
-          <span>More</span>
+          <span>Nhiều</span>
         </div>
       </div>
 
@@ -993,17 +993,17 @@ function RetentionChart({
     >
       <div className="mb-2">
         <h3 className="text-[17px] font-semibold tracking-tight">
-          Retention Curve
+          Đường cong giữ chân
         </h3>
         <p className="text-[12px] text-on-surface-variant mt-0.5">
-          Cohort retention · 8 weeks
+          Giữ chân theo nhóm · 8 tuần
         </p>
         <div className="flex items-baseline gap-2 mt-3">
           <span className="text-[28px] font-bold tracking-tight tabular-nums leading-none text-[#7c3aed]">
             {data[data.length - 1].value}%
           </span>
           <span className="text-[11.5px] text-on-surface-variant">
-            week 8 retention
+            giữ chân tuần 8
           </span>
         </div>
       </div>
@@ -1101,17 +1101,17 @@ const RISK_META: Record<
   low: {
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
     dot: "bg-[#10b981]",
-    label: "Low risk",
+    label: "Rủi ro thấp",
   },
   med: {
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     dot: "bg-[#f59e0b]",
-    label: "Medium risk",
+    label: "Rủi ro trung bình",
   },
   high: {
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     dot: "bg-[#ef4444]",
-    label: "High risk",
+    label: "Rủi ro cao",
   },
 };
 
@@ -1133,21 +1133,21 @@ function PendingVerifications({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-[17px] font-semibold tracking-tight">
-              Pending Verifications
+              Xác minh đang chờ
             </h3>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff5d6] text-[#b95000] text-[10.5px] font-semibold border border-[#f4d68a]/60">
-              {verifications.length} new
+              {verifications.length} mới
             </span>
           </div>
           <p className="text-[12px] text-on-surface-variant mt-0.5">
-            Sorted by AI risk score
+            Sắp xếp theo điểm rủi ro AI
           </p>
         </div>
         <Link
           href="/admin/verifications"
           className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
         >
-          Review queue
+          Hàng đợi duyệt
           <ChevronRight size={13} />
         </Link>
       </div>
@@ -1229,11 +1229,11 @@ function PendingVerifications({
               </div>
               <div className="flex items-center gap-2">
                 <button className="flex-1 h-9 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
-                  Reject
+                  Từ chối
                 </button>
                 <button className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-lg bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.55)] hover:scale-[1.02] transition-all">
                   <CheckCircle2 size={13} />
-                  Approve
+                  Duyệt
                 </button>
               </div>
             </motion.article>
@@ -1262,20 +1262,20 @@ function RecentUsers({
   reduce: boolean;
 }) {
   const items =
-    tab === "Coaches"
+    tab === "HLV"
       ? coaches.map((c) => ({
           id: c.id,
           avatar: c.avatarUrl,
           name: c.name,
-          sub: `${c.sport} · joined ${new Date(c.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-          badge: c.verified ? "Verified" : "Unverified",
+          sub: `${c.sport} · tham gia ${new Date(c.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
+          badge: c.verified ? "Đã xác minh" : "Chưa xác minh",
           tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
         }))
       : learners.map((l) => ({
           id: l.id,
           avatar: l.avatarUrl,
           name: l.name,
-          sub: `${l.preferredSports[0] ?? "—"} · joined ${new Date(l.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          sub: `${l.preferredSports[0] ?? "—"} · tham gia ${new Date(l.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
           badge: `${l.totalHoursTrained}h`,
           tone: "neutral" as const,
         }));
@@ -1289,10 +1289,10 @@ function RecentUsers({
       <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-[17px] font-semibold tracking-tight">
-            Recent Sign-ups
+            Đăng ký gần đây
           </h3>
           <p className="text-[12px] text-on-surface-variant mt-0.5">
-            Latest users joining the platform
+            Người dùng mới nhất tham gia nền tảng
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1327,7 +1327,7 @@ function RecentUsers({
             href="/admin/users"
             className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
           >
-            All
+            Tất cả
             <ChevronRight size={12} />
           </Link>
         </div>
@@ -1386,19 +1386,19 @@ function AIOpsCard({ reduce }: { reduce: boolean }) {
   const ops = [
     {
       icon: ShieldCheck,
-      label: "Pending verifications",
+      label: "Xác minh đang chờ",
       value: "4",
       tone: "warn" as const,
     },
     {
       icon: Brain,
-      label: "Matching accuracy",
+      label: "Độ chính xác ghép",
       value: "94.2%",
       tone: "good" as const,
     },
     {
       icon: AlertTriangle,
-      label: "Payment anomalies",
+      label: "Bất thường thanh toán",
       value: "2",
       tone: "danger" as const,
     },
@@ -1417,7 +1417,7 @@ function AIOpsCard({ reduce }: { reduce: boolean }) {
         <div className="flex items-center justify-between mb-4">
           <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary inline-flex items-center gap-1.5">
             <Sparkles size={11} />
-            AI Operations
+            AI Vận hành
           </span>
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
@@ -1434,13 +1434,13 @@ function AIOpsCard({ reduce }: { reduce: boolean }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[14px] leading-snug font-semibold text-on-surface">
-              <span className="text-[#b95000]">4 coaches</span> awaiting
-              verification ·{" "}
-              <span className="text-[#ba1a1a]">2 payment anomalies</span>{" "}
-              detected.
+              <span className="text-[#b95000]">4 HLV</span> đang chờ xác
+              minh ·{" "}
+              <span className="text-[#ba1a1a]">2 bất thường thanh toán</span>{" "}
+              được phát hiện.
             </p>
             <p className="text-[12px] text-on-surface-variant leading-relaxed mt-1">
-              Resolve high-risk items first to keep platform trust strong.
+              Ưu tiên xử lý các mục rủi ro cao để duy trì uy tín nền tảng.
             </p>
           </div>
         </div>
@@ -1474,7 +1474,7 @@ function AIOpsCard({ reduce }: { reduce: boolean }) {
           href="/admin/verifications"
           className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          Review Now
+          Xem xét ngay
           <ArrowRight size={13} />
         </Link>
       </div>
@@ -1490,31 +1490,31 @@ function SystemHealth({ reduce }: { reduce: boolean }) {
   const items = [
     {
       icon: Gauge,
-      label: "Uptime",
+      label: "Thời gian hoạt động",
       value: "99.98%",
       tone: "good" as const,
-      hint: "30-day",
+      hint: "30 ngày",
     },
     {
       icon: Server,
-      label: "API latency",
+      label: "Độ trễ API",
       value: "142ms",
       tone: "good" as const,
       hint: "p95",
     },
     {
       icon: CreditCard,
-      label: "Failed payments",
+      label: "Thanh toán thất bại",
       value: "0.3%",
       tone: "warn" as const,
       hint: "24h",
     },
     {
       icon: AlertTriangle,
-      label: "Open incidents",
+      label: "Sự cố đang mở",
       value: "0",
       tone: "good" as const,
-      hint: "all clear",
+      hint: "không có sự cố",
     },
   ];
   return (
@@ -1527,15 +1527,15 @@ function SystemHealth({ reduce }: { reduce: boolean }) {
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-[16px] font-semibold tracking-tight">
-            System Health
+            Tình trạng hệ thống
           </h3>
           <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-            All systems operational
+            Tất cả hệ thống hoạt động bình thường
           </p>
         </div>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-semibold text-[#1f7a4d]">
           <CheckCircle2 size={11} />
-          Healthy
+          Ổn định
         </span>
       </div>
 
@@ -1591,29 +1591,29 @@ function SystemHealth({ reduce }: { reduce: boolean }) {
 const QUICK_ACTIONS = [
   {
     icon: ShieldCheck,
-    label: "Review Verifications",
-    desc: "4 awaiting",
+    label: "Duyệt xác minh",
+    desc: "4 đang chờ",
     href: "/admin/verifications",
     accent: "indigo" as const,
   },
   {
     icon: FileBarChart,
-    label: "Export Analytics",
+    label: "Xuất phân tích",
     desc: "CSV + PDF",
     href: "#",
     accent: "violet" as const,
   },
   {
     icon: Database,
-    label: "View Reports",
-    desc: "Saved dashboards",
+    label: "Xem báo cáo",
+    desc: "Bảng lưu sẵn",
     href: "#",
     accent: "emerald" as const,
   },
   {
     icon: Terminal,
-    label: "System Logs",
-    desc: "Live tail",
+    label: "Nhật ký hệ thống",
+    desc: "Theo dõi trực tiếp",
     href: "#",
     accent: "amber" as const,
   },
@@ -1635,7 +1635,7 @@ function QuickActions({ reduce }: { reduce: boolean }) {
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
       <h3 className="text-[16px] font-semibold tracking-tight mb-3">
-        Quick Actions
+        Thao tác nhanh
       </h3>
       <div className="space-y-2">
         {QUICK_ACTIONS.map((q, i) => {

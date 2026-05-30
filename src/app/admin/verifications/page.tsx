@@ -445,7 +445,7 @@ function QueueColumn({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name or sport…"
+            placeholder="Tìm tên hoặc môn thể thao…"
             className="w-full h-9 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[12.5px] placeholder:text-on-surface-variant transition-all"
           />
         </div>
@@ -1150,7 +1150,7 @@ function NotesSection() {
       </div>
       <textarea
         rows={3}
-        placeholder="Add internal notes — only visible to admins…"
+        placeholder="Thêm ghi chú nội bộ — chỉ admin thấy…"
         className="w-full px-4 py-3 bg-surface-container-low/40 border border-[var(--color-border-soft)] hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-[12px] outline-none text-[13px] leading-relaxed resize-none transition-all"
       />
     </section>
@@ -1627,7 +1627,7 @@ function RejectModal({
             <textarea
               autoFocus
               rows={3}
-              placeholder="Describe the reason…"
+              placeholder="Mô tả lý do từ chối…"
               className="w-full px-3 py-2 bg-surface-container-low/40 border border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[13px] resize-none transition-all"
             />
           )}

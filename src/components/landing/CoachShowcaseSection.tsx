@@ -384,7 +384,7 @@ function CoachCard({
         {/* Action */}
         <div className="mt-3 flex items-center justify-end">
           <Link
-            href={`/learner/coaches/${coach.id}`}
+            href={`/coaches/${coach.id}`}
             className="group/cta inline-flex items-center gap-1 rounded-[10px] bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white shadow-[0_4px_14px_-2px_rgba(15,23,42,0.3)] transition-all hover:bg-violet-600 hover:shadow-[0_6px_18px_-2px_rgba(124,58,237,0.5)]"
           >
             Xem chi tiết

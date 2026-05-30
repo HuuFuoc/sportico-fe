@@ -14,22 +14,22 @@ import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Sport } from "@/types";
 
 const GOALS = [
-  { id: "compete", label: "Compete", icon: "emoji_events" },
-  { id: "general", label: "General Fitness", icon: "fitness_center" },
-  { id: "weight", label: "Weight Loss", icon: "monitor_weight" },
-  { id: "skill", label: "Learn a Skill", icon: "school" },
-  { id: "rehab", label: "Rehab / Mobility", icon: "healing" },
-  { id: "stress", label: "Stress Reduction", icon: "self_improvement" },
+  { id: "compete", label: "Thi đấu", icon: "emoji_events" },
+  { id: "general", label: "Thể lực tổng quát", icon: "fitness_center" },
+  { id: "weight", label: "Giảm cân", icon: "monitor_weight" },
+  { id: "skill", label: "Học kỹ năng mới", icon: "school" },
+  { id: "rehab", label: "Phục hồi / Linh hoạt", icon: "healing" },
+  { id: "stress", label: "Giảm căng thẳng", icon: "self_improvement" },
 ];
 
 const STYLES = [
-  { id: "data", label: "Data-driven", icon: "monitoring" },
-  { id: "motivational", label: "High-energy", icon: "bolt" },
-  { id: "patient", label: "Patient & calm", icon: "spa" },
-  { id: "technical", label: "Highly technical", icon: "precision_manufacturing" },
+  { id: "data", label: "Dựa trên dữ liệu", icon: "monitoring" },
+  { id: "motivational", label: "Năng lượng cao", icon: "bolt" },
+  { id: "patient", label: "Kiên nhẫn & điềm tĩnh", icon: "spa" },
+  { id: "technical", label: "Chuyên sâu kỹ thuật", icon: "precision_manufacturing" },
 ];
 
-const STEPS = ["Sport", "Goal", "Style", "Budget", "Results"] as const;
+const STEPS = ["Môn thể thao", "Mục tiêu", "Phong cách", "Ngân sách", "Kết quả"] as const;
 type StepName = (typeof STEPS)[number];
 
 export default function AIMatchPage() {
@@ -41,7 +41,7 @@ export default function AIMatchPage() {
   } = useApiResource(() => api.fetchCoaches(), []);
   const allCoaches = useMemo(() => coachesData ?? [], [coachesData]);
 
-  const [step, setStep] = useState<StepName>("Sport");
+  const [step, setStep] = useState<StepName>("Môn thể thao");
   const [sport, setSport] = useState<Sport | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [style, setStyle] = useState<string | null>(null);
@@ -66,10 +66,10 @@ export default function AIMatchPage() {
     if (i > 0) setStep(STEPS[i - 1]);
   };
   const canNext =
-    (step === "Sport" && sport) ||
-    (step === "Goal" && goal) ||
-    (step === "Style" && style) ||
-    (step === "Budget" && budget > 0);
+    (step === "Môn thể thao" && sport) ||
+    (step === "Mục tiêu" && goal) ||
+    (step === "Phong cách" && style) ||
+    (step === "Ngân sách" && budget > 0);
 
   return (
     <AppShell role="learner" title="AI Match">
@@ -79,15 +79,14 @@ export default function AIMatchPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary mb-3">
             <MaterialIcon name="auto_awesome" filled size={14} />
             <span className="text-[11px] uppercase tracking-wider font-medium">
-              AI Coach Matching
+              Ghép AI Coach
             </span>
           </div>
           <h1 className="text-h1 text-on-surface">
-            Find your perfect coach in 5 quick steps
+            Tìm HLV hoàn hảo trong 5 bước nhanh
           </h1>
           <p className="text-body-base text-on-surface-variant mt-1 max-w-xl mx-auto">
-            Our model considers goals, training style and budget to surface
-            coaches with the highest compatibility.
+            Mô hình AI xét mục tiêu, phong cách và ngân sách để gợi ý HLV phù hợp nhất với bạn.
           </p>
         </header>
 
@@ -146,10 +145,10 @@ export default function AIMatchPage() {
 
         {/* Step content */}
         <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[12px] p-6">
-          {step === "Sport" && (
+          {step === "Môn thể thao" && (
             <StepBody
-              title="Which sport do you want to train?"
-              hint="Pick the discipline that matches your goal."
+              title="Bạn muốn tập môn thể thao nào?"
+              hint="Chọn môn phù hợp với mục tiêu của bạn."
             >
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {AVAILABLE_SPORTS.map((s) => (
@@ -164,10 +163,10 @@ export default function AIMatchPage() {
             </StepBody>
           )}
 
-          {step === "Goal" && (
+          {step === "Mục tiêu" && (
             <StepBody
-              title="What's your primary goal?"
-              hint="We'll bias matches toward coaches with proven results in this area."
+              title="Mục tiêu chính của bạn là gì?"
+              hint="Chúng tôi sẽ ưu tiên HLV có kết quả chứng minh trong lĩnh vực này."
             >
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {GOALS.map((g) => (
@@ -183,10 +182,10 @@ export default function AIMatchPage() {
             </StepBody>
           )}
 
-          {step === "Style" && (
+          {step === "Phong cách" && (
             <StepBody
-              title="Preferred coaching style?"
-              hint="Helps us choose coaches whose personality fits yours."
+              title="Phong cách huấn luyện bạn thích?"
+              hint="Giúp chúng tôi chọn HLV có tính cách phù hợp với bạn."
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {STYLES.map((s) => (
@@ -202,16 +201,16 @@ export default function AIMatchPage() {
             </StepBody>
           )}
 
-          {step === "Budget" && (
+          {step === "Ngân sách" && (
             <StepBody
-              title="What's your hourly budget?"
-              hint="We'll keep matches within range."
+              title="Ngân sách theo giờ của bạn?"
+              hint="Chúng tôi sẽ tìm HLV trong phạm vi giá này."
             >
               <div className="max-w-md">
                 <div className="flex items-end justify-between mb-2">
                   <span className="text-h1 text-primary">${budget}</span>
                   <span className="text-body-sm text-on-surface-variant">
-                    per hour
+                    mỗi giờ
                   </span>
                 </div>
                 <input
@@ -231,25 +230,25 @@ export default function AIMatchPage() {
             </StepBody>
           )}
 
-          {step === "Results" && (
+          {step === "Kết quả" && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <div className="inline-flex items-center gap-2 text-primary mb-1">
-                    <AIBadge label="Match Results" />
+                    <AIBadge label="Kết quả ghép" />
                   </div>
                   <h2 className="text-h2">
-                    {matches.length} coaches matched your criteria
+                    {matches.length} HLV phù hợp với tiêu chí của bạn
                   </h2>
                   <p className="text-body-base text-on-surface-variant mt-1">
-                    Sorted by compatibility score with your selections.
+                    Sắp xếp theo điểm tương thích với lựa chọn của bạn.
                   </p>
                 </div>
                 <Link
                   href="/learner/coaches"
                   className="text-body-sm text-primary hover:underline whitespace-nowrap"
                 >
-                  Browse all coaches →
+                  Xem tất cả HLV →
                 </Link>
               </div>
               {coachesLoading ? (
@@ -273,20 +272,20 @@ export default function AIMatchPage() {
               disabled={stepIdx === 0}
               className="px-4 py-2 text-body-base text-on-surface-variant hover:text-on-surface disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              ← Back
+              ← Quay lại
             </button>
-            {step !== "Results" ? (
+            {step !== "Kết quả" ? (
               <button
                 onClick={next}
                 disabled={!canNext}
                 className="px-5 py-2.5 bg-primary text-on-primary rounded-[6px] text-body-base font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#2d20b8] transition-colors"
               >
-                Continue
+                Tiếp tục
               </button>
             ) : (
               <button
                 onClick={() => {
-                  setStep("Sport");
+                  setStep("Môn thể thao");
                   setSport(null);
                   setGoal(null);
                   setStyle(null);
@@ -294,7 +293,7 @@ export default function AIMatchPage() {
                 }}
                 className="px-5 py-2.5 border border-[var(--color-border-soft)] rounded-[6px] text-body-base hover:bg-surface-container-low"
               >
-                Reset
+                Làm lại
               </button>
             )}
           </div>

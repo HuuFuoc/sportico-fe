@@ -329,10 +329,10 @@ export default function CoachSchedulePage() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <SummaryCard
             icon={CalendarPlus}
-            label="Sessions This Week"
+            label="Buổi tập tuần này"
             value={sessionsThisWeek}
             trend="+3"
-            trendLabel="vs last week"
+            trendLabel="so tuần trước"
             accent="indigo"
             spark={seedSpark(1, 16, 6)}
             delay={0.05}
@@ -340,10 +340,10 @@ export default function CoachSchedulePage() {
           />
           <SummaryCard
             icon={Timer}
-            label="Open Slots"
+            label="Slot trống"
             value={openSlots}
-            trend="Available"
-            trendLabel="this week"
+            trend="Còn trống"
+            trendLabel="tuần này"
             accent="violet"
             spark={seedSpark(2, 12, 4)}
             delay={0.1}
@@ -351,10 +351,10 @@ export default function CoachSchedulePage() {
           />
           <SummaryCard
             icon={Activity}
-            label="Utilization"
+            label="Tỷ lệ lấp đầy"
             value={`${utilization}%`}
-            trend={utilization >= 70 ? "On target" : "Add slots"}
-            trendLabel="of capacity"
+            trend={utilization >= 70 ? "Đúng mục tiêu" : "Thêm slot"}
+            trendLabel="công suất"
             accent="amber"
             spark={seedSpark(3, 65, 12)}
             delay={0.15}
@@ -362,10 +362,10 @@ export default function CoachSchedulePage() {
           />
           <SummaryCard
             icon={DollarSign}
-            label="Revenue"
+            label="Doanh thu"
             value={formatCurrency(revenue)}
             trend="+12%"
-            trendLabel="vs last week"
+            trendLabel="so tuần trước"
             accent="emerald"
             spark={seedSpark(4, 800, 200)}
             delay={0.2}
@@ -916,7 +916,7 @@ function SessionBlock({
             {session.type === "AI-Guided"
               ? "AI"
               : session.type === "Group"
-                ? "Grp"
+                ? "Nhóm"
                 : "1:1"}
           </span>
         </div>
@@ -1421,29 +1421,29 @@ function UpcomingRow({
 const QUICK_ACTIONS = [
   {
     icon: CalendarPlus,
-    label: "New Session",
-    desc: "Create booking",
+    label: "Buổi mới",
+    desc: "Tạo đặt lịch",
     href: "#",
     accent: "indigo" as const,
   },
   {
     icon: Sprout,
-    label: "Block Time",
-    desc: "Mark unavailable",
+    label: "Chặn thời gian",
+    desc: "Đánh dấu bận",
     href: "#",
     accent: "amber" as const,
   },
   {
     icon: MessageCircle,
-    label: "Messages",
-    desc: "Reply queue",
+    label: "Tin nhắn",
+    desc: "Hàng đợi phản hồi",
     href: "/coach/messages",
     accent: "emerald" as const,
   },
   {
     icon: Compass,
-    label: "Availability",
-    desc: "Edit hours",
+    label: "Khả dụng",
+    desc: "Chỉnh giờ làm việc",
     href: "#",
     accent: "violet" as const,
   },

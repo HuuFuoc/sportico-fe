@@ -39,10 +39,10 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 type FilterTab = "all" | "unread" | "ai";
 
 const AI_SUGGESTIONS = [
-  { icon: Dumbbell, label: "Plan today's workout" },
-  { icon: Heart, label: "How's my recovery?" },
-  { icon: Activity, label: "Adjust intensity" },
-  { icon: Zap, label: "Quick 15-min HIIT" },
+  { icon: Dumbbell, label: "Lập kế hoạch tập hôm nay" },
+  { icon: Heart, label: "Phục hồi của tôi thế nào?" },
+  { icon: Activity, label: "Điều chỉnh cường độ" },
+  { icon: Zap, label: "HIIT nhanh 15 phút" },
 ];
 
 export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
@@ -264,7 +264,7 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                   />
                 )}
                 <span className="relative">
-                  {tab === "ai" ? "Ask AI" : tab}
+                  {tab === "ai" ? "Hỏi AI" : tab}
                 </span>
               </button>
             ))}
@@ -441,15 +441,15 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                 <p className="text-[12px] text-on-surface-variant flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-success" />
                   {active.isAI
-                    ? "Always available • Adapts to your goals"
-                    : "Active now"}
+                    ? "Luôn sẵn sàng • Thích nghi với mục tiêu của bạn"
+                    : "Đang hoạt động"}
                 </p>
               </div>
 
               <div className="flex items-center gap-1">
-                <HeaderIconButton icon={Phone} label="Voice call" />
-                <HeaderIconButton icon={Video} label="Video call" />
-                <HeaderIconButton icon={Info} label="Info" />
+                <HeaderIconButton icon={Phone} label="Gọi thoại" />
+                <HeaderIconButton icon={Video} label="Gọi video" />
+                <HeaderIconButton icon={Info} label="Thông tin" />
               </div>
             </header>
 
@@ -519,8 +519,8 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                   <div className="absolute -inset-px rounded-[18px] bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 opacity-0 group-focus-within:opacity-100 blur-md transition-opacity duration-500" />
 
                   <div className="relative flex items-end gap-2 bg-surface-container-lowest border border-[var(--color-border-soft)] group-focus-within:border-primary/40 rounded-[18px] px-3 py-2 shadow-[0_2px_8px_-4px_rgba(15,15,30,0.08),0_12px_32px_-12px_rgba(15,15,30,0.06)] transition-colors">
-                    <ComposerIconButton icon={Paperclip} label="Attach file" />
-                    <ComposerIconButton icon={ImageIcon} label="Add image" />
+                    <ComposerIconButton icon={Paperclip} label="Đính kèm file" />
+                    <ComposerIconButton icon={ImageIcon} label="Thêm ảnh" />
 
                     <textarea
                       name="message"
@@ -535,8 +535,8 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                       }}
                       placeholder={
                         active.isAI
-                          ? "Ask your AI coach anything..."
-                          : "Type a message..."
+                          ? "Hỏi AI coach bất cứ điều gì..."
+                          : "Nhập tin nhắn..."
                       }
                       rows={1}
                       className="flex-1 min-h-[36px] max-h-32 py-2 px-1 bg-transparent outline-none resize-none text-[14px] leading-6 placeholder:text-on-surface-variant"

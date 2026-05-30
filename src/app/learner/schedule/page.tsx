@@ -209,7 +209,7 @@ export default function LearnerSchedulePage() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatTile
             icon={CalendarCheck}
-            label="Sessions Booked"
+            label="Đã đặt lịch"
             value={booked}
             accent="indigo"
             delay={0.05}
@@ -217,7 +217,7 @@ export default function LearnerSchedulePage() {
           />
           <StatTile
             icon={CheckCircle2}
-            label="Completed"
+            label="Đã hoàn thành"
             value={completed}
             accent="emerald"
             delay={0.1}
@@ -225,7 +225,7 @@ export default function LearnerSchedulePage() {
           />
           <StatTile
             icon={XCircle}
-            label="Missed"
+            label="Vắng mặt"
             value={missed}
             accent="rose"
             delay={0.15}
@@ -233,7 +233,7 @@ export default function LearnerSchedulePage() {
           />
           <StatTile
             icon={TrendingUp}
-            label="Consistency"
+            label="Đều đặn"
             value={`${consistency}%`}
             accent="violet"
             delay={0.2}
@@ -254,13 +254,13 @@ export default function LearnerSchedulePage() {
             <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border-soft)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h3 className="text-[17px] font-semibold tracking-tight">
-                  {weekStart.toLocaleDateString("en-US", { month: "long" })}{" "}
+                  {weekStart.toLocaleDateString("vi-VN", { month: "long" })}{" "}
                   <span className="text-on-surface-variant font-medium">
                     {weekStart.getFullYear()}
                   </span>
                 </h3>
                 <p className="text-[12px] text-on-surface-variant mt-0.5">
-                  {sessions.length} sessions planned this period
+                  {sessions.length} buổi trong kỳ này
                 </p>
               </div>
 
@@ -608,7 +608,7 @@ function SessionBlock({
             {session.type === "AI-Guided"
               ? "AI"
               : session.type === "Group"
-                ? "Group"
+                ? "Nhóm"
                 : "1:1"}
           </span>
         </div>
@@ -647,7 +647,7 @@ function EmptyDayHint({ isToday }: { isToday: boolean }) {
         className="text-on-surface-variant/60 group-hover:text-primary/60 transition-colors"
       />
       <span className="text-[10px] text-on-surface-variant/70 group-hover:text-primary/70 mt-1 transition-colors">
-        {isToday ? "Add today" : "Open"}
+        {isToday ? "Thêm hôm nay" : "Trống"}
       </span>
     </button>
   );
@@ -695,15 +695,15 @@ function AICoachCard({
           <div className="flex-1 min-w-0">
             <p className="text-[14.5px] leading-snug font-semibold text-on-surface">
               {missedCount > 0
-                ? `You missed ${missedCount} session${missedCount === 1 ? "" : "s"} this week.`
-                : "You're on track this week."}
+                ? `Bạn đã bỏ lỡ ${missedCount} buổi tuần này.`
+                : "Bạn đang đúng tiến độ tuần này."}
             </p>
             <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-1">
-              Suggested:{" "}
+              Gợi ý:{" "}
               <span className="text-primary font-medium">
-                15-minute Recovery Flow
+                15 phút Recovery Flow
               </span>{" "}
-              to keep your streak alive without overloading.
+              để duy trì chuỗi ngày mà không bị quá tải.
             </p>
           </div>
         </div>
@@ -712,7 +712,7 @@ function AICoachCard({
           href="/learner/schedule"
           className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          Start Now
+          Bắt đầu ngay
           <ArrowRight size={13} />
         </Link>
 
@@ -815,11 +815,11 @@ function UpcomingCard({
   const date = new Date(session.start);
   const isOnline = session.location?.toLowerCase() === "online";
   const dayLabel = isSameDay(date, new Date(NOW))
-    ? "Today"
+    ? "Hôm nay"
     : isSameDay(date, addDays(new Date(NOW), 1))
-      ? "Tomorrow"
-      : date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-  const timeLabel = date.toLocaleTimeString("en-US", {
+      ? "Ngày mai"
+      : date.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" });
+  const timeLabel = date.toLocaleTimeString("vi-VN", {
     hour: "numeric",
     minute: "2-digit",
   });
@@ -875,7 +875,7 @@ function UpcomingCard({
             {session.title}
           </p>
           <p className="text-[11.5px] text-on-surface-variant mt-0.5 truncate">
-            with {coach?.name?.split(" ")[0] ?? "Coach"}
+            với {coach?.name?.split(" ")[0] ?? "HLV"}
           </p>
           <div className="flex items-center gap-3 mt-2 text-[11px] text-on-surface-variant">
             <span className="inline-flex items-center gap-1">
@@ -894,7 +894,7 @@ function UpcomingCard({
             </span>
             {isOnline && (
               <span className="inline-flex items-center gap-1">
-                <Video size={10} /> Online
+                <Video size={10} /> Trực tuyến
               </span>
             )}
             {!isOnline && session.location && (
@@ -917,10 +917,10 @@ function UpcomingCard({
               : "bg-surface-container-low text-on-surface hover:bg-surface-container",
           )}
         >
-          {isOnline ? "Join" : "View"}
+          {isOnline ? "Tham gia" : "Xem"}
         </button>
         <button className="h-8 px-3 rounded-lg text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors">
-          Reschedule
+          Đổi lịch
         </button>
       </div>
     </motion.div>
@@ -934,29 +934,29 @@ function UpcomingCard({
 const QUICK_ACTIONS = [
   {
     icon: CalendarPlus,
-    label: "Book New",
-    desc: "Find a coach",
+    label: "Đặt buổi mới",
+    desc: "Tìm HLV",
     href: "/learner/coaches",
     accent: "indigo" as const,
   },
   {
     icon: Zap,
     label: "AI Workout",
-    desc: "Start instantly",
+    desc: "Bắt đầu ngay",
     href: "#",
     accent: "violet" as const,
   },
   {
     icon: Activity,
-    label: "Progress",
-    desc: "View stats",
+    label: "Tiến độ",
+    desc: "Xem thống kê",
     href: "/learner/progress",
     accent: "emerald" as const,
   },
   {
     icon: Compass,
-    label: "Coaches",
-    desc: "Browse all",
+    label: "HLV",
+    desc: "Xem tất cả",
     href: "/learner/coaches",
     accent: "rose" as const,
   },

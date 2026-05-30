@@ -26,7 +26,7 @@ export function BookSessionButton({
   coachId,
   packageId,
   className,
-  label = "Book a Session",
+  label = "Đặt buổi tập",
 }: BookSessionButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);

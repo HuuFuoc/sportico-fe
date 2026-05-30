@@ -52,8 +52,8 @@ const ACHIEVEMENTS = [
   {
     id: "a1",
     icon: Flame,
-    label: "8-Day Streak",
-    desc: "Trained 8 days in a row",
+    label: "Chuỗi 8 ngày",
+    desc: "Tập 8 ngày liên tiếp",
     tier: "epic" as const,
     earned: true,
     xp: 240,
@@ -61,8 +61,8 @@ const ACHIEVEMENTS = [
   {
     id: "a2",
     icon: Trophy,
-    label: "10K Hours Club",
-    desc: "Lifetime training milestone",
+    label: "Câu lạc bộ 10K giờ",
+    desc: "Cột mốc tập luyện cả đời",
     tier: "legendary" as const,
     earned: true,
     xp: 1000,
@@ -70,8 +70,8 @@ const ACHIEVEMENTS = [
   {
     id: "a3",
     icon: Crown,
-    label: "Top 5% Mobility",
-    desc: "Elite mobility scoring",
+    label: "Top 5% Linh hoạt",
+    desc: "Điểm linh hoạt xuất sắc",
     tier: "rare" as const,
     earned: true,
     xp: 320,
@@ -79,8 +79,8 @@ const ACHIEVEMENTS = [
   {
     id: "a4",
     icon: Brain,
-    label: "AI Plan Adopter",
-    desc: "Followed 10 AI plans",
+    label: "Người theo kế hoạch AI",
+    desc: "Đã theo 10 kế hoạch AI",
     tier: "common" as const,
     earned: true,
     xp: 120,
@@ -88,8 +88,8 @@ const ACHIEVEMENTS = [
   {
     id: "a5",
     icon: Star,
-    label: "Marathon Ready",
-    desc: "Run 30km in a week",
+    label: "Sẵn sàng Marathon",
+    desc: "Chạy 30km trong một tuần",
     tier: "epic" as const,
     earned: false,
     progress: 65,
@@ -98,8 +98,8 @@ const ACHIEVEMENTS = [
   {
     id: "a6",
     icon: Zap,
-    label: "Power Surge",
-    desc: "Hit 3 PRs in one week",
+    label: "Bùng phát sức mạnh",
+    desc: "Đạt 3 kỷ lục cá nhân trong một tuần",
     tier: "rare" as const,
     earned: false,
     progress: 33,
@@ -108,10 +108,10 @@ const ACHIEVEMENTS = [
 ];
 
 const METRIC_ICONS: Record<string, typeof Activity> = {
-  "Weekly Sessions": CalendarCheck,
-  "Mobility Score": Activity,
-  "Sleep Avg": Moon,
-  Streak: Flame,
+  "Buổi tập/tuần": CalendarCheck,
+  "Điểm linh hoạt": Activity,
+  "Giấc ngủ TB": Moon,
+  "Chuỗi ngày": Flame,
 };
 
 // Deterministic per-metric sparkline data (8 points)
@@ -150,7 +150,7 @@ export default function LearnerProgressPage() {
         return {
           ...p,
           delta: p.score - prev,
-          milestone: p.week === "W4" ? "New PR" : p.week === "W8" ? "Peak" : null,
+          milestone: p.week === "W4" ? "Kỷ lục mới" : p.week === "W8" ? "Đỉnh cao" : null,
         };
       }),
     [trend],
@@ -203,10 +203,10 @@ export default function LearnerProgressPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
                   <Sparkles size={11} />
-                  AI Coaching Active
+                  AI Coaching Đang hoạt động
                 </span>
                 <span className="text-[12px] text-on-surface-variant">
-                  {new Date().toLocaleDateString("en-US", {
+                  {new Date().toLocaleDateString("vi-VN", {
                     weekday: "long",
                     month: "long",
                     day: "numeric",
@@ -214,18 +214,17 @@ export default function LearnerProgressPage() {
                 </span>
               </div>
               <h1 className="text-[34px] leading-[1.1] font-semibold tracking-tight text-on-surface">
-                Hey {learner.name?.split(" ")[0] ?? "there"},
+                Chào {learner.name?.split(" ")[0] ?? "bạn"},
                 <span className="block bg-gradient-to-r from-primary to-[#7d6dff] bg-clip-text text-transparent">
-                  you're crushing it this week.
+                  bạn đang làm rất tốt tuần này.
                 </span>
               </h1>
               <p className="text-[14.5px] text-on-surface-variant mt-2 max-w-xl leading-relaxed">
-                Your fitness score is up{" "}
+                Điểm thể lực của bạn đã tăng{" "}
                 <span className="text-on-surface font-medium">
                   {scoreDeltaPct}%
                 </span>{" "}
-                over the last 8 weeks. Keep the momentum going — your AI coach
-                is ready when you are.
+                trong 8 tuần qua. Duy trì đà này — AI coach của bạn luôn sẵn sàng.
               </p>
             </div>
 
@@ -236,12 +235,12 @@ export default function LearnerProgressPage() {
                 </div>
                 <div>
                   <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant">
-                    Current Streak
+                    Chuỗi ngày
                   </p>
                   <p className="text-[20px] font-semibold leading-tight">
                     {learner.streakDays}{" "}
                     <span className="text-[12px] text-on-surface-variant font-normal">
-                      days
+                      ngày
                     </span>
                   </p>
                 </div>
@@ -253,46 +252,46 @@ export default function LearnerProgressPage() {
         {/* ============ KPI CARDS ============ */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
-            label="Total Hours"
+            label="Tổng giờ"
             value={learner.totalHoursTrained}
-            unit="hrs"
+            unit="giờ"
             icon={Clock}
             trend="+12%"
-            trendLabel="vs last month"
+            trendLabel="so tháng trước"
             accent="indigo"
             spark={sparkline(1, 80, 8)}
             delay={0.05}
             reduce={reduce ?? false}
           />
           <KPICard
-            label="Current Streak"
+            label="Chuỗi ngày"
             value={learner.streakDays}
-            unit="days"
+            unit="ngày"
             icon={Flame}
-            trend="Personal best"
-            trendLabel="🔥 keep going"
+            trend="Kỷ lục cá nhân"
+            trendLabel="🔥 tiếp tục nào"
             accent="orange"
             spark={sparkline(2, 4, 3)}
             delay={0.12}
             reduce={reduce ?? false}
           />
           <KPICard
-            label="AI Match Rate"
+            label="Tỷ lệ khớp AI"
             value={`${learner.matchRate ?? 94}%`}
             icon={Brain}
             trend="+2%"
-            trendLabel="learning your style"
+            trendLabel="đang học phong cách của bạn"
             accent="violet"
             spark={sparkline(3, 88, 5)}
             delay={0.19}
             reduce={reduce ?? false}
           />
           <KPICard
-            label="Upcoming"
+            label="Sắp tới"
             value={learner.upcomingSessions}
-            unit="sessions"
+            unit="buổi"
             icon={CalendarCheck}
-            trendLabel="this week"
+            trendLabel="tuần này"
             accent="emerald"
             spark={sparkline(4, 3, 2)}
             delay={0.26}
@@ -797,41 +796,40 @@ function AICoachCard({ reduce }: { reduce: boolean }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
-              Sportico AI · Today's recommendation
+              Sportico AI · Đề xuất hôm nay
             </span>
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-medium text-[#1f7a4d]">
               <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              98% confidence
+              98% độ tin cậy
             </span>
           </div>
           <p className="text-[16px] sm:text-[17px] leading-snug text-on-surface font-medium">
-            Your HRV trend dropped{" "}
-            <span className="text-[#b95000]">6%</span> overnight. I'd
-            recommend swapping today's strength block for a{" "}
-            <span className="text-primary">15-min mobility flow</span> to
-            preserve your streak.
+            HRV của bạn giảm{" "}
+            <span className="text-[#b95000]">6%</span> qua đêm. Tôi khuyên
+            bạn đổi buổi sức mạnh hôm nay sang{" "}
+            <span className="text-primary">15 phút mobility</span> để duy trì chuỗi ngày.
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
             <Link
               href="/learner/schedule"
               className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-medium shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_16px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-95 transition-all"
             >
-              Start mobility flow
+              Bắt đầu mobility
               <ArrowRight size={13} />
             </Link>
             <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-[var(--color-border-soft)] hover:border-primary/30 bg-surface-container-lowest hover:bg-primary/[0.04] text-[13px] font-medium transition-colors">
-              See full plan
+              Xem kế hoạch đầy đủ
             </button>
             <button className="text-[12.5px] font-medium text-on-surface-variant hover:text-on-surface px-2 transition-colors">
-              Dismiss
+              Bỏ qua
             </button>
           </div>
 
           {/* Mini indicators */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 pt-4 border-t border-primary/10 text-[12px]">
-            <MiniStat icon={Heart} label="Recovery" value="72%" tone="warn" />
-            <MiniStat icon={Moon} label="Sleep" value="7.2h" tone="neutral" />
-            <MiniStat icon={Activity} label="Strain" value="Moderate" tone="neutral" />
+            <MiniStat icon={Heart} label="Phục hồi" value="72%" tone="warn" />
+            <MiniStat icon={Moon} label="Giấc ngủ" value="7.2h" tone="neutral" />
+            <MiniStat icon={Activity} label="Căng thẳng" value="Trung bình" tone="neutral" />
           </div>
         </div>
       </div>
@@ -871,28 +869,28 @@ function MiniStat({
 
 const TIERS = {
   common: {
-    label: "Common",
+    label: "Thường",
     ring: "ring-1 ring-[var(--color-border-soft)]",
     icon: "from-slate-400 to-slate-500",
     glow: "",
     text: "text-slate-600",
   },
   rare: {
-    label: "Rare",
+    label: "Hiếm",
     ring: "ring-2 ring-primary/30",
     icon: "from-primary to-[#7d6dff]",
     glow: "shadow-[0_8px_24px_-6px_rgba(53,37,205,0.35)]",
     text: "text-primary",
   },
   epic: {
-    label: "Epic",
+    label: "Sử thi",
     ring: "ring-2 ring-[#a855f7]/40",
     icon: "from-[#a855f7] to-[#ec4899]",
     glow: "shadow-[0_8px_24px_-6px_rgba(168,85,247,0.45)]",
     text: "text-[#a855f7]",
   },
   legendary: {
-    label: "Legendary",
+    label: "Huyền thoại",
     ring: "ring-2 ring-[#f59e0b]/50",
     icon: "from-[#f59e0b] via-[#fb923c] to-[#ef4444]",
     glow: "shadow-[0_10px_28px_-6px_rgba(245,158,11,0.55)]",
@@ -1127,10 +1125,10 @@ function Annotation({
 // ============================================================================
 
 function goalHint(label: string, pct: number): string {
-  if (pct >= 100) return "Goal hit — onto the next one";
-  if (label === "Weekly Sessions") return "1 more session to lock in this week";
-  if (label === "Mobility Score") return "+12 pts unlocks Elite tier";
-  if (label === "Sleep Avg") return "Wind down 30 min earlier to close the gap";
-  if (label === "Streak") return "6 more days to reach a 2-week streak";
-  return `${Math.round(pct)}% to target`;
+  if (pct >= 100) return "Đạt mục tiêu — chuyển sang mục tiêu tiếp theo";
+  if (label === "Buổi tập/tuần") return "Thêm 1 buổi nữa để hoàn thành tuần này";
+  if (label === "Điểm linh hoạt") return "+12 điểm để mở khóa hạng Elite";
+  if (label === "Giấc ngủ TB") return "Đi ngủ sớm hơn 30 phút để thu hẹp khoảng cách";
+  if (label === "Chuỗi ngày") return "Thêm 6 ngày để đạt chuỗi 2 tuần";
+  return `${Math.round(pct)}% đến mục tiêu`;
 }

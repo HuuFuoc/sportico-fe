@@ -136,39 +136,39 @@ export default function CoachLearnersPage() {
     {
       icon: "battery_alert",
       tone: "#e0503f",
-      category: "Burnout detection",
-      headline: `${stats.fatigue.length} athlete${stats.fatigue.length === 1 ? "" : "s"} showing early fatigue signals`,
+      category: "Phát hiện kiệt sức",
+      headline: `${stats.fatigue.length} học viên đang có dấu hiệu mệt mỏi sớm`,
       explanation:
-        "Readiness and training-load patterns suggest these athletes are accumulating fatigue faster than they recover. Consider a deload or a lighter block this week.",
+        "Chỉ số sẵn sàng và tải luyện tập cho thấy các học viên này đang tích lũy mệt mỏi nhanh hơn khả năng phục hồi. Hãy xem xét giảm tải tuần này.",
       athletes: stats.fatigue.slice(0, 4).map((e) => e.learner.name),
-      action: "Review fatigue",
+      action: "Xem xét mệt mỏi",
       confidence: 93,
     },
     {
       icon: "trending_down",
       tone: "#d98a0b",
-      category: "Performance drop",
+      category: "Sụt giảm hiệu suất",
       headline: worstDecliner
-        ? `${worstDecliner.learner.name}'s readiness trend dropped ${Math.abs(worstDecliner.m.trendDelta)} pts`
-        : "All athlete trends are stable",
+        ? `Xu hướng sẵn sàng của ${worstDecliner.learner.name} giảm ${Math.abs(worstDecliner.m.trendDelta)} điểm`
+        : "Tất cả xu hướng học viên đều ổn định",
       explanation: worstDecliner
-        ? `${worstDecliner.learner.name.split(" ")[0]}'s weekly performance score has slid for several sessions. A recovery-focused program should stabilise the trend before the next intensity block.`
-        : "No significant negative trends detected across your roster this week.",
+        ? `Điểm hiệu suất hàng tuần của ${worstDecliner.learner.name.split(" ")[0]} đã giảm liên tục. Chương trình tập trung phục hồi sẽ ổn định xu hướng trước khối cường độ tiếp theo.`
+        : "Không phát hiện xu hướng tiêu cực đáng kể trong danh sách học viên tuần này.",
       athletes: stats.declining.slice(0, 4).map((e) => e.learner.name),
-      action: "Send recovery program",
+      action: "Gửi chương trình phục hồi",
       confidence: 89,
     },
     {
       icon: "self_improvement",
       tone: "#4f46e5",
-      category: "Predictive coaching",
-      headline: `${Math.max(stats.atRisk.length, 2)} athletes may need a mobility session`,
+      category: "Coaching dự báo",
+      headline: `${Math.max(stats.atRisk.length, 2)} học viên có thể cần buổi mobility`,
       explanation:
-        "Based on recovery scores and session history, a mobility-focused session is predicted to lift readiness for these athletes within one week.",
+        "Dựa trên điểm phục hồi và lịch sử buổi tập, buổi mobility được dự báo sẽ nâng chỉ số sẵn sàng trong vòng một tuần.",
       athletes: (stats.atRisk.length ? stats.atRisk : stats.watch)
         .slice(0, 4)
         .map((e) => e.learner.name),
-      action: "Generate AI plans",
+      action: "Tạo kế hoạch AI",
       confidence: 91,
     },
   ];
@@ -225,8 +225,8 @@ export default function CoachLearnersPage() {
           <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <KpiTile
               icon="groups"
-              label="Active athletes"
-              hint="+2 joined this month"
+              label="Học viên đang hoạt động"
+              hint="+2 tham gia tháng này"
             >
               <p className="text-[28px] font-semibold leading-none text-on-surface">
                 <AnimatedNumber value={stats.n} duration={1.2} />
@@ -235,8 +235,8 @@ export default function CoachLearnersPage() {
 
             <KpiTile
               icon="monitor_heart"
-              label="Need attention"
-              hint={`${stats.atRisk.length} at risk · ${stats.watch.length} watch`}
+              label="Cần chú ý"
+              hint={`${stats.atRisk.length} có nguy cơ · ${stats.watch.length} theo dõi`}
               tone="amber"
             >
               <p className="text-[28px] font-semibold leading-none text-[#b95000]">
@@ -246,8 +246,8 @@ export default function CoachLearnersPage() {
 
             <KpiTile
               icon="bolt"
-              label="Avg readiness"
-              hint="Roster-wide today"
+              label="Sẵn sàng TB"
+              hint="Toàn danh sách hôm nay"
             >
               <div className="flex items-center gap-3">
                 <p className="text-[28px] font-semibold leading-none text-on-surface">
@@ -265,8 +265,8 @@ export default function CoachLearnersPage() {
 
             <KpiTile
               icon="trending_up"
-              label="Engagement"
-              hint="+8% vs last week"
+              label="Tương tác"
+              hint="+8% so tuần trước"
             >
               <div className="flex items-end justify-between gap-2">
                 <p className="text-[28px] font-semibold leading-none text-on-surface">
@@ -343,7 +343,7 @@ export default function CoachLearnersPage() {
                 aria-label="Search athletes"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search athletes by name, goal or sport…"
+                placeholder="Tìm học viên theo tên, mục tiêu hoặc môn thể thao…"
                 className="ml-2.5 flex-1 bg-transparent text-[14px] outline-none placeholder:text-on-surface-variant"
               />
               {query && (
@@ -361,10 +361,10 @@ export default function CoachLearnersPage() {
               <div className="flex items-center rounded-[9px] border border-[var(--color-border-soft)] bg-surface-container-low p-0.5">
                 {(
                   [
-                    ["all", "All"],
-                    ["at-risk", "At risk"],
-                    ["watch", "Watch"],
-                    ["on-track", "On track"],
+                    ["all", "Tất cả"],
+                    ["at-risk", "Có nguy cơ"],
+                    ["watch", "Theo dõi"],
+                    ["on-track", "Đúng tiến độ"],
                   ] as const
                 ).map(([key, label]) => (
                   <button
@@ -578,7 +578,7 @@ function AICard({
           onClick={() => setOpen((v) => !v)}
           className="inline-flex items-center gap-1 text-[12px] font-medium text-white/55 transition-colors hover:text-white"
         >
-          {open ? "Hide" : "Why"}
+          {open ? "Ẩn" : "Vì sao?"}
           <MaterialIcon
             name="expand_more"
             size={15}

@@ -29,6 +29,7 @@ interface NavLink {
 // page (standalone, no dashboard chrome) — NOT to /learner/coaches.
 const BASE_LINKS: NavLink[] = [
   { label: "Huấn Luyện Viên", href: "/coaches" },
+  { label: "Ghép nối", href: "/ai-match" },
   { label: "Về Chúng Tôi", href: "/" },
 ];
 
@@ -114,7 +115,7 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
           : "border-b border-[var(--color-border-soft)] bg-surface-container-lowest",
       )}
     >
-      <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-6">
+      <div className="relative mx-auto flex h-full max-w-7xl items-center justify-between px-6">
         {/* Logo */}
         <Link
           href="/"
@@ -133,8 +134,8 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
           />
         </Link>
 
-        {/* Center links — desktop only */}
-        <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+        {/* Center links — truly centered via absolute position */}
+        <nav className="absolute left-1/2 -translate-x-1/2 hidden items-center gap-1 md:flex">
           {BASE_LINKS.map((link) => (
             <Link
               key={link.label}

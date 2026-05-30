@@ -51,6 +51,7 @@ import { WithdrawModal } from "@/components/coach/WithdrawModal";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { devUserIdForRole } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/auth-session";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { EarningPoint, Payout } from "@/types";
@@ -71,25 +72,25 @@ const STATUS_META: Record<
   { label: string; pill: string; dot: string; icon: typeof CheckCircle2 }
 > = {
   paid: {
-    label: "Paid",
+    label: "Đã trả",
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
     dot: "bg-[#10b981]",
     icon: CheckCircle2,
   },
   pending: {
-    label: "Pending",
+    label: "Đang chờ",
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     dot: "bg-[#f59e0b]",
     icon: Clock,
   },
   processing: {
-    label: "Processing",
+    label: "Đang xử lý",
     pill: "bg-primary/10 text-primary border-primary/20",
     dot: "bg-primary",
     icon: Hourglass,
   },
   failed: {
-    label: "Failed",
+    label: "Thất bại",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     dot: "bg-[#ef4444]",
     icon: XCircle,
@@ -97,8 +98,9 @@ const STATUS_META: Record<
 };
 
 export default function CoachEarningsPage() {
-  // TODO(auth): hard-coded current coach until real session auth lands.
-  const coachId = devUserIdForRole("coach");
+  // Use the real user ID from the JWT when in live mode; fall back to the
+  // dev hard-code so mock mode (no NEXT_PUBLIC_API_BASE_URL) keeps working.
+  const coachId = getCurrentUserId() ?? devUserIdForRole("coach");
   const { data, loading, error, refetch } = useApiResource(
     () =>
       Promise.all([
@@ -245,11 +247,11 @@ export default function CoachEarningsPage() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
             icon={Wallet}
-            label="This Month"
+            label="Tháng này"
             value={formatCurrency(last.gross)}
             trend={`${deltaPct > 0 ? "+" : ""}${deltaPct}%`}
             trendDir={deltaPct >= 0 ? "up" : "down"}
-            trendLabel="vs last month"
+            trendLabel="so tháng trước"
             accent="indigo"
             spark={seedSpark(1, last.gross / 50, 8)}
             delay={0.05}
@@ -257,11 +259,11 @@ export default function CoachEarningsPage() {
           />
           <KpiCard
             icon={Receipt}
-            label="Last Month"
+            label="Tháng trước"
             value={formatCurrency(prev.gross)}
-            trend="Closed"
+            trend="Đã đóng"
             trendDir="neutral"
-            trendLabel="reconciled"
+            trendLabel="đã đối soát"
             accent="violet"
             spark={seedSpark(2, prev.gross / 50, 7)}
             delay={0.1}
@@ -269,11 +271,11 @@ export default function CoachEarningsPage() {
           />
           <KpiCard
             icon={Banknote}
-            label="Total Earnings"
+            label="Tổng thu nhập"
             value={formatCurrency(total)}
             trend="+18%"
             trendDir="up"
-            trendLabel="YoY"
+            trendLabel="so năm ngoái"
             accent="emerald"
             spark={seedSpark(3, total / 200, 30)}
             delay={0.15}
@@ -281,11 +283,11 @@ export default function CoachEarningsPage() {
           />
           <KpiCard
             icon={Hourglass}
-            label="Pending Payout"
+            label="Đang chờ chi trả"
             value={formatCurrency(pendingTotal)}
             trend={`${myPayouts.filter((p) => p.status !== "paid").length} tx`}
             trendDir="neutral"
-            trendLabel="in flight"
+            trendLabel="đang xử lý"
             accent="amber"
             spark={seedSpark(4, pendingTotal / 30 || 50, 20)}
             delay={0.2}
@@ -306,15 +308,15 @@ export default function CoachEarningsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-[18px] font-semibold tracking-tight">
-                    Monthly Revenue
+                    Doanh thu hàng tháng
                   </h3>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
                     <TrendingUp size={10} />
-                    Gross + Net
+                    Gộp + Ròng
                   </span>
                 </div>
                 <p className="text-[13px] text-on-surface-variant">
-                  Gross vs net (after fees)
+                  Doanh thu gộp so với doanh thu ròng (sau phí)
                 </p>
                 <div className="flex items-baseline gap-2 mt-3">
                   <span className="text-[32px] leading-none font-bold tracking-tight tabular-nums">
@@ -461,26 +463,26 @@ export default function CoachEarningsPage() {
             <AIInsightCard
               icon={TrendingUp}
               accent="emerald"
-              title={`Revenue up ${deltaPct >= 0 ? "+" : ""}${deltaPct}% this month`}
-              body="You're trending toward your strongest month yet. Maintain your Friday booking rate to lock in the upside."
+              title={`Doanh thu tăng ${deltaPct >= 0 ? "+" : ""}${deltaPct}% tháng này`}
+              body="Bạn đang trên đà đạt tháng mạnh nhất. Duy trì tỷ lệ đặt lịch thứ Sáu để tối đa hóa thu nhập."
               delay={0.15}
               reduce={reduce ?? false}
             />
             <AIInsightCard
               icon={Lightbulb}
               accent="primary"
-              title="Mobility Coaching leads earnings"
-              body="62% of your gross this month came from mobility sessions — your best margin category."
-              cta={{ label: "Optimize Schedule", icon: Target }}
+              title="Mobility Coaching dẫn đầu thu nhập"
+              body="62% doanh thu gộp tháng này đến từ buổi mobility — danh mục biên lợi nhuận tốt nhất của bạn."
+              cta={{ label: "Tối ưu lịch", icon: Target }}
               delay={0.22}
               reduce={reduce ?? false}
             />
             <AIInsightCard
               icon={Zap}
               accent="amber"
-              title="Friday sessions pay best"
-              body="Friday slots earn 28% more on average. 3 slots open next Friday."
-              cta={{ label: "Fill Slots", icon: ArrowUpRight }}
+              title="Buổi thứ Sáu trả cao nhất"
+              body="Slot thứ Sáu kiếm nhiều hơn 28% trung bình. Còn 3 slot trống thứ Sáu tới."
+              cta={{ label: "Lấp đầy slot", icon: ArrowUpRight }}
               delay={0.29}
               reduce={reduce ?? false}
             />
@@ -1163,7 +1165,7 @@ function PayoutTable({
               onChange={(e) => setSearch(e.target.value)}
               type="search"
               aria-label="Search payouts"
-              placeholder="Search method, id…"
+              placeholder="Tìm phương thức, id…"
               className="h-9 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-lg outline-none text-[12.5px] w-44 transition-all"
             />
           </div>
@@ -1312,30 +1314,30 @@ function PayoutTable({
                       <td colSpan={7} className="px-5 sm:px-6 py-4">
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-[12px]">
                           <DetailItem
-                            label="Gross"
+                            label="Doanh thu gộp"
                             value={formatCurrency(
                               Math.round(p.amount / 0.85),
                               p.currency,
                             )}
                           />
                           <DetailItem
-                            label="Platform fee"
+                            label="Phí nền tảng"
                             value={`-${formatCurrency(
                               Math.round((p.amount / 0.85) * 0.15),
                               p.currency,
                             )}`}
                           />
                           <DetailItem
-                            label="Net payout"
+                            label="Chi trả ròng"
                             value={formatCurrency(p.amount, p.currency)}
                             highlight
                           />
                           <DetailItem
-                            label="Settlement"
+                            label="Quyết toán"
                             value={new Date(
                               new Date(p.date).getTime() +
                                 3 * 24 * 60 * 60 * 1000,
-                            ).toLocaleDateString("en-US", {
+                            ).toLocaleDateString("vi-VN", {
                               month: "short",
                               day: "numeric",
                             })}
@@ -1344,11 +1346,11 @@ function PayoutTable({
                         <div className="flex items-center gap-2 mt-3">
                           <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors">
                             <FileText size={12} />
-                            Invoice PDF
+                            Hóa đơn PDF
                           </button>
                           <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors">
                             <Send size={12} />
-                            Send to email
+                            Gửi email
                           </button>
                         </div>
                       </td>
@@ -1397,26 +1399,26 @@ function DetailItem({
 const QUICK_ACTIONS = [
   {
     icon: ArrowDownToLine,
-    label: "Withdraw Funds",
-    desc: "Move to bank",
+    label: "Rút tiền",
+    desc: "Chuyển về ngân hàng",
     accent: "indigo" as const,
   },
   {
     icon: Download,
-    label: "Export CSV",
-    desc: "Last 12 months",
+    label: "Xuất CSV",
+    desc: "12 tháng gần nhất",
     accent: "violet" as const,
   },
   {
     icon: FileText,
-    label: "Tax Documents",
-    desc: "1099 & receipts",
+    label: "Hồ sơ thuế",
+    desc: "1099 & biên lai",
     accent: "amber" as const,
   },
   {
     icon: Receipt,
-    label: "View Invoices",
-    desc: "All transactions",
+    label: "Xem hóa đơn",
+    desc: "Tất cả giao dịch",
     accent: "emerald" as const,
   },
 ];
@@ -1443,7 +1445,7 @@ function QuickActionsPanel({
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
       <h3 className="text-[16px] font-semibold tracking-tight mb-3">
-        Quick Actions
+        Thao tác nhanh
       </h3>
       <div className="space-y-2">
         {QUICK_ACTIONS.map((q, i) => {
@@ -1451,7 +1453,7 @@ function QuickActionsPanel({
           return (
             <motion.button
               key={q.label}
-              onClick={q.label === "Withdraw Funds" ? onWithdraw : undefined}
+              onClick={q.label === "Rút tiền" ? onWithdraw : undefined}
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{

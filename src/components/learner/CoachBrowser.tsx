@@ -296,7 +296,7 @@ function Select({
 
 function CoachCard({ coach, index }: { coach: Coach; index: number }) {
   const [saved, setSaved] = useState(false);
-  const profileHref = `/learner/coaches/${coach.id}`;
+  const profileHref = `/coaches/${coach.id}`;
   const hasRating = coach.rating > 0 && coach.reviewCount > 0;
   const hasLocation = Boolean(coach.location?.trim());
   const isBookingFast = coach.activeLearners >= 24;

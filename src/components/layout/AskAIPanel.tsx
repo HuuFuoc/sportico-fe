@@ -81,7 +81,7 @@ export function AskAIPanel({ className }: { className?: string }) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your question..."
+            placeholder="Nhập câu hỏi của bạn..."
             className="flex-1 bg-transparent outline-none border-none text-body-sm"
           />
           <button

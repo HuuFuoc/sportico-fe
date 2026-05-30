@@ -7,7 +7,7 @@ interface CoachCardProps {
   coach: Coach;
   className?: string;
   showMatch?: boolean;
-  /** Make the entire card clickable. Defaults to `/learner/coaches/[id]`. */
+  /** Make the entire card clickable. Defaults to `/coaches/[id]`. */
   href?: string;
 }
 
@@ -17,7 +17,7 @@ export function CoachCard({
   showMatch = true,
   href,
 }: CoachCardProps) {
-  const link = href ?? `/learner/coaches/${coach.id}`;
+  const link = href ?? `/coaches/${coach.id}`;
   return (
     <Link
       href={link}

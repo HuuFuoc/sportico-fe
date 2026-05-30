@@ -5,7 +5,9 @@ import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn } from "@/lib/utils";
 import { useAppStore, type AppRole } from "@/lib/store/useAppStore";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 import { api } from "@/lib/api";
+import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 
 interface TopBarProps {
@@ -13,11 +15,24 @@ interface TopBarProps {
   title?: string;
 }
 
-function useCurrentUser() {
-  // TODO(auth): currentUserId comes from a hard-coded demo id (see @/lib/auth).
+function useCurrentUser(): { name: string; avatarUrl: string | null } | null {
+  const authUser = useAuthStore((s) => s.user);
   const id = useAppStore((s) => s.currentUserId);
-  const { data } = useApiResource(() => api.fetchUser(id), [id]);
-  return data;
+  const { data: mockUser } = useApiResource(
+    () => (isMockMode() ? api.fetchUser(id) : Promise.resolve(null)),
+    [id],
+  );
+
+  if (authUser) {
+    return {
+      name: authUser.fullName ?? "Người dùng",
+      avatarUrl: authUser.avatarUrl ?? null,
+    };
+  }
+  if (mockUser) {
+    return { name: mockUser.name, avatarUrl: mockUser.avatarUrl ?? null };
+  }
+  return null;
 }
 
 export function TopBar({ role, title }: TopBarProps) {
@@ -61,10 +76,10 @@ export function TopBar({ role, title }: TopBarProps) {
 
   const placeholder =
     role === "coach"
-      ? "Search learners or sessions..."
+      ? "Tìm học viên hoặc buổi tập..."
       : role === "admin"
-        ? "Search analytics or users..."
-        : "Search sessions or coaches...";
+        ? "Tìm phân tích hoặc người dùng..."
+        : "Tìm buổi tập hoặc HLV...";
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-surface-container-lowest border-b border-[var(--color-border-soft)] flex items-center justify-between px-4 sm:px-6 z-30">
@@ -190,7 +205,7 @@ export function TopBar({ role, title }: TopBarProps) {
         <div className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l sm:border-[var(--color-border-soft)]">
           <div className="hidden sm:block text-right leading-tight">
             <p className="text-body-sm font-medium text-on-surface">
-              {user?.name ?? "Guest"}
+              {user?.name ?? "Khách"}
             </p>
             <p className="text-[11px] text-on-surface-variant capitalize">
               {role}

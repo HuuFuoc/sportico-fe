@@ -71,22 +71,22 @@ const STATUS_META: Record<
   { label: string; pill: string; dot: string }
 > = {
   active: {
-    label: "Active",
+    label: "Đang hoạt động",
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
     dot: "bg-[#10b981]",
   },
   inactive: {
-    label: "Inactive",
+    label: "Không hoạt động",
     pill: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
     dot: "bg-on-surface-variant/40",
   },
   pending: {
-    label: "Pending",
+    label: "Đang chờ",
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     dot: "bg-[#f59e0b]",
   },
   flagged: {
-    label: "Flagged",
+    label: "Bị gắn cờ",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     dot: "bg-[#ef4444]",
   },
@@ -265,27 +265,27 @@ export default function AdminUsersPage() {
             <div className="flex items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
                 <Users size={11} />
-                User Administration
+                Quản trị người dùng
               </span>
               <span className="text-[12px] text-on-surface-variant">
-                {formatNumber(counts.total)} accounts on the platform
+                {formatNumber(counts.total)} tài khoản trên nền tảng
               </span>
             </div>
             <h1 className="text-[30px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
-              User Management
+              Quản lý người dùng
             </h1>
             <p className="text-[14px] text-on-surface-variant mt-1.5">
-              Review, manage, and moderate every account on Sportico.
+              Xem xét, quản lý và kiểm duyệt mọi tài khoản trên Sportico.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button className="h-11 px-4 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13.5px] font-medium transition-colors">
               <Download size={15} />
-              Export CSV
+              Xuất CSV
             </button>
             <button className="h-11 px-5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
               <UserPlus size={15} strokeWidth={2.5} />
-              Invite User
+              Mời người dùng
             </button>
           </div>
         </motion.header>
@@ -294,10 +294,10 @@ export default function AdminUsersPage() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <SummaryCard
             icon={Users}
-            label="Total Users"
+            label="Tổng người dùng"
             value={formatNumber(counts.total)}
             trend="+12%"
-            trendLabel="vs last month"
+            trendLabel="so tháng trước"
             accent="indigo"
             spark={seedSpark(1, counts.total / 5, 8)}
             delay={0.05}
@@ -305,10 +305,10 @@ export default function AdminUsersPage() {
           />
           <SummaryCard
             icon={UserCheck}
-            label="Active"
+            label="Đang hoạt động"
             value={formatNumber(counts.active)}
             trend="+8%"
-            trendLabel="this week"
+            trendLabel="tuần này"
             accent="emerald"
             spark={seedSpark(2, counts.active / 4, 6)}
             delay={0.1}
@@ -316,10 +316,10 @@ export default function AdminUsersPage() {
           />
           <SummaryCard
             icon={UserX}
-            label="Inactive"
+            label="Không hoạt động"
             value={formatNumber(counts.inactive)}
             trend="−4%"
-            trendLabel="re-engage"
+            trendLabel="cần tái kết nối"
             accent="neutral"
             spark={seedSpark(3, counts.inactive / 4, 5)}
             delay={0.15}
@@ -327,10 +327,10 @@ export default function AdminUsersPage() {
           />
           <SummaryCard
             icon={ShieldAlert}
-            label="Pending Review"
+            label="Đang chờ duyệt"
             value={formatNumber(counts.pending)}
-            trend={`${counts.pending} open`}
-            trendLabel="needs action"
+            trend={`${counts.pending} mở`}
+            trendLabel="cần xử lý"
             accent="amber"
             spark={seedSpark(4, counts.pending / 2 || 3, 3)}
             delay={0.2}
@@ -351,17 +351,17 @@ export default function AdminUsersPage() {
                     [
                       {
                         id: "all" as Tab,
-                        label: "All Users",
+                        label: "Tất cả",
                         count: allRows.length,
                       },
                       {
                         id: "learners" as Tab,
-                        label: "Learners",
+                        label: "Học viên",
                         count: learnersData.length,
                       },
                       {
                         id: "coaches" as Tab,
-                        label: "Coaches",
+                        label: "HLV",
                         count: coachesData.length,
                       },
                     ]
@@ -419,48 +419,48 @@ export default function AdminUsersPage() {
                         setQuery(e.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search by name or email…"
+                      placeholder="Tìm theo tên hoặc email…"
                       className="w-full h-10 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[13px] placeholder:text-on-surface-variant transition-all"
                     />
                   </div>
 
                   <FilterSelect
-                    label="Role"
+                    label="Vai trò"
                     value={roleFilter}
                     onChange={(v) => {
                       setRoleFilter(v as Role | "all");
                       setPage(1);
                     }}
                     options={[
-                      { value: "all", label: "All roles" },
-                      { value: "learner", label: "Learners" },
-                      { value: "coach", label: "Coaches" },
+                      { value: "all", label: "Tất cả vai trò" },
+                      { value: "learner", label: "Học viên" },
+                      { value: "coach", label: "HLV" },
                     ]}
                   />
                   <FilterSelect
-                    label="Status"
+                    label="Trạng thái"
                     value={statusFilter}
                     onChange={(v) => {
                       setStatusFilter(v as Status | "all");
                       setPage(1);
                     }}
                     options={[
-                      { value: "all", label: "All statuses" },
-                      { value: "active", label: "Active" },
-                      { value: "inactive", label: "Inactive" },
-                      { value: "pending", label: "Pending" },
-                      { value: "flagged", label: "Flagged" },
+                      { value: "all", label: "Tất cả trạng thái" },
+                      { value: "active", label: "Đang hoạt động" },
+                      { value: "inactive", label: "Không hoạt động" },
+                      { value: "pending", label: "Đang chờ" },
+                      { value: "flagged", label: "Bị gắn cờ" },
                     ]}
                   />
                   <FilterSelect
-                    label="Sort"
+                    label="Sắp xếp"
                     value={sortKey}
                     onChange={(v) => setSortKey(v as SortKey)}
                     options={[
-                      { value: "joinedAt", label: "Join date" },
-                      { value: "name", label: "Name" },
-                      { value: "activity", label: "Activity" },
-                      { value: "status", label: "Status" },
+                      { value: "joinedAt", label: "Ngày tham gia" },
+                      { value: "name", label: "Tên" },
+                      { value: "activity", label: "Hoạt động" },
+                      { value: "status", label: "Trạng thái" },
                     ]}
                   />
                   <button
@@ -494,19 +494,19 @@ export default function AdminUsersPage() {
                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--color-border-soft)]">
                         <ChipFilter
                           icon={Calendar}
-                          label="Join date"
-                          value="Any"
+                          label="Ngày tham gia"
+                          value="Bất kỳ"
                         />
                         <ChipFilter
                           icon={Clock}
-                          label="Last active"
-                          value="Any"
+                          label="Hoạt động cuối"
+                          value="Bất kỳ"
                         />
-                        <ChipFilter icon={Star} label="Rating" value="Any" />
+                        <ChipFilter icon={Star} label="Đánh giá" value="Bất kỳ" />
                         <ChipFilter
                           icon={Flag}
-                          label="Region"
-                          value="Worldwide"
+                          label="Khu vực"
+                          value="Toàn cầu"
                         />
                       </div>
                     </motion.div>
@@ -535,16 +535,16 @@ export default function AdminUsersPage() {
                       </th>
                       <th className="px-3 py-3 font-semibold">
                         <SortHeader
-                          label="User"
+                          label="Người dùng"
                           active={sortKey === "name"}
                           dir={sortDir}
                           onClick={() => handleSort("name")}
                         />
                       </th>
-                      <th className="px-3 py-3 font-semibold">Role</th>
+                      <th className="px-3 py-3 font-semibold">Vai trò</th>
                       <th className="px-3 py-3 font-semibold">
                         <SortHeader
-                          label="Joined"
+                          label="Tham gia"
                           active={sortKey === "joinedAt"}
                           dir={sortDir}
                           onClick={() => handleSort("joinedAt")}
@@ -552,7 +552,7 @@ export default function AdminUsersPage() {
                       </th>
                       <th className="px-3 py-3 font-semibold">
                         <SortHeader
-                          label="Activity"
+                          label="Hoạt động"
                           active={sortKey === "activity"}
                           dir={sortDir}
                           onClick={() => handleSort("activity")}
@@ -560,14 +560,14 @@ export default function AdminUsersPage() {
                       </th>
                       <th className="px-3 py-3 font-semibold">
                         <SortHeader
-                          label="Status"
+                          label="Trạng thái"
                           active={sortKey === "status"}
                           dir={sortDir}
                           onClick={() => handleSort("status")}
                         />
                       </th>
                       <th className="pr-5 sm:pr-6 pl-3 py-3 font-semibold text-right">
-                        Actions
+                        Thao tác
                       </th>
                     </tr>
                   </thead>
@@ -649,7 +649,7 @@ export default function AdminUsersPage() {
                                   : "bg-[#8b5cf6]/8 text-[#7c3aed] border-[#8b5cf6]/20",
                               )}
                             >
-                              {r.role === "coach" ? "Coach" : "Learner"}
+                              {r.role === "coach" ? "HLV" : "Học viên"}
                             </span>
                           </td>
                           <td className="px-3 py-3">
@@ -714,22 +714,22 @@ export default function AdminUsersPage() {
                             <div className="inline-flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                               <RowAction
                                 icon={Pencil}
-                                label="Edit"
+                                label="Chỉnh sửa"
                                 tone="default"
                               />
                               <RowAction
                                 icon={MessageCircle}
-                                label="Message"
+                                label="Nhắn tin"
                                 tone="default"
                               />
                               <RowAction
                                 icon={Ban}
-                                label="Deactivate"
+                                label="Vô hiệu hóa"
                                 tone="danger"
                               />
                               <RowAction
                                 icon={MoreHorizontal}
-                                label="More"
+                                label="Thêm"
                                 tone="default"
                               />
                             </div>
@@ -1144,13 +1144,13 @@ function Pagination({
           icon={ChevronsLeft}
           disabled={page === 1}
           onClick={() => setPage(1)}
-          label="First"
+          label="Đầu"
         />
         <PageNav
           icon={ChevronLeft}
           disabled={page === 1}
           onClick={() => setPage(page - 1)}
-          label="Previous"
+          label="Trước"
         />
         {pageList.map((p, i) =>
           p === "…" ? (
@@ -1179,13 +1179,13 @@ function Pagination({
           icon={ChevronRight}
           disabled={page === totalPages}
           onClick={() => setPage(page + 1)}
-          label="Next"
+          label="Sau"
         />
         <PageNav
           icon={ChevronsRight}
           disabled={page === totalPages}
           onClick={() => setPage(totalPages)}
-          label="Last"
+          label="Cuối"
         />
       </div>
     </div>
@@ -1247,18 +1247,18 @@ function BulkActionBar({
           </span>
           <div className="min-w-0">
             <p className="text-[13.5px] font-semibold leading-tight">
-              {count} selected
+              {count} đã chọn
             </p>
             <p className="text-[11px] text-white/60 truncate">
-              Apply a bulk action below
+              Áp dụng thao tác hàng loạt bên dưới
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <BulkBtn icon={Ban} label="Deactivate" />
-          <BulkBtn icon={Download} label="Export" />
-          <BulkBtn icon={MessageCircle} label="Message" />
-          <BulkBtn icon={Trash2} label="Delete" danger />
+          <BulkBtn icon={Ban} label="Vô hiệu hóa" />
+          <BulkBtn icon={Download} label="Xuất" />
+          <BulkBtn icon={MessageCircle} label="Nhắn tin" />
+          <BulkBtn icon={Trash2} label="Xóa" danger />
           <button
             onClick={onClear}
             aria-label="Clear selection"
@@ -1340,31 +1340,31 @@ function InsightsCard({
         <ul className="space-y-2">
           <InsightRow
             icon={UserX}
-            label="Inactive 30d+"
+            label="Không hoạt động 30d+"
             value={inactive}
             tone="neutral"
-            action="Re-engage"
+            action="Tái kết nối"
           />
           <InsightRow
             icon={Flag}
-            label="Flagged accounts"
+            label="Tài khoản bị gắn cờ"
             value={flagged}
             tone="danger"
-            action="Review"
+            action="Xem xét"
           />
           <InsightRow
             icon={ShieldAlert}
-            label="Suspicious activity"
+            label="Hoạt động đáng ngờ"
             value={2}
             tone="danger"
-            action="Investigate"
+            action="Điều tra"
           />
           <InsightRow
             icon={Clock}
-            label="Pending approval"
+            label="Đang chờ duyệt"
             value={pending}
             tone="warn"
-            action="Approve"
+            action="Duyệt"
           />
         </ul>
       </div>
@@ -1463,7 +1463,7 @@ function RecentJoins({
             <div className="flex-1 min-w-0">
               <p className="text-[12.5px] font-semibold truncate">{r.name}</p>
               <p className="text-[10.5px] text-on-surface-variant truncate">
-                {r.role === "coach" ? "Coach" : "Learner"} ·{" "}
+                {r.role === "coach" ? "HLV" : "Học viên"} ·{" "}
                 {relativeJoined(r.joinedAt)}
               </p>
             </div>
@@ -1486,20 +1486,20 @@ function QuickActions({ reduce }: { reduce: boolean }) {
   const items = [
     {
       icon: UserPlus,
-      label: "Invite User",
-      desc: "Send sign-up link",
+      label: "Mời người dùng",
+      desc: "Gửi link đăng ký",
       accent: "indigo" as const,
     },
     {
       icon: Download,
-      label: "Export List",
+      label: "Xuất danh sách",
       desc: "CSV · Excel",
       accent: "violet" as const,
     },
     {
       icon: ShieldAlert,
-      label: "Audit Log",
-      desc: "Recent actions",
+      label: "Nhật ký kiểm toán",
+      desc: "Thao tác gần đây",
       accent: "amber" as const,
     },
   ];
@@ -1516,7 +1516,7 @@ function QuickActions({ reduce }: { reduce: boolean }) {
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
       <h3 className="text-[15px] font-semibold tracking-tight mb-3">
-        Quick Actions
+        Thao tác nhanh
       </h3>
       <div className="space-y-2">
         {items.map((q, i) => {

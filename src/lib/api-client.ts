@@ -6,7 +6,7 @@
 // documented swap point) is built on top of it.
 // ============================================================================
 
-import { getAccessToken } from "@/lib/auth-token";
+import { getAccessToken, clearAuthTokens } from "@/lib/auth-token";
 
 /**
  * Base URL of the real backend — e.g. "https://api.sportico.app" or "/api".
@@ -111,6 +111,13 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      clearAuthTokens();
+      const redirect = encodeURIComponent(
+        window.location.pathname + window.location.search,
+      );
+      window.location.href = `/login?session=expired&redirect=${redirect}`;
+    }
     throw new ApiError(
       `Request to ${path} failed: ${res.status} ${res.statusText}`,
       res.status,

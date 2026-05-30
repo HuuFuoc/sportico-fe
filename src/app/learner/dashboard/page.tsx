@@ -11,6 +11,7 @@ import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
 import { AICoachCard } from "@/components/dashboard/AICoachCard";
 import { api } from "@/lib/api";
 import { devUserIdForRole } from "@/lib/auth";
+import { NOW } from "@/lib/mock/clock";
 import { cn, relativeDay } from "@/lib/utils";
 
 const SESSION_ACCENT: Record<string, string> = {
@@ -34,6 +35,15 @@ export default async function LearnerDashboardPage() {
 
   if (!learner) notFound();
 
+  const greetingHour = new Date(NOW).getHours();
+  const greeting =
+    greetingHour < 12 ? "Chào buổi sáng" : greetingHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+  const todayLabel = new Date(NOW).toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
   const coaches = [...allCoaches]
     .sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0))
     .slice(0, 3);
@@ -53,10 +63,10 @@ export default async function LearnerDashboardPage() {
         >
           <div>
             <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-on-surface sm:text-[31px]">
-              Good morning, {learner.name.split(" ")[0]}
+              {greeting}, {learner.name.split(" ")[0]}
             </h1>
             <p className="mt-1 text-[14px] text-on-surface-variant">
-              Friday · May 22 — here&apos;s your training snapshot for today.
+              {todayLabel} — đây là bản tóm tắt tập luyện hôm nay của bạn.
             </p>
           </div>
           <div className="flex gap-2.5">
@@ -65,14 +75,14 @@ export default async function LearnerDashboardPage() {
               className="inline-flex items-center gap-1.5 rounded-[9px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3.5 py-2.5 text-[13px] font-semibold text-on-surface transition-colors hover:border-primary/40 hover:text-primary"
             >
               <MaterialIcon name="monitoring" size={17} />
-              View progress
+              Xem tiến độ
             </Link>
             <Link
               href="/learner/coaches"
               className="inline-flex items-center gap-1.5 rounded-[9px] bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary shadow-[0_10px_24px_-12px_rgba(53,37,205,0.7)] transition-colors hover:bg-[#2d20b8]"
             >
               <MaterialIcon name="add" size={17} />
-              Book a session
+              Đặt buổi tập
             </Link>
           </div>
         </header>
@@ -102,7 +112,7 @@ export default async function LearnerDashboardPage() {
               <div>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  On track
+                  Đúng tiến độ
                 </span>
                 <p className="mt-2 text-[20px] font-semibold leading-tight text-white">
                   {wellness.readinessLabel}
@@ -125,14 +135,14 @@ export default async function LearnerDashboardPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-200">
-                      AI recommends
+                      AI đề xuất
                     </p>
                     <p className="mt-0.5 text-[15px] font-semibold text-white">
                       {wellness.recommendation.title}
                     </p>
                     <p className="mt-0.5 text-[12px] text-white/55">
-                      {wellness.recommendation.durationMin} min ·{" "}
-                      {wellness.recommendation.confidence}% confidence
+                      {wellness.recommendation.durationMin} phút ·{" "}
+                      {wellness.recommendation.confidence}% độ tin cậy
                     </p>
                   </div>
                 </div>
@@ -140,7 +150,7 @@ export default async function LearnerDashboardPage() {
                   href="/learner/schedule"
                   className="group inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[9px] bg-white px-4 py-2.5 text-[13px] font-semibold text-primary transition-transform hover:-translate-y-0.5"
                 >
-                  Start flow
+                  Bắt đầu
                   <MaterialIcon
                     name="arrow_forward"
                     size={15}
@@ -201,9 +211,9 @@ export default async function LearnerDashboardPage() {
         >
           <MetricCard
             icon="exercise"
-            label="Trained this week"
+            label="Tập luyện tuần này"
             value={weekMinutes}
-            unit="min"
+            unit="phút"
             delta={wellness.weeklyTrainingDelta}
             chart={
               <Sparkline
@@ -217,9 +227,9 @@ export default async function LearnerDashboardPage() {
           />
           <MetricCard
             icon="local_fire_department"
-            label="Day streak"
+            label="Chuỗi ngày"
             value={learner.streakDays ?? 0}
-            unit="days"
+            unit="ngày"
             chart={
               <div className="flex items-center gap-1.5">
                 {wellness.weeklyTraining.map((m, i) => (
@@ -236,9 +246,9 @@ export default async function LearnerDashboardPage() {
           />
           <MetricCard
             icon="timer"
-            label="Total hours"
+            label="Tổng giờ"
             value={learner.totalHoursTrained ?? 0}
-            unit="hrs"
+            unit="giờ"
             delta={12}
             chart={
               <Sparkline
@@ -252,7 +262,7 @@ export default async function LearnerDashboardPage() {
           />
           <MetricCard
             icon="cognition"
-            label="AI match rate"
+            label="Tỷ lệ khớp AI"
             value={learner.matchRate ?? 0}
             unit="%"
             right={
@@ -286,15 +296,15 @@ export default async function LearnerDashboardPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-[16px] font-semibold text-on-surface">
-                    Training activity
+                    Hoạt động tập luyện
                   </h2>
                   <p className="mt-0.5 text-[13px] text-on-surface-variant">
-                    Your consistency over the last 12 weeks
+                    Mức độ đều đặn trong 12 tuần qua
                   </p>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/8 px-2.5 py-1 text-[12px] font-semibold text-primary">
                   <MaterialIcon name="bolt" filled size={12} />
-                  {learner.streakDays}-day streak
+                  {learner.streakDays} ngày liên tiếp
                 </span>
               </div>
               <div className="mt-5 flex flex-1 items-center">
@@ -312,17 +322,17 @@ export default async function LearnerDashboardPage() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-[19px] font-semibold tracking-[-0.01em] text-on-surface">
-                Recommended for you
+                Đề xuất cho bạn
               </h2>
               <p className="mt-0.5 text-[13px] text-on-surface-variant">
-                Coaches the AI ranked highest for your goals
+                HLV được AI xếp hạng cao nhất cho mục tiêu của bạn
               </p>
             </div>
             <Link
               href="/learner/coaches"
               className="group inline-flex items-center gap-1 text-[13px] font-semibold text-primary"
             >
-              View all matches
+              Xem tất cả
               <MaterialIcon
                 name="arrow_forward"
                 size={15}
@@ -345,17 +355,17 @@ export default async function LearnerDashboardPage() {
           <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-4">
             <div>
               <h2 className="text-[16px] font-semibold text-on-surface">
-                Upcoming sessions
+                Buổi tập sắp tới
               </h2>
               <p className="mt-0.5 text-[13px] text-on-surface-variant">
-                {upcoming.length} scheduled this week
+                {upcoming.length} buổi trong tuần này
               </p>
             </div>
             <Link
               href="/learner/schedule"
               className="group inline-flex items-center gap-1 text-[13px] font-semibold text-primary"
             >
-              View calendar
+              Xem lịch
               <MaterialIcon
                 name="arrow_forward"
                 size={15}
@@ -373,10 +383,10 @@ export default async function LearnerDashboardPage() {
                 />
               </div>
               <p className="mt-3 text-[15px] font-semibold text-on-surface">
-                No sessions scheduled
+                Chưa có buổi tập nào
               </p>
               <p className="mt-1 text-[13px] text-on-surface-variant">
-                Book a session to keep your streak going.
+                Đặt buổi tập để duy trì chuỗi ngày.
               </p>
             </div>
           ) : (
@@ -420,7 +430,7 @@ export default async function LearnerDashboardPage() {
                       href={`/learner/schedule`}
                       className="inline-flex shrink-0 items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] px-3 py-2 text-[12.5px] font-semibold text-on-surface transition-colors hover:border-primary/40 hover:text-primary"
                     >
-                      Details
+                      Chi tiết
                     </Link>
                   </li>
                 );

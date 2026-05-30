@@ -8,7 +8,7 @@ export function CoachShowcaseCard({ coach }: { coach: Coach }) {
 
   return (
     <Link
-      href={`/learner/coaches/${coach.id}`}
+      href={`/coaches/${coach.id}`}
       className="group flex flex-col rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/30 hover:shadow-[0_26px_55px_-26px_rgba(53,37,205,0.4)]"
     >
       {/* header */}

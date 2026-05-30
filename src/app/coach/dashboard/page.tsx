@@ -42,6 +42,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { api } from "@/lib/api";
 import { devUserIdForRole } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/auth-session";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 // NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
@@ -61,13 +62,13 @@ function seedSpark(seed: number, base: number, jitter: number, len = 8) {
 }
 
 const WEEK_BARS = [
-  { day: "Mon", sessions: 4 },
-  { day: "Tue", sessions: 6 },
-  { day: "Wed", sessions: 3 },
-  { day: "Thu", sessions: 7 },
-  { day: "Fri", sessions: 5 },
-  { day: "Sat", sessions: 8 },
-  { day: "Sun", sessions: 2 },
+  { day: "T2", sessions: 4 },
+  { day: "T3", sessions: 6 },
+  { day: "T4", sessions: 3 },
+  { day: "T5", sessions: 7 },
+  { day: "T6", sessions: 5 },
+  { day: "T7", sessions: 8 },
+  { day: "CN", sessions: 2 },
 ];
 
 const EARNINGS_TREND = [
@@ -81,15 +82,16 @@ const EARNINGS_TREND = [
 ];
 
 const ENGAGEMENT_SEGMENTS = [
-  { name: "Active", value: 18, color: "#4f46e5" },
-  { name: "Engaged", value: 9, color: "#8b5cf6" },
-  { name: "At risk", value: 5, color: "#f59e0b" },
-  { name: "Inactive", value: 3, color: "#94a3b8" },
+  { name: "Đang hoạt động", value: 18, color: "#4f46e5" },
+  { name: "Tích cực", value: 9, color: "#8b5cf6" },
+  { name: "Có nguy cơ", value: 5, color: "#f59e0b" },
+  { name: "Không hoạt động", value: 3, color: "#94a3b8" },
 ];
 
 export default function CoachDashboardPage() {
-  // TODO(auth): hard-coded current coach until real session auth lands.
-  const coachId = devUserIdForRole("coach");
+  // Use the real user ID from the JWT when in live mode; fall back to the
+  // dev hard-code so mock mode (no NEXT_PUBLIC_API_BASE_URL) keeps working.
+  const coachId = getCurrentUserId() ?? devUserIdForRole("coach");
   const { data, loading, error, refetch } = useApiResource(
     () =>
       Promise.all([
@@ -121,7 +123,7 @@ export default function CoachDashboardPage() {
   const followUpCount = 3;
   const hour = new Date(NOW).getHours();
   const greeting =
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
 
   if (loading) {
     return (
@@ -155,10 +157,10 @@ export default function CoachDashboardPage() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             icon={Users}
-            label="Active Learners"
+            label="Học viên đang hoạt động"
             value={coach.activeLearners}
             trend="+12%"
-            trendLabel="vs last month"
+            trendLabel="so tháng trước"
             accent="indigo"
             spark={seedSpark(1, 18, 4)}
             delay={0.05}
@@ -166,10 +168,10 @@ export default function CoachDashboardPage() {
           />
           <StatCard
             icon={CalendarPlus}
-            label="Sessions This Week"
+            label="Buổi tập tuần này"
             value={upcoming.length}
-            trend="Steady"
-            trendLabel="on track"
+            trend="Ổn định"
+            trendLabel="đúng tiến độ"
             accent="violet"
             spark={seedSpark(2, 5, 3)}
             delay={0.1}
@@ -177,9 +179,9 @@ export default function CoachDashboardPage() {
           />
           <StatCard
             icon={Star}
-            label="Avg Rating"
+            label="Đánh giá TB"
             value={coach.rating.toFixed(1)}
-            trend={`${coach.reviewCount} reviews`}
+            trend={`${coach.reviewCount} đánh giá`}
             accent="amber"
             spark={seedSpark(3, 4.7, 0.2)}
             delay={0.15}
@@ -187,10 +189,10 @@ export default function CoachDashboardPage() {
           />
           <StatCard
             icon={DollarSign}
-            label="Monthly Earnings"
+            label="Thu nhập tháng"
             value={formatCurrency(coach.totalEarningsThisMonth ?? 0)}
             trend="+8%"
-            trendLabel="vs last month"
+            trendLabel="so tháng trước"
             accent="emerald"
             spark={seedSpark(4, 3200, 400)}
             delay={0.2}
@@ -205,9 +207,9 @@ export default function CoachDashboardPage() {
             {/* Analytics row */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnalyticsCard
-                title="Sessions"
-                subtitle="This week"
-                badge={`${WEEK_BARS.reduce((a, b) => a + b.sessions, 0)} total`}
+                title="Buổi tập"
+                subtitle="Tuần này"
+                badge={`${WEEK_BARS.reduce((a, b) => a + b.sessions, 0)} tổng`}
                 delay={0.25}
                 reduce={reduce ?? false}
               >
@@ -215,9 +217,9 @@ export default function CoachDashboardPage() {
               </AnalyticsCard>
 
               <AnalyticsCard
-                title="Earnings"
-                subtitle="7-month trend"
-                badge="+18% YoY"
+                title="Thu nhập"
+                subtitle="Xu hướng 7 tháng"
+                badge="+18% so năm ngoái"
                 badgeTone="success"
                 delay={0.3}
                 reduce={reduce ?? false}
@@ -226,8 +228,8 @@ export default function CoachDashboardPage() {
               </AnalyticsCard>
 
               <AnalyticsCard
-                title="Engagement"
-                subtitle="Learner status"
+                title="Tương tác"
+                subtitle="Trạng thái học viên"
                 delay={0.35}
                 reduce={reduce ?? false}
                 className="md:col-span-2 xl:col-span-1"
@@ -299,7 +301,7 @@ function Hero({
           <div className="flex items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
               <Sparkles size={11} />
-              Coach Dashboard
+              Bảng điều khiển
             </span>
             <span className="text-[12px] text-on-surface-variant">
               {new Date(NOW).toLocaleDateString("en-US", {
@@ -314,15 +316,15 @@ function Hero({
             <span className="inline-block">👋</span>
           </h1>
           <p className="text-[14.5px] sm:text-[15px] text-on-surface-variant mt-2 max-w-2xl leading-relaxed">
-            You have{" "}
+            Bạn có{" "}
             <span className="text-on-surface font-semibold">
-              {todayCount} session{todayCount === 1 ? "" : "s"}
+              {todayCount} buổi tập
             </span>{" "}
-            today and{" "}
+            hôm nay và{" "}
             <span className="text-[#b95000] font-semibold">
-              {followUpCount} learners
+              {followUpCount} học viên
             </span>{" "}
-            need follow-up.
+            cần theo dõi.
           </p>
         </div>
 
@@ -332,14 +334,14 @@ function Hero({
             className="hidden sm:inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13.5px] font-medium transition-colors"
           >
             <MessageCircle size={15} />
-            Messages
+            Tin nhắn
           </Link>
           <Link
             href="/coach/schedule"
             className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus size={16} strokeWidth={2.5} />
-            New Session
+            Buổi mới
           </Link>
         </div>
       </div>
@@ -585,7 +587,7 @@ function SessionsBarChart({ reduce }: { reduce: boolean }) {
                       {p.day}
                     </p>
                     <p className="text-[14px] font-bold tabular-nums">
-                      {p.sessions} sessions
+                      {p.sessions} buổi
                     </p>
                   </div>
                 );
@@ -714,7 +716,7 @@ function EngagementDonut({ reduce }: { reduce: boolean }) {
             {pct}%
           </p>
           <p className="text-[9px] uppercase tracking-wider font-medium text-on-surface-variant mt-0.5">
-            Active
+            Hoạt động
           </p>
         </div>
       </div>
@@ -759,19 +761,19 @@ function TodaySchedule({
       <div className="flex items-end justify-between mb-4">
         <div>
           <h3 className="text-[18px] font-semibold tracking-tight">
-            Today&apos;s Schedule
+            Lịch hôm nay
           </h3>
           <p className="text-[12.5px] text-on-surface-variant mt-0.5">
             {sessions.length === 0
-              ? "Open block — perfect for plan drafting"
-              : `${sessions.length} session${sessions.length === 1 ? "" : "s"} scheduled`}
+              ? "Khối trống — lý tưởng để lập kế hoạch"
+              : `${sessions.length} buổi đã lên lịch`}
           </p>
         </div>
         <Link
           href="/coach/schedule"
           className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
         >
-          Calendar
+          Lịch
           <ChevronRight size={13} />
         </Link>
       </div>
@@ -806,23 +808,23 @@ function CompactEmptyToday() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-semibold leading-tight">
-          No sessions today 🎉
+          Hôm nay không có buổi 🎉
         </p>
         <p className="text-[12.5px] text-on-surface-variant mt-1">
-          A clear day — use it to draft plans or check in with learners.
+          Ngày trống — dùng để lập kế hoạch hoặc liên hệ học viên.
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-95 transition-all">
           <Plus size={13} strokeWidth={2.5} />
-          Create Plan
+          Tạo kế hoạch
         </button>
         <Link
           href="/coach/messages"
           className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
         >
           <MessageCircle size={13} />
-          Message
+          Nhắn tin
         </Link>
       </div>
     </div>
@@ -880,7 +882,7 @@ function TodayRow({
           {isOnline ? (
             <span className="inline-flex items-center gap-1 text-primary">
               <Video size={11} />
-              Online
+              Trực tuyến
             </span>
           ) : session.location ? (
             <span className="inline-flex items-center gap-1">
@@ -893,13 +895,13 @@ function TodayRow({
 
       <div className="hidden sm:flex items-center gap-2">
         <button className="h-9 px-3.5 rounded-lg border border-[var(--color-border-soft)] text-[12.5px] font-medium hover:bg-surface-container-low transition-colors">
-          Prepare
+          Chuẩn bị
         </button>
         <Link
           href={`/coach/session/${session.id}`}
           className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-95 transition-all"
         >
-          Join
+          Tham gia
           <Video size={12} />
         </Link>
       </div>
@@ -915,10 +917,10 @@ function learnerRisk(l: Learner): {
   tag: string;
   tone: "warn" | "good" | "neutral";
 } {
-  if (l.streakDays >= 7) return { tag: "Streaking", tone: "good" };
-  if (l.streakDays === 0) return { tag: "Inactive", tone: "warn" };
-  if (l.totalHoursTrained < 10) return { tag: "New", tone: "neutral" };
-  return { tag: "On track", tone: "good" };
+  if (l.streakDays >= 7) return { tag: "Chuỗi tốt", tone: "good" };
+  if (l.streakDays === 0) return { tag: "Không hoạt động", tone: "warn" };
+  if (l.totalHoursTrained < 10) return { tag: "Mới", tone: "neutral" };
+  return { tag: "Đúng tiến độ", tone: "good" };
 }
 
 function RecentLearners({
@@ -938,17 +940,17 @@ function RecentLearners({
       <div className="flex items-end justify-between mb-4">
         <div>
           <h3 className="text-[18px] font-semibold tracking-tight">
-            Recent Learners
+            Học viên gần đây
           </h3>
           <p className="text-[12.5px] text-on-surface-variant mt-0.5">
-            Quick check-ins and follow-ups
+            Kiểm tra và theo dõi nhanh
           </p>
         </div>
         <Link
           href="/coach/learners"
           className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
         >
-          All learners
+          Tất cả học viên
           <ChevronRight size={13} />
         </Link>
       </div>
@@ -1028,7 +1030,7 @@ function LearnerCard({
             </span>
             <span className="inline-flex items-center gap-1">
               <Flame size={10} className="text-[#ff7a3d]" />
-              {learner.streakDays}d streak
+              {learner.streakDays} ngày liên tiếp
             </span>
           </div>
         </div>
@@ -1040,14 +1042,14 @@ function LearnerCard({
           className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors"
         >
           <MessageCircle size={12} />
-          Message
+          Nhắn tin
         </Link>
         <Link
           href="/coach/schedule"
           className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12px] font-semibold shadow-[0_3px_8px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_12px_-2px_rgba(53,37,205,0.55)] transition-all"
         >
           <CalendarPlus size={12} />
-          Schedule
+          Lên lịch
         </Link>
       </div>
     </motion.article>
@@ -1078,7 +1080,7 @@ function AICoachCard({
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-            Sportico AI · Coaching Insight
+            Sportico AI · Phân tích Coaching
           </span>
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
@@ -1095,13 +1097,13 @@ function AICoachCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[14.5px] leading-snug font-semibold text-on-surface">
-              <span className="text-[#b95000]">{inactiveCount} learners</span>{" "}
-              inactive for 14+ days.
+              <span className="text-[#b95000]">{inactiveCount} học viên</span>{" "}
+              không hoạt động 14+ ngày.
             </p>
             <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-1">
-              A personalized check-in lifts re-engagement by{" "}
-              <span className="text-on-surface font-medium">32%</span>. I&apos;ll
-              draft messages tuned to each learner&apos;s goal.
+              Một tin nhắn cá nhân hóa giúp tăng tái tương tác lên{" "}
+              <span className="text-on-surface font-medium">32%</span>. AI sẽ
+              soạn thảo tin nhắn phù hợp với mục tiêu từng học viên.
             </p>
           </div>
         </div>
@@ -1109,28 +1111,28 @@ function AICoachCard({
         <div className="flex items-center gap-2">
           <button className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all">
             <Send size={13} />
-            Send Now
+            Gửi ngay
           </button>
           <button className="h-10 px-4 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-lowest text-[12.5px] font-medium transition-colors">
-            Preview
+            Xem trước
           </button>
         </div>
 
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-primary/10 text-[11px]">
           <div className="flex items-center gap-1.5">
             <Users size={12} className="text-primary" />
-            <span className="text-on-surface-variant">Reach</span>
+            <span className="text-on-surface-variant">Tiếp cận</span>
             <span className="font-semibold">{inactiveCount}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Target size={12} className="text-[#10b981]" />
-            <span className="text-on-surface-variant">Win-back</span>
+            <span className="text-on-surface-variant">Thu hút lại</span>
             <span className="font-semibold">+32%</span>
           </div>
           <div className="flex items-center gap-1.5">
             <AlertTriangle size={12} className="text-[#f59e0b]" />
-            <span className="text-on-surface-variant">Priority</span>
-            <span className="font-semibold">High</span>
+            <span className="text-on-surface-variant">Ưu tiên</span>
+            <span className="font-semibold">Cao</span>
           </div>
         </div>
       </div>
@@ -1160,22 +1162,22 @@ function UpcomingSessions({
     >
       <div className="px-5 pt-5 pb-2 flex items-center justify-between">
         <h3 className="text-[16px] font-semibold tracking-tight">
-          Upcoming This Week
+          Lịch tuần này
         </h3>
         <Link
           href="/coach/schedule"
           className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
         >
-          Manage
+          Quản lý
           <ChevronRight size={12} />
         </Link>
       </div>
       <div className="px-3 pb-3 space-y-1.5">
         {sessions.length === 0 ? (
           <div className="text-center py-8 px-4">
-            <p className="text-[13px] font-medium">No upcoming sessions</p>
+            <p className="text-[13px] font-medium">Không có buổi sắp tới</p>
             <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-              Block out time to take new bookings.
+              Đặt lịch để nhận đặt chỗ mới.
             </p>
           </div>
         ) : (
@@ -1262,29 +1264,29 @@ function UpcomingRow({
 const QUICK_ACTIONS = [
   {
     icon: CalendarPlus,
-    label: "New Session",
-    desc: "Create booking",
+    label: "Buổi mới",
+    desc: "Tạo đặt lịch",
     href: "/coach/schedule",
     accent: "indigo" as const,
   },
   {
     icon: Zap,
-    label: "AI Plan",
-    desc: "Generate workout",
+    label: "Kế hoạch AI",
+    desc: "Tạo bài tập",
     href: "#",
     accent: "violet" as const,
   },
   {
     icon: MessageCircle,
-    label: "Messages",
-    desc: "Reply queue",
+    label: "Tin nhắn",
+    desc: "Hàng đợi phản hồi",
     href: "/coach/messages",
     accent: "emerald" as const,
   },
   {
     icon: Compass,
-    label: "Learners",
-    desc: "Manage roster",
+    label: "Học viên",
+    desc: "Quản lý danh sách",
     href: "/coach/learners",
     accent: "amber" as const,
   },
@@ -1306,7 +1308,7 @@ function QuickActions({ reduce }: { reduce: boolean }) {
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
       <h3 className="text-[16px] font-semibold tracking-tight mb-3">
-        Quick Actions
+        Thao tác nhanh
       </h3>
       <div className="grid grid-cols-2 gap-2.5">
         {QUICK_ACTIONS.map((q, i) => {

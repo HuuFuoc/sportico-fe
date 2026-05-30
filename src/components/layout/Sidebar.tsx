@@ -31,8 +31,6 @@ const LEARNER_NAV: NavGroup[] = [
   {
     label: "Tập luyện",
     items: [
-      { href: "/learner/coaches", label: "Tìm HLV", icon: "search" },
-      { href: "/learner/ai-match", label: "Ghép nối AI", icon: "auto_awesome" },
       { href: "/learner/schedule", label: "Lịch tập", icon: "calendar_today" },
     ],
   },

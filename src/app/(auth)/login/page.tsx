@@ -49,6 +49,11 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Show a notice when the user was redirected here because their session expired.
+  const sessionExpired =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("session") === "expired";
+
   const {
     register,
     handleSubmit,
@@ -94,7 +99,10 @@ export default function LoginPage() {
       }
 
       setRole(role);
-      router.push(postLoginHref(role));
+      // Honour ?redirect= set by the 401 interceptor (internal paths only).
+      const sp = new URLSearchParams(window.location.search);
+      const dest = sp.get("redirect");
+      router.push(dest && dest.startsWith("/") ? dest : postLoginHref(role));
     } catch (err) {
       setServerError(
         err instanceof AuthError
@@ -117,6 +125,12 @@ export default function LoginPage() {
         }
       >
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          {sessionExpired && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3.5 py-3 text-[13px] text-amber-800">
+              Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.
+            </div>
+          )}
+
           <AuthInput
             label="Email"
             type="email"

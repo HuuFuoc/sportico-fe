@@ -182,7 +182,7 @@ export default function AdminRevenuePage() {
         riskScore: p.status === "failed" ? 78 : p.status === "pending" ? 42 : 18,
         aiFlag: p.status === "failed" || i === 2,
         failureReason:
-          p.status === "failed" ? "Account closed (R02)" : undefined,
+          p.status === "failed" ? "Tài khoản đóng (R02)" : undefined,
         ageHours:
           p.status === "pending"
             ? 28 + i * 2
@@ -273,18 +273,18 @@ export default function AdminRevenuePage() {
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10.5px] font-semibold border border-primary/15">
                 <CircleDollarSign size={10} />
-                Finance Ops Console
+                Quản lý tài chính
               </span>
               <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#1f7a4d]">
                 <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                Live · last sync 14s ago
+                Trực tiếp · đồng bộ 14 giây trước
               </span>
             </div>
             <h1 className="text-[26px] sm:text-[30px] leading-[1.1] font-bold tracking-tight">
-              Revenue &amp; Payouts
+              Doanh thu &amp; Thanh toán
             </h1>
             <p className="text-[13px] text-on-surface-variant mt-1">
-              Cash movement, rail performance, and payout operations.
+              Dòng tiền, hiệu suất kênh thanh toán và vận hành chi trả.
             </p>
           </div>
 
@@ -317,17 +317,17 @@ export default function AdminRevenuePage() {
                 </button>
               ))}
             </div>
-            <ToolbarBtn icon={CalendarRange} label="Custom" />
+            <ToolbarBtn icon={CalendarRange} label="Tùy chỉnh" />
             <ToolbarBtn icon={Globe} label="USD" caret />
             <ToolbarBtn icon={RefreshCw} ariaLabel="Refresh" />
             <ToolbarBtn icon={Settings2} ariaLabel="Settings" />
             <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-semibold transition-colors">
               <Download size={12} />
-              Export
+              Xuất
             </button>
             <button className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md bg-primary text-on-primary text-[12px] font-semibold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.35)] hover:bg-[#3a2db5] transition-colors">
               <Play size={11} strokeWidth={2.5} />
-              Run Payout Batch
+              Chạy lô thanh toán
             </button>
           </div>
         </motion.header>
@@ -335,60 +335,60 @@ export default function AdminRevenuePage() {
         {/* ============ KPI STRIP ============ */}
         <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-[var(--color-border-soft)] rounded-[12px] border border-[var(--color-border-soft)] overflow-hidden">
           <Kpi
-            label="Gross Volume"
+            label="Tổng khối lượng"
             value={formatCurrency(GROSS_VOLUME)}
             delta={`+${pctDelta(last.revenue, prev.revenue)}%`}
             deltaDir="up"
-            compare="vs prev month"
+            compare="so tháng trước"
             spark={seedSpark(1, 600000, 80000)}
             tone="neutral"
-            insight="Trending above 90-day average."
+            insight="Đang cao hơn mức trung bình 90 ngày."
           />
           <Kpi
-            label="Net Revenue"
+            label="Doanh thu ròng"
             value={formatCurrency(NET_REVENUE)}
             delta={`+${pctDelta(last.fees, prev.fees)}%`}
             deltaDir="up"
-            compare="vs prev month"
+            compare="so tháng trước"
             spark={seedSpark(2, 90000, 12000)}
             tone="good"
           />
           <Kpi
-            label="Platform Margin"
+            label="Biên lợi nhuận"
             value={`${PLATFORM_MARGIN.toFixed(1)}%`}
             delta="−0.4 bps"
             deltaDir="down"
-            compare="QoQ compression"
+            compare="nén QoQ"
             spark={seedSparkVar(3, 15.2, 0.4)}
             tone="warn"
-            insight="Slight compression — investigate ACH rail cost."
+            insight="Nén nhẹ — kiểm tra chi phí kênh ACH."
           />
           <Kpi
-            label="Pending Liability"
+            label="Nợ đang chờ"
             value={formatCurrency(PENDING_LIABILITY)}
             delta="14 tx"
             deltaDir="neutral"
-            compare="in flight"
+            compare="đang xử lý"
             spark={seedSpark(4, 120000, 18000)}
             tone="neutral"
           />
           <Kpi
-            label="Failed Payout Rate"
+            label="Tỷ lệ thất bại"
             value={`${FAILED_RATE.toFixed(2)}%`}
             delta="+18%"
             deltaDir="up"
-            compare="vs 7d avg"
+            compare="so TB 7 ngày"
             spark={seedSparkVar(5, 1.6, 0.6)}
             tone="danger"
-            insight="Spike on ACH rail — investigate"
+            insight="Tăng đột biến kênh ACH — cần điều tra"
             anomaly
           />
           <Kpi
-            label="Reserve Exposure"
+            label="Rủi ro dự trữ"
             value={formatCurrency(RESERVE_EXPOSURE)}
             delta="0.9x"
             deltaDir="neutral"
-            compare="coverage ratio"
+            compare="tỷ lệ bảo phủ"
             spark={seedSpark(6, 85000, 6000)}
             tone="good"
           />
@@ -605,20 +605,20 @@ function CashflowChart({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-[14px] font-semibold tracking-tight">
-              Cashflow Movement
+              Luồng tiền
             </h3>
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#ffdad6] text-[10px] font-bold text-[#ba1a1a]">
-              <AlertTriangle size={9} />2 anomalies
+              <AlertTriangle size={9} />2 bất thường
             </span>
           </div>
           <p className="text-[11px] text-on-surface-variant mt-0.5">
-            Revenue · Net payouts · Failed rate %
+            Doanh thu · Thanh toán ròng · Tỷ lệ thất bại %
           </p>
         </div>
         <div className="flex items-center gap-3 text-[11px]">
-          <LegendDot color="#4f46e5" label="Revenue" filled />
-          <LegendDot color="#94a3b8" label="Payouts" filled />
-          <LegendDot color="#ef4444" label="Failed %" line />
+          <LegendDot color="#4f46e5" label="Doanh thu" filled />
+          <LegendDot color="#94a3b8" label="Thanh toán" filled />
+          <LegendDot color="#ef4444" label="Thất bại %" line />
         </div>
       </div>
 
@@ -682,7 +682,7 @@ function CashflowChart({
                 strokeDasharray="3 3"
                 strokeOpacity={0.4}
                 label={{
-                  value: "Threshold 2.0%",
+                  value: "Ngưỡng 2.0%",
                   position: "insideRight",
                   fontSize: 9,
                   fill: "#ef4444",
@@ -791,23 +791,23 @@ function CashflowTooltip({
       <div className="space-y-1 text-[11px]">
         <Row
           color="#4f46e5"
-          label="Revenue"
+          label="Doanh thu"
           value={formatCurrency(d.revenue)}
         />
         <Row
           color="#94a3b8"
-          label="Payouts"
+          label="Thanh toán"
           value={formatCurrency(d.payouts)}
         />
         <Row
           color="#10b981"
-          label="Net fees"
+          label="Phí ròng"
           value={formatCurrency(d.fees)}
         />
         <div className="pt-1 mt-1 border-t border-[var(--color-border-soft)]">
           <Row
             color="#ef4444"
-            label="Failed rate"
+            label="Tỷ lệ thất bại"
             value={`${d.failedRate.toFixed(2)}%`}
             warn={d.failedRate > 2}
           />
@@ -894,14 +894,14 @@ function RailPerformance({ reduce }: { reduce: boolean }) {
         <div>
           <h3 className="text-[14px] font-semibold tracking-tight inline-flex items-center gap-1.5">
             <Layers size={13} className="text-primary" />
-            Payout Rail Performance
+            Hiệu suất kênh thanh toán
           </h3>
           <p className="text-[11px] text-on-surface-variant mt-0.5">
-            Volume · success rate · settlement latency
+            Khối lượng · tỷ lệ thành công · độ trễ quyết toán
           </p>
         </div>
         <button className="text-[11px] font-medium text-primary hover:underline inline-flex items-center gap-0.5">
-          Details
+          Chi tiết
           <ChevronRight size={11} />
         </button>
       </div>
@@ -909,11 +909,11 @@ function RailPerformance({ reduce }: { reduce: boolean }) {
       <table className="w-full text-left">
         <thead className="bg-surface-container-low/30 border-b border-[var(--color-border-soft)] text-[10px] uppercase tracking-wider text-on-surface-variant">
           <tr>
-            <th className="px-4 py-2 font-semibold">Rail</th>
-            <th className="px-3 py-2 font-semibold text-right">Volume</th>
-            <th className="px-3 py-2 font-semibold text-right">Success</th>
-            <th className="px-3 py-2 font-semibold text-right">Settle</th>
-            <th className="px-4 py-2 font-semibold">Status</th>
+            <th className="px-4 py-2 font-semibold">Kênh</th>
+            <th className="px-3 py-2 font-semibold text-right">Khối lượng</th>
+            <th className="px-3 py-2 font-semibold text-right">Thành công</th>
+            <th className="px-3 py-2 font-semibold text-right">Quyết toán</th>
+            <th className="px-4 py-2 font-semibold">Trạng thái</th>
           </tr>
         </thead>
         <tbody>
@@ -972,10 +972,10 @@ function RailPerformance({ reduce }: { reduce: boolean }) {
                       )}
                     />
                     {healthy
-                      ? "Healthy"
+                      ? "Ổn định"
                       : warn
-                        ? "Degraded"
-                        : "Issue"}
+                        ? "Giảm hiệu năng"
+                        : "Sự cố"}
                   </span>
                 </td>
               </tr>
@@ -995,33 +995,33 @@ function SettlementTimeline({ reduce }: { reduce: boolean }) {
   const items = [
     {
       id: 1,
-      label: "Batch #20460 settled",
-      meta: "ACH · 42 payouts · $84,200",
-      time: "2h ago",
+      label: "Đã thanh toán lô #20460",
+      meta: "ACH · 42 khoản · $84,200",
+      time: "2 giờ trước",
       tone: "good" as const,
       icon: ArrowUpRight,
     },
     {
       id: 2,
-      label: "Wire rail reconciled",
-      meta: "12 payouts · $42,500",
-      time: "5h ago",
+      label: "Đã đối soát Wire",
+      meta: "12 khoản · $42,500",
+      time: "5 giờ trước",
       tone: "good" as const,
       icon: ArrowUpRight,
     },
     {
       id: 3,
-      label: "Failed payout batch",
-      meta: "ACH R02 · 3 payouts",
-      time: "9h ago",
+      label: "Lô thanh toán thất bại",
+      meta: "ACH R02 · 3 khoản",
+      time: "9 giờ trước",
       tone: "danger" as const,
       icon: XCircle,
     },
     {
       id: 4,
-      label: "Reserve refilled",
+      label: "Nạp lại quỹ dự trữ",
       meta: "Treasury sweep · $200K",
-      time: "1d ago",
+      time: "1 ngày trước",
       tone: "info" as const,
       icon: ArrowDownLeft,
     },
@@ -1036,7 +1036,7 @@ function SettlementTimeline({ reduce }: { reduce: boolean }) {
       <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
         <h3 className="text-[14px] font-semibold tracking-tight inline-flex items-center gap-1.5">
           <Activity size={13} className="text-primary" />
-          Settlement Activity
+          Hoạt động thanh toán
         </h3>
         <span className="text-[10.5px] text-on-surface-variant">24h</span>
       </div>
@@ -1089,22 +1089,22 @@ const STATUS_META: Record<
   { label: string; pill: string; dot: string }
 > = {
   paid: {
-    label: "Paid",
+    label: "Đã trả",
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
     dot: "bg-[#10b981]",
   },
   pending: {
-    label: "Pending",
+    label: "Đang chờ",
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     dot: "bg-[#f59e0b]",
   },
   processing: {
-    label: "Processing",
+    label: "Đang xử lý",
     pill: "bg-primary/10 text-primary border-primary/20",
     dot: "bg-primary",
   },
   failed: {
-    label: "Failed",
+    label: "Thất bại",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     dot: "bg-[#ef4444]",
   },
@@ -1139,22 +1139,22 @@ function PayoutTable({
 }) {
   const coachById = useContext(CoachLookupContext);
   const FILTERS: { id: typeof filter; label: string; count?: number }[] = [
-    { id: "all", label: "All", count: payouts.length },
+    { id: "all", label: "Tất cả", count: payouts.length },
     {
       id: "needs_action",
-      label: "Needs action",
+      label: "Cần xử lý",
       count: payouts.filter(
         (p) => p.status === "failed" || p.status === "pending",
       ).length,
     },
     {
       id: "failed",
-      label: "Failed",
+      label: "Thất bại",
       count: payouts.filter((p) => p.status === "failed").length,
     },
     {
       id: "high_risk",
-      label: "High risk",
+      label: "Rủi ro cao",
       count: payouts.filter((p) => p.riskScore >= 50).length,
     },
   ];
@@ -1171,10 +1171,10 @@ function PayoutTable({
         <div className="flex items-center gap-3">
           <h3 className="text-[14px] font-semibold tracking-tight inline-flex items-center gap-1.5">
             <Wallet size={13} className="text-primary" />
-            Payout Operations Queue
+            Hàng đợi thanh toán
           </h3>
           <span className="text-[10.5px] text-on-surface-variant">
-            {payouts.length} in view
+            {payouts.length} mục
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -1217,7 +1217,7 @@ function PayoutTable({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search id, method, coach…"
+              placeholder="Tìm id, phương thức, HLV…"
               className="h-7 pl-7 pr-2.5 w-44 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/8 rounded-md outline-none text-[11.5px] placeholder:text-on-surface-variant transition-all"
             />
           </div>
@@ -1412,14 +1412,14 @@ function PayoutTable({
                     >
                       <div className="inline-flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                         {p.status === "failed" && (
-                          <RowAction icon={RefreshCw} label="Retry" />
+                          <RowAction icon={RefreshCw} label="Thử lại" />
                         )}
                         {p.status === "pending" && (
-                          <RowAction icon={Pause} label="Hold" />
+                          <RowAction icon={Pause} label="Giữ" />
                         )}
-                        <RowAction icon={Eye} label="View" />
-                        <RowAction icon={ShieldAlert} label="Investigate" />
-                        <RowAction icon={EllipsisVertical} label="More" />
+                        <RowAction icon={Eye} label="Xem" />
+                        <RowAction icon={ShieldAlert} label="Điều tra" />
+                        <RowAction icon={EllipsisVertical} label="Thêm" />
                       </div>
                     </td>
                   </tr>
@@ -1436,30 +1436,30 @@ function PayoutTable({
                         <td colSpan={10} className="px-4 py-3">
                           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                             <Detail
-                              label="Gross"
+                              label="Doanh thu gộp"
                               value={formatCurrency(
                                 Math.round(p.amount / 0.85),
                                 p.currency,
                               )}
                             />
                             <Detail
-                              label="Platform fee"
+                              label="Phí nền tảng"
                               value={`−${formatCurrency(Math.round((p.amount / 0.85) * 0.15), p.currency)}`}
                             />
                             <Detail
-                              label="Net"
+                              label="Ròng"
                               value={formatCurrency(p.amount, p.currency)}
                               highlight
                             />
-                            <Detail label="Method" value={p.method} />
+                            <Detail label="Phương thức" value={p.method} />
                             <Detail
-                              label="Settle ETA"
+                              label="Thời hạn quyết toán"
                               value={
                                 p.status === "paid"
-                                  ? "Completed"
+                                  ? "Hoàn thành"
                                   : p.rail === "Wire"
-                                    ? "Same day"
-                                    : "1–3 business days"
+                                    ? "Trong ngày"
+                                    : "1–3 ngày làm việc"
                               }
                             />
                           </div>
@@ -1471,29 +1471,29 @@ function PayoutTable({
                               />
                               <div>
                                 <p className="text-[11.5px] font-bold text-[#ba1a1a]">
-                                  Failure: {p.failureReason}
+                                  Lỗi: {p.failureReason}
                                 </p>
                                 <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-                                  Suggested action: contact coach to verify
-                                  bank account, then retry.
+                                  Đề xuất: liên hệ HLV để xác minh tài khoản
+                                  ngân hàng, sau đó thử lại.
                                 </p>
                               </div>
                             </div>
                           )}
                           <div className="flex items-center gap-1.5 mt-3">
-                            <ExpandedAction icon={Eye} label="Full record" />
-                            <ExpandedAction icon={FileText} label="Invoice" />
-                            <ExpandedAction icon={Copy} label="Copy ID" />
+                            <ExpandedAction icon={Eye} label="Xem đầy đủ" />
+                            <ExpandedAction icon={FileText} label="Hóa đơn" />
+                            <ExpandedAction icon={Copy} label="Sao chép ID" />
                             {p.status === "failed" && (
                               <ExpandedAction
                                 icon={RefreshCw}
-                                label="Retry payout"
+                                label="Thử lại"
                                 primary
                               />
                             )}
                             <ExpandedAction
                               icon={Flag}
-                              label="Escalate"
+                              label="Leo thang"
                               danger
                             />
                           </div>
@@ -1511,15 +1511,15 @@ function PayoutTable({
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-[var(--color-border-soft)] flex items-center justify-between text-[11px] text-on-surface-variant">
         <span>
-          Showing{" "}
+          Hiển thị{" "}
           <span className="text-on-surface font-bold tabular-nums">
             {payouts.length}
           </span>{" "}
-          of {payouts.length} payouts
+          trong {payouts.length} khoản
         </span>
         <div className="inline-flex items-center gap-2">
           <span>
-            Total volume:{" "}
+            Tổng khối lượng:{" "}
             <span className="text-on-surface font-bold tabular-nums">
               {formatCurrency(
                 payouts.reduce((s, p) => s + p.amount, 0),
@@ -1655,30 +1655,30 @@ function AIAlerts({ reduce }: { reduce: boolean }) {
     {
       severity: "high" as const,
       icon: AlertTriangle,
-      title: "Failed payouts +18%",
-      body: "ACH rail spike vs 7-day average. Likely cause: bank R02 codes.",
-      cta: "Investigate",
+      title: "Thanh toán thất bại +18%",
+      body: "Kênh ACH tăng đột biến so với trung bình 7 ngày. Nguyên nhân: mã R02 ngân hàng.",
+      cta: "Điều tra",
     },
     {
       severity: "med" as const,
       icon: Hourglass,
-      title: "ACH processing delays",
-      body: "Settlement latency 41h (avg 36h). 12 payouts impacted.",
-      cta: "View batch",
+      title: "ACH xử lý chậm",
+      body: "Độ trễ quyết toán 41h (TB 36h). 12 khoản bị ảnh hưởng.",
+      cta: "Xem lô",
     },
     {
       severity: "med" as const,
       icon: ShieldAlert,
-      title: "3 payouts need manual review",
-      body: "AI flagged inconsistent destination accounts.",
-      cta: "Open queue",
+      title: "3 khoản cần xem xét thủ công",
+      body: "AI phát hiện tài khoản đích không nhất quán.",
+      cta: "Mở hàng đợi",
     },
     {
       severity: "info" as const,
       icon: TrendingDown,
-      title: "Margin compression",
-      body: "Platform margin dropped 0.4 bps QoQ — review rail cost mix.",
-      cta: "Analyze",
+      title: "Biên lợi nhuận bị nén",
+      body: "Biên nền tảng giảm 0.4 bps QoQ — xem lại cơ cấu chi phí kênh.",
+      cta: "Phân tích",
     },
   ];
   return (
@@ -1693,15 +1693,15 @@ function AIAlerts({ reduce }: { reduce: boolean }) {
           <div className="flex items-center gap-2">
             <Brain size={13} className="text-primary" />
             <h3 className="text-[13.5px] font-semibold tracking-tight">
-              AI Anomaly Detection
+              AI Phát hiện bất thường
             </h3>
           </div>
           <p className="text-[11px] text-on-surface-variant mt-0.5">
-            {alerts.length} alerts · last scan 2m ago
+            {alerts.length} cảnh báo · quét lần cuối 2 phút trước
           </p>
         </div>
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#ffdad6] text-[10px] font-bold text-[#ba1a1a]">
-          {alerts.filter((a) => a.severity === "high").length} high
+          {alerts.filter((a) => a.severity === "high").length} cao
         </span>
       </div>
 
@@ -1794,13 +1794,13 @@ function AIAlerts({ reduce }: { reduce: boolean }) {
 
 function CashflowForecast({ reduce }: { reduce: boolean }) {
   const forecast = [
-    { d: "Mon", v: 84000 },
-    { d: "Tue", v: 96000 },
-    { d: "Wed", v: 102000 },
-    { d: "Thu", v: 88000 },
-    { d: "Fri", v: 112000 },
-    { d: "Sat", v: 68000 },
-    { d: "Sun", v: 54000 },
+    { d: "T2", v: 84000 },
+    { d: "T3", v: 96000 },
+    { d: "T4", v: 102000 },
+    { d: "T5", v: 88000 },
+    { d: "T6", v: 112000 },
+    { d: "T7", v: 68000 },
+    { d: "CN", v: 54000 },
   ];
   const total = forecast.reduce((s, x) => s + x.v, 0);
   return (
@@ -1813,10 +1813,10 @@ function CashflowForecast({ reduce }: { reduce: boolean }) {
       <div className="px-4 py-3 border-b border-[var(--color-border-soft)]">
         <h3 className="text-[13.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
           <Banknote size={13} className="text-primary" />
-          7-day Cashflow Forecast
+          Dự báo luồng tiền 7 ngày
         </h3>
         <p className="text-[11px] text-on-surface-variant mt-0.5">
-          Expected payout volume · AI-projected
+          Khối lượng thanh toán dự kiến · AI dự báo
         </p>
       </div>
       <div className="px-4 py-3">
@@ -1825,7 +1825,7 @@ function CashflowForecast({ reduce }: { reduce: boolean }) {
             {formatCurrency(total)}
           </span>
           <span className="text-[10.5px] text-on-surface-variant">
-            projected
+            dự kiến
           </span>
         </div>
         <div className="h-[80px]">
@@ -1869,20 +1869,20 @@ function OperationalAlerts({ reduce }: { reduce: boolean }) {
   const items = [
     {
       icon: ShieldAlert,
-      label: "Reserve coverage 0.9x",
-      hint: "Below 1.0x target",
+      label: "Tỷ lệ bảo phủ dự trữ 0.9x",
+      hint: "Dưới mục tiêu 1.0x",
       tone: "warn" as const,
     },
     {
       icon: Clock,
-      label: "Wire cutoff in 1h 12m",
-      hint: "21 payouts queued",
+      label: "Wire đóng cửa sau 1h 12m",
+      hint: "21 khoản trong hàng đợi",
       tone: "info" as const,
     },
     {
       icon: AlertTriangle,
-      label: "1 reconciliation pending",
-      hint: "Batch #20458 · $42K",
+      label: "1 đối soát đang chờ",
+      hint: "Lô #20458 · $42K",
       tone: "warn" as const,
     },
   ];
@@ -1896,7 +1896,7 @@ function OperationalAlerts({ reduce }: { reduce: boolean }) {
       <div className="px-4 py-3 border-b border-[var(--color-border-soft)]">
         <h3 className="text-[13.5px] font-semibold tracking-tight inline-flex items-center gap-1.5">
           <Activity size={13} className="text-primary" />
-          Operational Alerts
+          Cảnh báo vận hành
         </h3>
       </div>
       <ul className="px-2 py-2 space-y-0.5">
@@ -1961,18 +1961,18 @@ function BulkBar({
             {count}
           </span>
           <p className="text-[12.5px] font-semibold truncate">
-            {count} payouts selected ·{" "}
+            {count} khoản được chọn ·{" "}
             <span className="text-white/60 font-normal">
-              Bulk actions apply to all
+              Thao tác áp dụng cho tất cả
             </span>
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <BulkBtn icon={Play} label="Approve batch" tone="success" />
-          <BulkBtn icon={RefreshCw} label="Retry" />
-          <BulkBtn icon={Pause} label="Hold" />
-          <BulkBtn icon={ShieldAlert} label="Investigate" />
-          <BulkBtn icon={Download} label="Export" />
+          <BulkBtn icon={Play} label="Duyệt lô" tone="success" />
+          <BulkBtn icon={RefreshCw} label="Thử lại" />
+          <BulkBtn icon={Pause} label="Giữ" />
+          <BulkBtn icon={ShieldAlert} label="Điều tra" />
+          <BulkBtn icon={Download} label="Xuất" />
           <button
             onClick={onClear}
             aria-label="Clear"
