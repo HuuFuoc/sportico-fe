@@ -184,14 +184,14 @@ export default function VerificationsPage() {
         else next[id] = prev;
         return next;
       });
-      showToast(`Không thể ${status === "approved" ? "duyệt" : "từ chối"} ${item.coachName}`);
+      showToast(`Không thể ${status === "approved" ? "duyệt" : "từ chối"} gói tập của ${item.coachName}`);
     });
   };
 
   const handleApprove = () => {
     if (!active) return;
     moderate(active, "approved");
-    showToast(`${active.coachName} approved`);
+    showToast(`Đã duyệt gói tập của ${active.coachName}`);
     navigate(1);
   };
   const openReject = () => setRejectOpen(true);
@@ -199,7 +199,7 @@ export default function VerificationsPage() {
     setRejectOpen(false);
     if (active) {
       moderate(active, "rejected", rejectReason);
-      showToast(`${active.coachName} rejected · ${rejectReason}`);
+      showToast(`Đã từ chối gói tập của ${active.coachName}`);
     }
     setRejectReason("");
     navigate(1);
@@ -236,22 +236,22 @@ export default function VerificationsPage() {
 
   if (loading) {
     return (
-      <AppShell role="admin" title="Coach Verification">
-        <LoadingState label="Đang tải hàng đợi xác thực…" />
+      <AppShell role="admin" title="Duyệt gói tập HLV">
+        <LoadingState label="Đang tải hàng chờ duyệt gói tập…" />
       </AppShell>
     );
   }
 
   if (error) {
     return (
-      <AppShell role="admin" title="Coach Verification">
+      <AppShell role="admin" title="Duyệt gói tập HLV">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
   }
 
   return (
-    <AppShell role="admin" title="Coach Verification">
+    <AppShell role="admin" title="Duyệt gói tập HLV">
       <div className="max-w-[1500px] mx-auto">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -264,21 +264,24 @@ export default function VerificationsPage() {
             <div className="flex items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
                 <ShieldCheck size={11} />
-                Trust &amp; Safety Console
+                Kiểm duyệt nội dung
               </span>
               <span className="text-[12px] text-on-surface-variant">
-                {filtered.length} in queue · AI-assisted moderation
+                {filtered.length} gói trong hàng chờ
               </span>
             </div>
             <h1 className="text-[28px] sm:text-[32px] leading-[1.05] font-bold tracking-tight">
-              Coach Verification
+              Duyệt gói tập HLV
             </h1>
+            <p className="text-[13px] text-on-surface-variant mt-1">
+              Kiểm tra, phê duyệt hoặc từ chối các gói tập do huấn luyện viên gửi lên.
+            </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <KeyboardHint />
             <button className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
               <CheckCircle2 size={13} />
-              Batch approve
+              Duyệt hàng loạt
             </button>
           </div>
         </motion.header>
@@ -362,14 +365,14 @@ function KeyboardHint() {
     <div className="hidden md:flex items-center gap-1.5 px-2.5 h-10 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-lowest text-[11px] text-on-surface-variant">
       <Keyboard size={12} />
       <Kbd>A</Kbd>
-      approve
+      duyệt
       <span className="text-on-surface-variant/40">·</span>
       <Kbd>R</Kbd>
-      reject
+      từ chối
       <span className="text-on-surface-variant/40">·</span>
       <Kbd>J</Kbd>
       <Kbd>K</Kbd>
-      next/prev
+      tiếp/trước
     </div>
   );
 }
@@ -411,10 +414,10 @@ function QueueColumn({
   const approved = allItems.filter((v) => v.status === "approved").length;
   const rejected = allItems.filter((v) => v.status === "rejected").length;
   const TABS: { id: Filter; label: string; count: number }[] = [
-    { id: "pending", label: "Pending", count: pending },
-    { id: "approved", label: "Approved", count: approved },
-    { id: "rejected", label: "Rejected", count: rejected },
-    { id: "all", label: "All", count: allItems.length },
+    { id: "pending", label: "Chờ duyệt", count: pending },
+    { id: "approved", label: "Đã duyệt", count: approved },
+    { id: "rejected", label: "Đã từ chối", count: rejected },
+    { id: "all", label: "Tất cả", count: allItems.length },
   ];
 
   return (
@@ -428,7 +431,7 @@ function QueueColumn({
       <div className="px-4 pt-4 pb-2 border-b border-[var(--color-border-soft)]">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] uppercase tracking-wider font-bold text-on-surface-variant">
-            Queue
+            Hàng chờ
           </p>
           <button className="text-[11px] text-on-surface-variant hover:text-on-surface inline-flex items-center gap-1">
             <Filter size={11} />
@@ -497,9 +500,9 @@ function QueueColumn({
             <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-surface-container-low flex items-center justify-center">
               <CheckCircle2 size={16} className="text-[#10b981]" />
             </div>
-            <p className="text-[12.5px] font-semibold">Queue clear</p>
+            <p className="text-[12.5px] font-semibold">Không có gói tập nào cần duyệt</p>
             <p className="text-[11px] text-on-surface-variant mt-0.5">
-              No items match this filter.
+              Không có mục nào phù hợp với bộ lọc.
             </p>
           </li>
         )}
@@ -559,8 +562,7 @@ function QueueColumn({
                     </span>
                   </div>
                   <p className="text-[11px] text-on-surface-variant truncate mt-0.5">
-                    {v.sport} · {v.documents.length} doc
-                    {v.documents.length !== 1 ? "s" : ""}
+                    {v.sport} · {v.documents[0]?.name ?? "Gói tập"}
                   </p>
 
                   {/* Progress */}
@@ -634,7 +636,7 @@ function ReviewPanel({
             <ArrowDown size={14} />
           </button>
           <span className="text-[11px] text-on-surface-variant ml-1 hidden sm:inline">
-            <Kbd>J</Kbd> <Kbd>K</Kbd> to navigate
+            <Kbd>J</Kbd> <Kbd>K</Kbd> để điều hướng
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -717,17 +719,17 @@ function ReviewPanel({
               <Mini icon={Mail} label="Email" value={coach.email} />
               <Mini
                 icon={BadgeCheck}
-                label="Experience"
-                value={`${coach.yearsExperience} yrs`}
+                label="Kinh nghiệm"
+                value={`${coach.yearsExperience} năm`}
               />
               <Mini
                 icon={Star}
-                label="Hourly rate"
-                value={`$${coach.hourlyRate}`}
+                label="Đánh giá"
+                value={coach.rating > 0 ? `${coach.rating.toFixed(1)} ★` : "—"}
               />
               <Mini
                 icon={Globe}
-                label="Region"
+                label="Địa điểm"
                 value={coach.location.split(",").pop()?.trim() ?? "—"}
               />
             </div>
@@ -751,7 +753,7 @@ function ReviewPanel({
       <div className="border-t border-[var(--color-border-soft)] bg-surface-container-lowest/95 backdrop-blur-md px-5 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[11.5px] text-on-surface-variant">
           <Brain size={13} className="text-primary" />
-          AI recommends:{" "}
+          Đề xuất AI:{" "}
           <span
             className={cn(
               "font-bold",
@@ -763,10 +765,10 @@ function ReviewPanel({
             )}
           >
             {v.risk === "low"
-              ? "Approve"
+              ? "Duyệt"
               : v.risk === "med"
-                ? "Review carefully"
-                : "Reject or escalate"}
+                ? "Xem xét kỹ"
+                : "Từ chối"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -775,7 +777,7 @@ function ReviewPanel({
             className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-[#ffbbb3] bg-[#ffdad6]/30 hover:bg-[#ffdad6]/60 text-[#ba1a1a] text-[13px] font-semibold transition-colors"
           >
             <XCircle size={14} />
-            Reject
+            Từ chối
             <Kbd>R</Kbd>
           </button>
           <button
@@ -783,7 +785,7 @@ function ReviewPanel({
             className="inline-flex items-center gap-1.5 h-10 px-5 rounded-xl bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[13px] font-semibold shadow-[0_4px_14px_-2px_rgba(16,185,129,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(16,185,129,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <CheckCircle2 size={14} strokeWidth={2.5} />
-            Approve
+            Duyệt
             <Kbd>A</Kbd>
           </button>
         </div>
@@ -830,7 +832,7 @@ function AISummary({ v }: { v: EnrichedVerification }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-              AI Verification Summary
+              Phân tích AI
             </span>
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
               {v.trustScore}% confidence
@@ -839,24 +841,21 @@ function AISummary({ v }: { v: EnrichedVerification }) {
           <p className="text-[13.5px] leading-relaxed text-on-surface">
             {v.risk === "low" ? (
               <>
-                Documents look authentic.{" "}
-                <span className="font-semibold">Background check passed</span>,
-                no fraud signals detected. Identity and certification cross-checks
-                returned matching results.
+                Gói tập có thông tin rõ ràng, đầy đủ.{" "}
+                <span className="font-semibold">Mức giá và nội dung hợp lý</span>,
+                không có dấu hiệu bất thường. Có thể duyệt.
               </>
             ) : v.risk === "med" ? (
               <>
-                <span className="font-semibold">Some signals worth reviewing</span>{" "}
-                — certification number couldn&apos;t be auto-validated and
-                submission age is older than typical. Manual check recommended.
+                <span className="font-semibold">Một số điểm cần kiểm tra</span>{" "}
+                — mô tả gói tập chưa đủ chi tiết hoặc mức giá chênh lệch so với thị trường. Nên xem xét kỹ trước khi duyệt.
               </>
             ) : (
               <>
                 <span className="font-semibold text-[#ba1a1a]">
-                  Multiple fraud signals detected
+                  Phát hiện vấn đề nghiêm trọng
                 </span>{" "}
-                — document metadata inconsistencies, IP location mismatch, and
-                duplicate identity pattern across recent submissions.
+                — thông tin không nhất quán, mức giá bất thường hoặc nội dung vi phạm quy định nền tảng.
               </>
             )}
           </p>
@@ -881,14 +880,14 @@ function DocumentsSection({ v }: { v: EnrichedVerification }) {
     <section>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-semibold tracking-tight">
-          Documents{" "}
+          Thông tin gói tập{" "}
           <span className="text-on-surface-variant font-medium">
             ({v.documents.length})
           </span>
         </h3>
         <button className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-1">
           <Download size={12} />
-          Download all
+          Tải xuống
         </button>
       </div>
       <div className="space-y-2.5">
@@ -910,9 +909,7 @@ function DocumentCard({
   risk: Risk;
 }) {
   const Icon = DOC_ICON[doc.type] ?? FileText;
-  // Synthetic OCR + validation status by index
   const validated = risk === "low" || index === 0;
-  const expiresIn = index === 1 ? 14 : null; // insurance expiry
   return (
     <article className="group rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest transition-colors overflow-hidden">
       <div className="flex items-start gap-3 p-3">
@@ -927,7 +924,7 @@ function DocumentCard({
             <div className="min-w-0">
               <p className="text-[13.5px] font-semibold truncate">{doc.name}</p>
               <p className="text-[11px] text-on-surface-variant capitalize mt-0.5">
-                {doc.type} · PDF · 2.4 MB
+                {doc.type === "training-package" ? "Gói tập" : doc.type}
               </p>
             </div>
 
@@ -935,12 +932,12 @@ function DocumentCard({
             {validated ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d] border border-[#bce8c8]">
                 <CheckCircle2 size={10} />
-                Validated
+                Hợp lệ
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff5d6] text-[10px] font-semibold text-[#b95000] border border-[#f4d68a]/60">
                 <AlertTriangle size={10} />
-                Needs review
+                Cần xem lại
               </span>
             )}
           </div>
@@ -949,26 +946,16 @@ function DocumentCard({
           <div className="mt-2.5 rounded-[10px] bg-surface-container-low/40 border border-[var(--color-border-soft)] p-2.5">
             <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant mb-1.5 inline-flex items-center gap-1">
               <Brain size={10} />
-              OCR Extracted
+              Phân tích AI
             </p>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px]">
-              <OCRField label="Name" value="Sofia Romano" match />
-              <OCRField label="Issued" value="2023-04-18" />
-              {doc.type === "insurance" && (
-                <OCRField
-                  label="Expires"
-                  value="2026-06-04"
-                  warn={expiresIn !== null && expiresIn < 30}
-                  warnText={
-                    expiresIn ? `Expires in ${expiresIn} days` : undefined
-                  }
-                />
+              <OCRField label="Tên gói" value={doc.name} match />
+              <OCRField label="Gửi lúc" value="Vừa gửi" />
+              {doc.type === "training-package" && (
+                <OCRField label="Loại" value="Gói tập" match />
               )}
-              {doc.type === "credential" && (
-                <OCRField label="Issuer" value="BASI Pilates" match />
-              )}
-              {doc.type === "identity" && (
-                <OCRField label="Issuer" value="State of CA" match />
+              {doc.type !== "training-package" && (
+                <OCRField label="Loại" value={doc.type} />
               )}
             </div>
           </div>
@@ -977,15 +964,11 @@ function DocumentCard({
           <div className="flex items-center gap-1 mt-2">
             <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md hover:bg-surface-container-low text-[11.5px] font-medium text-on-surface-variant hover:text-primary transition-colors">
               <Eye size={11} />
-              Preview
+              Xem chi tiết
             </button>
             <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md hover:bg-surface-container-low text-[11.5px] font-medium text-on-surface-variant hover:text-primary transition-colors">
               <Download size={11} />
-              Download
-            </button>
-            <button className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md hover:bg-surface-container-low text-[11.5px] font-medium text-on-surface-variant hover:text-primary transition-colors">
-              <Fingerprint size={11} />
-              Verify hash
+              Tải xuống
             </button>
           </div>
         </div>
@@ -1044,35 +1027,35 @@ function TimelineSection({ v }: { v: EnrichedVerification }) {
   const events = [
     {
       icon: Send,
-      label: "Application submitted",
+      label: "HLV gửi gói tập",
       meta: relativeDay(new Date(v.submittedAt)),
       tone: "neutral" as const,
     },
     {
       icon: Brain,
-      label: "AI verification completed",
-      meta: "Auto · 12s",
+      label: "AI phân tích nội dung",
+      meta: "Tự động · ~5s",
       tone: "primary" as const,
     },
     {
       icon: Fingerprint,
-      label: "Identity check passed",
-      meta: "Auto",
+      label: "Kiểm tra thông tin HLV",
+      meta: "Tự động",
       tone: "good" as const,
     },
     {
       icon: BadgeCheck,
-      label: "Certification cross-referenced",
+      label: "Kiểm tra mức giá thị trường",
       meta:
         v.risk === "high"
-          ? "No match found"
-          : "Matched BASI registry",
+          ? "Bất thường"
+          : "Trong khoảng phổ biến",
       tone: v.risk === "high" ? ("danger" as const) : ("good" as const),
     },
     {
       icon: Clock,
-      label: "Awaiting human review",
-      meta: "Current",
+      label: "Chờ admin kiểm duyệt",
+      meta: "Hiện tại",
       tone: "warn" as const,
       active: true,
     },
@@ -1080,7 +1063,7 @@ function TimelineSection({ v }: { v: EnrichedVerification }) {
   return (
     <section>
       <h3 className="text-[15px] font-semibold tracking-tight mb-3">
-        Verification Timeline
+        Lịch sử duyệt
       </h3>
       <div className="relative pl-5">
         <span className="absolute left-[7px] top-1 bottom-1 w-px bg-[var(--color-border-soft)]" />
@@ -1145,7 +1128,7 @@ function NotesSection() {
       <div className="flex items-center gap-2 mb-2">
         <PencilLine size={13} className="text-on-surface-variant" />
         <h3 className="text-[15px] font-semibold tracking-tight">
-          Admin notes
+          Ghi chú nội bộ
         </h3>
       </div>
       <textarea
@@ -1220,7 +1203,7 @@ function TrustScore({
       <div className="flex items-center gap-2 mb-3">
         <Sparkles size={12} className="text-primary" />
         <p className="text-[10.5px] uppercase tracking-wider font-bold text-on-surface-variant">
-          AI Trust Score
+          Điểm chất lượng AI
         </p>
       </div>
       <div className="flex items-center gap-4">
@@ -1277,10 +1260,10 @@ function TrustScore({
           </span>
           <p className="text-[11.5px] text-on-surface-variant leading-relaxed mt-2">
             {tone === "good"
-              ? "Cleared by automated checks. Safe to approve."
+              ? "Gói tập đạt tiêu chuẩn. Có thể duyệt."
               : tone === "warn"
-                ? "Borderline — confirm details before approving."
-                : "Multiple flags detected. Reject or escalate."}
+                ? "Cần kiểm tra thêm trước khi duyệt."
+                : "Phát hiện vấn đề nghiêm trọng. Nên từ chối."}
           </p>
         </div>
       </div>
@@ -1292,14 +1275,14 @@ function FraudSignals({ risk }: { risk: Risk }) {
   const signals =
     risk === "high"
       ? [
-          { label: "IP/location mismatch", level: "high" as const },
-          { label: "Duplicate identity pattern", level: "high" as const },
-          { label: "Document metadata edited", level: "med" as const },
+          { label: "Mức giá bất thường so với thị trường", level: "high" as const },
+          { label: "Mô tả không rõ ràng / trùng lặp", level: "high" as const },
+          { label: "Nội dung có thể vi phạm quy định", level: "med" as const },
         ]
       : risk === "med"
         ? [
-            { label: "Cert. number not auto-validated", level: "med" as const },
-            { label: "Submission age elevated", level: "low" as const },
+            { label: "Số buổi / thời hạn chưa cân đối", level: "med" as const },
+            { label: "Mô tả ngắn, thiếu chi tiết", level: "low" as const },
           ]
         : [];
   return (
@@ -1307,7 +1290,7 @@ function FraudSignals({ risk }: { risk: Risk }) {
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10.5px] uppercase tracking-wider font-bold text-on-surface-variant inline-flex items-center gap-1.5">
           <ShieldAlert size={11} />
-          Fraud Signals
+          Vấn đề phát hiện
         </p>
         <span
           className={cn(
@@ -1322,7 +1305,7 @@ function FraudSignals({ risk }: { risk: Risk }) {
         <div className="rounded-[12px] bg-success-container/30 border border-[#bce8c8] p-3 flex items-center gap-2">
           <CheckCircle2 size={14} className="text-[#1f7a4d]" />
           <p className="text-[12px] font-semibold text-[#1f7a4d]">
-            No fraud signals detected
+            Không phát hiện vấn đề
           </p>
         </div>
       ) : (
@@ -1362,30 +1345,30 @@ function AIReasoning({ risk }: { risk: Risk }) {
   const reasons =
     risk === "low"
       ? [
-          { label: "Identity match", score: 98 },
-          { label: "Document authenticity", score: 94 },
-          { label: "Behavior baseline", score: 90 },
-          { label: "External registry match", score: 96 },
+          { label: "Chất lượng nội dung", score: 98 },
+          { label: "Mức giá phù hợp", score: 94 },
+          { label: "Thông tin HLV hợp lệ", score: 90 },
+          { label: "Tuân thủ quy định", score: 96 },
         ]
       : risk === "med"
         ? [
-            { label: "Identity match", score: 88 },
-            { label: "Document authenticity", score: 76 },
-            { label: "Behavior baseline", score: 70 },
-            { label: "External registry match", score: 54 },
+            { label: "Chất lượng nội dung", score: 88 },
+            { label: "Mức giá phù hợp", score: 76 },
+            { label: "Thông tin HLV hợp lệ", score: 70 },
+            { label: "Tuân thủ quy định", score: 54 },
           ]
         : [
-            { label: "Identity match", score: 42 },
-            { label: "Document authenticity", score: 38 },
-            { label: "Behavior baseline", score: 30 },
-            { label: "External registry match", score: 18 },
+            { label: "Chất lượng nội dung", score: 42 },
+            { label: "Mức giá phù hợp", score: 38 },
+            { label: "Thông tin HLV hợp lệ", score: 30 },
+            { label: "Tuân thủ quy định", score: 18 },
           ];
   return (
     <section>
       <div className="flex items-center justify-between mb-2.5">
         <p className="text-[10.5px] uppercase tracking-wider font-bold text-on-surface-variant inline-flex items-center gap-1.5">
           <Brain size={11} />
-          AI Confidence Breakdown
+          Phân tích chi tiết AI
         </p>
         <button className="text-[10.5px] text-on-surface-variant hover:text-primary inline-flex items-center gap-0.5 transition-colors">
           <Info size={10} />
@@ -1425,19 +1408,19 @@ function AIReasoning({ risk }: { risk: Risk }) {
 
 function VerificationChecklist({ risk }: { risk: Risk }) {
   const items = [
-    { label: "Email verified", done: true },
-    { label: "Phone verified", done: true },
-    { label: "Identity document", done: true },
+    { label: "HLV đã xác minh tài khoản", done: true },
+    { label: "Tên gói tập rõ ràng", done: true },
+    { label: "Mô tả đầy đủ", done: risk !== "high" },
     {
-      label: "Certification validated",
+      label: "Mức giá hợp lý",
       done: risk !== "high",
     },
     {
-      label: "Insurance current",
+      label: "Số buổi & thời hạn hợp lệ",
       done: risk === "low",
     },
     {
-      label: "Background check",
+      label: "Không vi phạm quy định",
       done: risk === "low",
     },
   ];
@@ -1447,7 +1430,7 @@ function VerificationChecklist({ risk }: { risk: Risk }) {
       <div className="flex items-center justify-between mb-2.5">
         <p className="text-[10.5px] uppercase tracking-wider font-bold text-on-surface-variant inline-flex items-center gap-1.5">
           <CheckCircle2 size={11} />
-          Checklist
+          Tiêu chí duyệt
         </p>
         <span className="text-[10.5px] font-bold text-on-surface-variant">
           {done}/{items.length}
@@ -1488,10 +1471,10 @@ function VerificationChecklist({ risk }: { risk: Risk }) {
 function Recommendation({ risk }: { risk: Risk }) {
   const text =
     risk === "low"
-      ? "All signals point to a legitimate coach. Auto-approval would be safe — proceed with confidence."
+      ? "Gói tập đạt tiêu chuẩn nền tảng. Có thể duyệt ngay — nội dung rõ ràng, mức giá hợp lý."
       : risk === "med"
-        ? "Mixed signals. Request the missing cert document directly from the coach, then re-run verification."
-        : "Strong indicators of fraud. Reject and add to watchlist. Escalate if you spot a recurring pattern.";
+        ? "Có một số điểm chưa rõ ràng. Nên liên hệ HLV để làm rõ trước khi duyệt."
+        : "Phát hiện vấn đề nghiêm trọng. Nên từ chối và yêu cầu HLV chỉnh sửa hoặc escalate nếu cần.";
   const tone =
     risk === "low"
       ? "from-[#10b981]/10 to-[#34d399]/5 border-[#10b981]/20"
@@ -1507,7 +1490,7 @@ function Recommendation({ risk }: { risk: Risk }) {
     >
       <p className="text-[10.5px] uppercase tracking-wider font-bold text-on-surface-variant inline-flex items-center gap-1.5 mb-1.5">
         <Lightbulb size={11} className="text-primary" />
-        Recommendation
+        Khuyến nghị
       </p>
       <p className="text-[12px] leading-relaxed text-on-surface">{text}</p>
     </section>
@@ -1519,12 +1502,12 @@ function Recommendation({ risk }: { risk: Risk }) {
 // ============================================================================
 
 const REJECT_REASONS = [
-  "Document authenticity unclear",
-  "Certification could not be verified",
-  "Identity mismatch",
-  "Insurance expired or missing",
-  "Suspected duplicate account",
-  "Other",
+  "Mô tả gói tập không rõ ràng hoặc thiếu thông tin",
+  "Mức giá không hợp lý so với thị trường",
+  "Số buổi hoặc thời hạn không cân đối",
+  "Nội dung vi phạm quy định nền tảng",
+  "Thông tin HLV chưa được xác minh",
+  "Lý do khác",
 ];
 
 function RejectModal({
@@ -1574,10 +1557,10 @@ function RejectModal({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-[16px] font-bold tracking-tight">
-              Reject verification
+              Từ chối gói tập
             </h3>
             <p className="text-[12.5px] text-on-surface-variant mt-0.5">
-              {coachName} will be notified with the selected reason.
+              {coachName} sẽ được thông báo với lý do đã chọn.
             </p>
           </div>
           <button
@@ -1591,7 +1574,7 @@ function RejectModal({
 
         <div className="p-5 space-y-3">
           <p className="text-[11.5px] uppercase tracking-wider font-bold text-on-surface-variant">
-            Reason
+            Lý do từ chối
           </p>
           <ul className="space-y-1.5">
             {REJECT_REASONS.map((r) => (
@@ -1636,14 +1619,14 @@ function RejectModal({
         <div className="p-4 border-t border-[var(--color-border-soft)] bg-surface-container-low/40 flex items-center justify-between gap-2">
           <span className="text-[11px] text-on-surface-variant inline-flex items-center gap-1">
             <Command size={11} />
-            Press Esc to cancel
+            Nhấn Esc để hủy
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               className="h-10 px-4 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
             >
-              Cancel
+              Hủy
             </button>
             <button
               onClick={handleConfirm}
@@ -1653,12 +1636,12 @@ function RejectModal({
               {sending ? (
                 <>
                   <Loader2 size={13} className="animate-spin" />
-                  Sending…
+                  Đang gửi…
                 </>
               ) : (
                 <>
                   <XCircle size={13} />
-                  Confirm reject
+                  Xác nhận từ chối
                 </>
               )}
             </button>
@@ -1680,9 +1663,9 @@ function EmptyCenter() {
         <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-[#10b981] to-[#34d399] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.4)]">
           <CheckCircle2 size={24} className="text-white" />
         </div>
-        <h3 className="text-[16px] font-semibold">Queue clear</h3>
+        <h3 className="text-[16px] font-semibold">Không có gói tập nào cần duyệt</h3>
         <p className="text-[12.5px] text-on-surface-variant mt-1 max-w-sm">
-          No verifications match your filter. Take a break or switch tabs.
+          Chọn một gói tập từ danh sách bên trái để bắt đầu kiểm duyệt.
         </p>
       </div>
     </section>

@@ -1,10 +1,8 @@
 import { HeroSection } from "@/components/landing/HeroSection";
-import { StatStrip } from "@/components/landing/StatStrip";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { AIDeepDiveSection } from "@/components/landing/AIDeepDiveSection";
 import { CoachShowcaseSection } from "@/components/landing/CoachShowcaseSection";
-import { ProductPreviewSection } from "@/components/landing/ProductPreviewSection";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
+import { MentalHealthSection } from "@/components/landing/MentalHealthSection";
+import { CoachValueSection } from "@/components/landing/CoachValueSection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
 import { PublicNavbar } from "@/components/layout/PublicNavbar";
 import { Footer } from "@/components/layout/Footer";
@@ -18,28 +16,22 @@ export default async function LandingPage() {
     <>
       <PublicNavbar variant="transparent" />
       <main className="flex-1">
-        {/* ===================== A — Hero (GRIND-style dark) ===================== */}
+        {/* ===================== A — Hero ===================== */}
         <HeroSection coach={heroCoach} />
 
-        {/* ===================== B — Trust strip ===================== */}
-        <StatStrip />
-
-        {/* ===================== C — How it works ===================== */}
+        {/* ===================== B — How it works ===================== */}
         <HowItWorksSection />
 
-        {/* ===================== D — AI deep-dive (dark engine) ===================== */}
-        <AIDeepDiveSection />
-
-        {/* ===================== E — Coach showcase ===================== */}
+        {/* ===================== C — Coach showcase ===================== */}
         <CoachShowcaseSection />
 
-        {/* ===================== F — Product preview ===================== */}
-        <ProductPreviewSection />
+        {/* ===================== D — Mental health / wellness ===================== */}
+        <MentalHealthSection />
 
-        {/* ===================== G — Testimonials ===================== */}
-        <TestimonialsSection />
+        {/* ===================== E — Coach value prop ===================== */}
+        <CoachValueSection />
 
-        {/* ===================== H — Final CTA ===================== */}
+        {/* ===================== F — Final CTA ===================== */}
         <FinalCTASection />
       </main>
       <Footer />

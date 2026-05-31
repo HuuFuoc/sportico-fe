@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import {
   AnimatePresence,
   motion,
@@ -15,19 +16,11 @@ import {
   useSpring,
   useTransform,
 } from "motion/react";
-import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { avatarFor } from "@/lib/utils";
+import { ArrowRight, ChevronDown } from "lucide-react";
+import { SporticoVideoBackground } from "@/components/landing/SporticoVideoBackground";
 import type { Coach } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-
-const HERO_AVATARS = [
-  avatarFor("learner-11"),
-  avatarFor("learner-2"),
-  avatarFor("learner-6"),
-];
-
-const FEATURED_AVATAR = avatarFor("coach-1");
 
 const CYCLE_WORDS = [
   "THỂ CHẤT & TINH THẦN",
@@ -91,17 +84,12 @@ export function HeroSection({ coach }: { coach: Coach }) {
       onMouseMove={onMove}
       className="relative -mt-16 h-[min(100vh,860px)] min-h-[640px] overflow-hidden bg-[#0a0a0e] text-white"
     >
-      {/* ============ BACKGROUND IMAGE (parallax) ============ */}
+      {/* ============ BACKGROUND (parallax — video on desktop, image on mobile) ============ */}
       <motion.div
         style={{ x: imgX, y: imgY, scale: 1.05 }}
         className="absolute inset-0"
       >
-        {/* Use native img for full control over object-position */}
-        <img
-          src="/hero.webp"
-          alt="Elite coach training session"
-          className="h-full w-full object-cover object-[center_20%]"
-        />
+        <SporticoVideoBackground />
       </motion.div>
 
       {/* ============ OVERLAYS / GRADIENTS ============ */}
@@ -213,25 +201,23 @@ export function HeroSection({ coach }: { coach: Coach }) {
         </FadeUp>
 
         <FadeUp delay={0.18}>
-          {/* Headline is sized with `clamp` so it never blows past the dark-
-              gradient safe zone on the left. Upper bound caps at ~68px so the
-              longest Vietnamese cycling word ("THỂ CHẤT & TINH THẦN", 20 chars
-              in Inter Black) still fits in a single line inside the container.
-              Leading is bumped to 1.02 to give diacritics breathing room. */}
-          {/* `lineHeight: 1.12` gives Vietnamese tone marks (Ộ/Ơ/Ầ) room to
-              breathe between the two block lines — at 1.02 the diacritics of
-              the cycling word kiss the descenders of line 1. The cycling block
-              gets a small explicit `mt` so the two lines stay anchored, even
-              when the cycling word swaps to a taller letter cluster. */}
+          {/* Two-line heading: static concept line + animated cycling line.
+              Font size uses clamp so the longer Vietnamese phrase wraps
+              gracefully at any viewport. lineHeight 1.22 gives tone marks
+              (Ứ/Ỏ/Ầ) enough vertical clearance; mt-2 anchors the cycling
+              line without relying on em-relative gaps. */}
           <h1
-            className="mt-6 max-w-[820px] font-black uppercase tracking-[-0.035em] text-white"
+            className="mt-6 max-w-[820px] font-black uppercase tracking-[-0.03em] text-white"
             style={{
-              fontSize: "clamp(38px, 6.2vw, 68px)",
-              lineHeight: 1.12,
+              fontSize: "clamp(30px, 5vw, 56px)",
+              lineHeight: 1.22,
             }}
           >
-            <span className="block">CỘNG ĐỒNG TRƯỚC TIÊN.</span>
-            <span className="relative mt-1 block sm:mt-2">
+            <span className="block leading-[1.22]">
+              SỨC KHỎE TINH THẦN{" "}
+              <span className="whitespace-nowrap">TRƯỚC TIÊN.</span>
+            </span>
+            <span className="relative mt-2 block sm:mt-3">
               <AnimatePresence mode="wait">
                 <motion.span
                   key={CYCLE_WORDS[wordIdx]}
@@ -249,17 +235,41 @@ export function HeroSection({ coach }: { coach: Coach }) {
         </FadeUp>
 
         <FadeUp delay={0.26}>
-          <p className="mt-6 max-w-md text-[15px] leading-relaxed text-white/70 sm:text-[16px]">
-            Huấn luyện viên ưu tú được AI ghép nối, cộng đồng giữ lửa cho bạn,
-            và một nơi yên tĩnh để phát triển{" "}
-            <span className="text-white">cả về thể chất lẫn tinh thần</span>.
+          <p className="mt-7 max-w-md text-[15px] leading-[1.7] text-white/70 sm:text-[16px]">
+            Tìm huấn luyện viên phù hợp với mục tiêu của bạn, chọn gói tập rõ
+            ràng, nhắn tin trước khi đặt lịch, và{" "}
+            <span className="text-white">theo dõi lộ trình trong một nơi</span>.
           </p>
         </FadeUp>
 
-        {/* ============ BOTTOM ROW: Members ============ */}
-        <div className="mt-auto flex justify-end pb-10 sm:pb-14">
-          <FadeUp delay={0.45} y={32}>
-            <MembersCard />
+        {/* ============ CTA BUTTONS ============ */}
+        <FadeUp delay={0.34}>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href="/coaches"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-[14px] font-bold text-slate-900 shadow-[0_4px_20px_-4px_rgba(255,255,255,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_-4px_rgba(255,255,255,0.5)]"
+            >
+              Tìm HLV của bạn
+              <ArrowRight
+                size={14}
+                className="transition-transform group-hover:translate-x-0.5"
+              />
+            </Link>
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-3 text-[14px] font-semibold text-white backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/15"
+            >
+              Trở thành HLV
+            </Link>
+          </div>
+        </FadeUp>
+
+        {/* ============ BOTTOM ROW: tagline strip ============ */}
+        <div className="mt-auto flex items-end justify-between pb-10 sm:pb-14">
+          <FadeUp delay={0.45} y={24}>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-white/35">
+              Nền tảng coaching thể thao
+            </p>
           </FadeUp>
         </div>
       </div>
@@ -281,96 +291,7 @@ function PulsingBadge() {
         <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-80" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
       </span>
-      Trực tiếp · Huấn luyện AI
-      <span className="ml-1 text-white/40">|</span>
-      <MaterialIcon name="auto_awesome" filled size={12} className="text-violet-300" />
-    </span>
-  );
-}
-
-// ============================================================================
-// Members card (bottom-right)
-// ============================================================================
-
-function MembersCard() {
-  return (
-    <div className="flex items-center gap-3 rounded-full border border-white/15 bg-black/35 px-2 py-2 backdrop-blur-md">
-      <div className="flex -space-x-2">
-        {HERO_AVATARS.map((src, i) => (
-          <motion.img
-            key={src}
-            src={src}
-            alt=""
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              delay: 0.7 + i * 0.08,
-              duration: 0.4,
-              ease: EASE,
-            }}
-            className="h-7 w-7 rounded-full border-2 border-black object-cover"
-          />
-        ))}
-      </div>
-      <div className="pr-1 text-[12px] leading-tight">
-        <p className="font-bold text-white">
-          <CountUp end={2000} suffix="+" />
-        </p>
-        <p className="text-[10px] uppercase tracking-[0.12em] text-white/55">
-          Thành viên
-        </p>
-      </div>
-      <span className="mx-1 inline-block h-6 w-px bg-white/15" />
-      <motion.img
-        src={FEATURED_AVATAR}
-        alt="Featured coach"
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 1, duration: 0.45, ease: EASE }}
-        className="h-9 w-9 rounded-full border-2 border-violet-400 object-cover shadow-[0_0_0_4px_rgba(167,139,250,0.18)]"
-      />
-    </div>
-  );
-}
-
-// ============================================================================
-// Count-up
-// ============================================================================
-
-function CountUp({
-  end,
-  suffix = "",
-}: {
-  end: number;
-  suffix?: string;
-}) {
-  const reduce = useReducedMotion();
-  // Always start at 0 on both server + initial client render to avoid
-  // hydration mismatch — `useReducedMotion()` returns null on the server
-  // and a real boolean on the client.
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (reduce) {
-      setValue(end);
-      return;
-    }
-    const start = 0;
-    const startTime = performance.now();
-    const duration = 1400;
-    let raf = 0;
-    const step = (now: number) => {
-      const p = Math.min(1, (now - startTime) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setValue(Math.round(start + (end - start) * eased));
-      if (p < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [end, reduce]);
-  return (
-    <span className="tabular-nums">
-      {value.toLocaleString()}
-      {suffix}
+      Sportico · Smart Coach Hub
     </span>
   );
 }
@@ -403,11 +324,7 @@ function ScrollCue({ reduce }: { reduce: boolean }) {
         }}
         className="inline-flex"
       >
-        <MaterialIcon
-          name="keyboard_arrow_down"
-          size={16}
-          className="text-white/50"
-        />
+        <ChevronDown size={16} className="text-white/50" />
       </motion.span>
     </motion.div>
   );

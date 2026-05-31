@@ -102,7 +102,15 @@
       "Bash(curl -s -o /tmp/swagger.json \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -w \"%{http_code}\\\\n\")",
       "Bash(curl -s -o swagger.json \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\")",
       "mcp__chrome-devtools__list_network_requests",
-      "Bash(rm -f swagger.json)"
+      "Bash(rm -f swagger.json)",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\FPT-Ky8\\\\EXE202\\\\sportico\\\\public\\\\videos\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"done\")",
+      "WebFetch(domain:reactbits.dev)",
+      "mcp__chrome-devtools__emulate",
+      "mcp__chrome-devtools__close_page",
+      "Bash(Start-Process -NoNewWindow -FilePath \"pnpm\" -ArgumentList \"dev\",\"--port\",\"3000\" -WorkingDirectory \"D:\\\\FPT-Ky8\\\\EXE202\\\\sportico\")",
+      "Bash(findstr /s /i \"cộng đồng trước tiên\" src\\\\*.tsx src\\\\*.ts)"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",
