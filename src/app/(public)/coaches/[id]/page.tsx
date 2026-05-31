@@ -1,19 +1,23 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
   BadgeCheck,
   Check,
+  ChevronRight,
   FileText,
+  Home,
   Image as ImageIcon,
   Info,
   Loader2,
   MapPin,
   MessageCircle,
+  Move,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Star,
@@ -33,6 +37,7 @@ import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole } from "@/lib/auth-session";
 import { messageForApiError } from "@/lib/errors-vi";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 import type { PublicCoachDetailResponse } from "@/lib/backend/dto";
 
 interface PageProps {
@@ -112,6 +117,126 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [messaging, setMessaging] = useState(false);
   const [messageNote, setMessageNote] = useState<string | null>(null);
+  const authUser = useAuthStore((s) => s.user);
+  const isOwner = !!authUser && authUser.id === id;
+
+  const [coverPosXY, setCoverPosXY] = useState({ x: 50, y: 50 });
+  const [isRepositioning, setIsRepositioning] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
+  const coverRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const coverPos = `${coverPosXY.x}% ${coverPosXY.y}%`;
+
+  const [avatarPosXY, setAvatarPosXY] = useState({ x: 50, y: 50 });
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+  const avatarPos = `${avatarPosXY.x}% ${avatarPosXY.y}%`;
+
+  // Load saved focal-points from localStorage.
+  useEffect(() => {
+    try {
+      const coverRaw = localStorage.getItem(`sportico_cover_pos_${id}`);
+      if (coverRaw) {
+        const p = JSON.parse(coverRaw) as { x: number; y: number };
+        if (typeof p.x === "number" && typeof p.y === "number") {
+          setCoverPosXY(p);
+        }
+      }
+      const avatarRaw = localStorage.getItem(`sportico_avatar_pos_${id}`);
+      if (avatarRaw) {
+        const p = JSON.parse(avatarRaw) as { x: number; y: number };
+        if (typeof p.x === "number" && typeof p.y === "number") {
+          setAvatarPosXY(p);
+        }
+      }
+    } catch {}
+  }, [id]);
+
+  const savePosToStorage = useCallback((pos: { x: number; y: number }) => {
+    try {
+      localStorage.setItem(`sportico_cover_pos_${id}`, JSON.stringify(pos));
+    } catch {}
+  }, [id]);
+
+  const toPct = useCallback((clientX: number, clientY: number) => {
+    if (!coverRef.current) return coverPosXY;
+    const rect = coverRef.current.getBoundingClientRect();
+    return {
+      x: Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))),
+      y: Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))),
+    };
+  }, [coverPosXY]);
+
+  const applyPos = useCallback((clientX: number, clientY: number) => {
+    const pos = toPct(clientX, clientY);
+    setCoverPosXY(pos);
+    savePosToStorage(pos);
+    setHasDragged(true);
+  }, [toPct, savePosToStorage]);
+
+  const onCoverMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    applyPos(e.clientX, e.clientY);
+  };
+
+  const onCoverTouchStart = (e: React.TouchEvent) => {
+    isDragging.current = true;
+    const t = e.touches[0];
+    applyPos(t.clientX, t.clientY);
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging.current || !isRepositioning) return;
+      applyPos(e.clientX, e.clientY);
+    };
+    const onUp = () => { isDragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isRepositioning, applyPos]);
+
+  useEffect(() => {
+    const onMove = (e: TouchEvent) => {
+      if (!isDragging.current || !isRepositioning) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      applyPos(t.clientX, t.clientY);
+    };
+    const onEnd = () => { isDragging.current = false; };
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [isRepositioning, applyPos]);
+
+  const handleResetCoverPos = () => {
+    const pos = { x: 50, y: 50 };
+    setCoverPosXY(pos);
+    savePosToStorage(pos);
+  };
+
+  const saveAvatarPosToStorage = useCallback((pos: { x: number; y: number }) => {
+    try {
+      localStorage.setItem(`sportico_avatar_pos_${id}`, JSON.stringify(pos));
+    } catch {}
+  }, [id]);
+
+  const handleAvatarPosChange = useCallback((pos: { x: number; y: number }) => {
+    setAvatarPosXY(pos);
+    saveAvatarPosToStorage(pos);
+  }, [saveAvatarPosToStorage]);
+
+  const handleResetAvatarPos = () => {
+    const pos = { x: 50, y: 50 };
+    setAvatarPosXY(pos);
+    saveAvatarPosToStorage(pos);
+  };
 
   const {
     data: coach,
@@ -257,21 +382,28 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
         <div className="mx-auto max-w-[1120px] pb-20">
           {/* Breadcrumb nav */}
           <motion.nav
-            initial={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
             aria-label="Breadcrumb"
-            className="mb-5 flex items-center gap-1.5 text-[12.5px]"
+            className="mb-6 flex items-center gap-1"
           >
             <Link
-              href="/coaches"
-              className="inline-flex items-center gap-1 text-on-surface-variant transition-colors hover:text-primary"
+              href="/"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-on-surface-variant/50 transition-all hover:bg-surface-container-low hover:text-on-surface-variant"
             >
-              <ArrowLeft size={13} />
+              <Home size={14} />
+            </Link>
+            <ChevronRight size={13} className="text-on-surface-variant/30 shrink-0" />
+            <Link
+              href="/coaches"
+              className="inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 text-[12.5px] text-on-surface-variant transition-all hover:bg-surface-container-low hover:text-on-surface"
+            >
+              <ArrowLeft size={12} />
               Huấn luyện viên
             </Link>
-            <span className="text-on-surface-variant/40 select-none">/</span>
-            <span className="text-on-surface font-medium truncate max-w-[200px]">
+            <ChevronRight size={13} className="text-on-surface-variant/30 shrink-0" />
+            <span className="inline-flex items-center rounded-[7px] bg-surface-container-low px-2.5 py-1 text-[12.5px] font-semibold text-on-surface truncate max-w-[220px]">
               {displayName}
             </span>
           </motion.nav>
@@ -284,24 +416,135 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
             className="relative mb-8"
           >
             {/* Cover — own overflow-hidden; avatar protrudes via absolute positioning */}
-            <div className="relative h-44 sm:h-56 overflow-hidden rounded-[20px] shadow-[0_4px_24px_-8px_rgba(15,15,30,0.12)]">
+            <div
+              ref={coverRef}
+              className={cn(
+                "relative h-[349px] sm:h-[413px] overflow-hidden rounded-[20px] shadow-[0_4px_24px_-8px_rgba(15,15,30,0.12)] group",
+                isRepositioning && "cursor-grabbing ring-2 ring-primary/50 ring-inset",
+                !isRepositioning && "cursor-default",
+              )}
+              onMouseDown={isRepositioning ? onCoverMouseDown : undefined}
+              onTouchStart={isRepositioning ? onCoverTouchStart : undefined}
+            >
               {coach.coverImage ? (
                 <img
                   src={coach.coverImage}
                   alt="Ảnh bìa"
-                  className="h-full w-full object-cover"
+                  draggable={false}
+                  className="h-full w-full object-cover pointer-events-none transition-[object-position] duration-75"
+                  style={{ objectPosition: coverPos }}
                 />
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-primary via-[#7d6dff] to-[#c084fc]" />
               )}
-              <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/15 to-transparent" />
+
+              <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/15 to-transparent pointer-events-none" />
+
+              {/* Crosshair focal point — shown while repositioning */}
+              {isRepositioning && coach.coverImage && (
+                <div
+                  className="absolute w-8 h-8 pointer-events-none transition-[left,top] duration-75"
+                  style={{
+                    left: `${coverPosXY.x}%`,
+                    top: `${coverPosXY.y}%`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
+                  <div className="absolute top-1/2 left-0 right-0 h-px bg-white/80 -translate-y-1/2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
+                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/80 -translate-x-1/2 shadow-[1px_0_2px_rgba(0,0,0,0.5)]" />
+                </div>
+              )}
+
+              {/* Drag hint — fades after first drag */}
+              <AnimatePresence>
+                {isRepositioning && !hasDragged && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  >
+                    <div className="flex items-center gap-2 bg-black/50 text-white text-[12px] font-medium px-4 py-2 rounded-full backdrop-blur-sm shadow-lg">
+                      <Move size={13} />
+                      Nhấn và kéo để căn chỉnh ảnh
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Owner controls */}
+              {isOwner && coach.coverImage && (
+                <>
+                  {/* "Căn chỉnh ảnh bìa" button — hover to show when not repositioning */}
+                  <AnimatePresence>
+                    {!isRepositioning && (
+                      <motion.button
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 0, y: 0 }}
+                        whileHover={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => { setIsRepositioning(true); setHasDragged(false); }}
+                        className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/55 hover:bg-black/70 text-white text-[12px] font-medium px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Move size={12} />
+                        Căn chỉnh ảnh bìa
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Reposition mode controls — reset + done */}
+                  <AnimatePresence>
+                    {isRepositioning && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="absolute top-3 right-3 flex items-center gap-2"
+                      >
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); handleResetCoverPos(); }}
+                          className="flex items-center gap-1.5 bg-black/55 hover:bg-black/70 text-white text-[12px] px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
+                        >
+                          <RotateCcw size={11} />
+                          Đặt lại
+                        </button>
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); setIsRepositioning(false); }}
+                          className="flex items-center gap-1.5 bg-primary hover:bg-[#2d20b8] text-white text-[12px] font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
+                        >
+                          <Check size={12} />
+                          Xong
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Position indicator while repositioning */}
+                  <AnimatePresence>
+                    {isRepositioning && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/50 text-white/80 text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none"
+                      >
+                        <Move size={10} />
+                        {coverPosXY.x}% · {coverPosXY.y}%
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </div>
 
             {/* Avatar + identity row — avatar is absolute so text height doesn't affect it */}
             <div className="relative px-5 sm:px-7">
               {/* Avatar — bleeds upward into cover */}
               <div
-                className="absolute left-0 z-10 overflow-hidden rounded-full border-4 border-white bg-surface
+                className="absolute left-0 z-10 overflow-hidden rounded-full border-4 border-white bg-surface group/avatar
                             h-[88px] w-[88px] sm:h-[108px] sm:w-[108px]
                             -top-[44px] sm:-top-[54px]
                             shadow-[0_4px_20px_rgba(0,0,0,0.18)] ring-1 ring-black/5"
@@ -310,7 +553,8 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                   <img
                     src={coach.avatarUrl}
                     alt={displayName}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-[object-position] duration-75"
+                    style={{ objectPosition: avatarPos }}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-[#7d6dff] text-white">
@@ -318,6 +562,16 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                       {displayName.charAt(0).toUpperCase()}
                     </span>
                   </div>
+                )}
+                {/* Owner — hover to reposition avatar */}
+                {isOwner && coach.avatarUrl && (
+                  <button
+                    onClick={() => setIsAvatarDialogOpen(true)}
+                    className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 group-hover/avatar:bg-black/45 group-hover/avatar:opacity-100 transition-all duration-200 rounded-full"
+                    title="Căn chỉnh ảnh đại diện"
+                  >
+                    <Move size={18} className="text-white drop-shadow" />
+                  </button>
                 )}
               </div>
 
@@ -730,7 +984,211 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       </main>
 
       <Footer />
+
+      {/* ── Avatar Repositioner Dialog ──────────────────────────────────────── */}
+      <AnimatePresence>
+        {isAvatarDialogOpen && coach?.avatarUrl && (
+          <AvatarRepositionerDialog
+            src={coach.avatarUrl}
+            position={avatarPosXY}
+            onPositionChange={handleAvatarPosChange}
+            onReset={handleResetAvatarPos}
+            onClose={() => setIsAvatarDialogOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
+  );
+}
+
+// ── AvatarRepositionerDialog ──────────────────────────────────────────────────
+
+function AvatarRepositionerDialog({
+  src,
+  position,
+  onPositionChange,
+  onReset,
+  onClose,
+}: {
+  src: string;
+  position: { x: number; y: number };
+  onPositionChange: (pos: { x: number; y: number }) => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDraggingAvatar = useRef(false);
+  const [active, setActive] = useState(false);
+  const [hinted, setHinted] = useState(false);
+
+  const toPercent = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!containerRef.current) return position;
+      const rect = containerRef.current.getBoundingClientRect();
+      return {
+        x: Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))),
+        y: Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))),
+      };
+    },
+    [position],
+  );
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingAvatar.current = true;
+    setActive(true);
+    setHinted(true);
+    onPositionChange(toPercent(e.clientX, e.clientY));
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDraggingAvatar.current) return;
+      onPositionChange(toPercent(e.clientX, e.clientY));
+    };
+    const onUp = () => { isDraggingAvatar.current = false; setActive(false); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [onPositionChange, toPercent]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    isDraggingAvatar.current = true;
+    setActive(true);
+    setHinted(true);
+    const t = e.touches[0];
+    onPositionChange(toPercent(t.clientX, t.clientY));
+  };
+
+  useEffect(() => {
+    const onMove = (e: TouchEvent) => {
+      if (!isDraggingAvatar.current) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      onPositionChange(toPercent(t.clientX, t.clientY));
+    };
+    const onEnd = () => { isDraggingAvatar.current = false; setActive(false); };
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [onPositionChange, toPercent]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 8 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 4 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        className="w-[300px] overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-3">
+          <span className="text-[14px] font-semibold text-on-surface">
+            Căn chỉnh ảnh đại diện
+          </span>
+          <span className="text-[11px] text-on-surface-variant/60">
+            Kéo để đặt điểm lấy nét
+          </span>
+        </div>
+
+        {/* Drag area */}
+        <div className="flex justify-center py-6 bg-surface-container-low/40">
+          <div
+            ref={containerRef}
+            className={cn(
+              "relative w-52 h-52 select-none overflow-hidden rounded-full group",
+              active ? "cursor-grabbing" : "cursor-grab",
+            )}
+            onMouseDown={onMouseDown}
+            onTouchStart={onTouchStart}
+          >
+            <img
+              src={src}
+              alt="Ảnh đại diện"
+              draggable={false}
+              className="w-full h-full object-cover pointer-events-none transition-[object-position] duration-75"
+              style={{ objectPosition: `${position.x}% ${position.y}%` }}
+            />
+            {/* Focal crosshair */}
+            <div
+              className="absolute w-7 h-7 pointer-events-none transition-[left,top] duration-75"
+              style={{
+                left: `${position.x}%`,
+                top: `${position.y}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)] scale-75 group-hover:scale-100 transition-transform duration-200" />
+              <div className="absolute top-1/2 left-0 right-0 h-px bg-white/80 -translate-y-1/2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/80 -translate-x-1/2 shadow-[1px_0_2px_rgba(0,0,0,0.5)]" />
+            </div>
+            {/* Hint */}
+            <AnimatePresence>
+              {!hinted && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div className="flex items-center gap-1.5 bg-black/55 text-white text-[11px] font-medium px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    <Move size={12} />
+                    Kéo để căn chỉnh
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Active ring */}
+            <AnimatePresence>
+              {active && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 ring-2 ring-primary/70 ring-inset pointer-events-none rounded-full"
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
+          <button
+            onClick={onReset}
+            className="flex items-center gap-1.5 text-[12px] text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            <RotateCcw size={12} />
+            Đặt lại
+          </button>
+          <span className="text-[11px] text-on-surface-variant/50 tabular-nums">
+            {Math.round(position.x)}% · {Math.round(position.y)}%
+          </span>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-semibold text-on-primary hover:bg-[#2d20b8] transition-colors"
+          >
+            <Check size={12} />
+            Xong
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

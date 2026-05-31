@@ -549,6 +549,8 @@ export default function CoachEarningsPage() {
           />
           <QuickActionsPanel
             onWithdraw={() => setWithdrawOpen(true)}
+            available={earningsTotal?.available}
+            pending={earningsTotal?.pending}
             reduce={reduce ?? false}
           />
         </div>
@@ -557,7 +559,7 @@ export default function CoachEarningsPage() {
       <WithdrawModal
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
-        available={earningsTotal?.net ?? netPayout}
+        available={earningsTotal?.available ?? earningsTotal?.net ?? netPayout}
         onSuccess={refetch}
       />
     </AppShell>
@@ -1508,9 +1510,13 @@ const QA_ACCENT = {
 
 function QuickActionsPanel({
   onWithdraw,
+  available,
+  pending,
   reduce,
 }: {
   onWithdraw: () => void;
+  available?: number;
+  pending?: number;
   reduce: boolean;
 }) {
   return (
@@ -1565,22 +1571,29 @@ function QuickActionsPanel({
         })}
       </div>
 
-      {/* Next payout banner */}
+      {/* Wallet balance banner */}
       <div className="mt-4 p-3.5 rounded-[14px] bg-gradient-to-br from-primary/[0.06] to-[#7d6dff]/[0.04] border border-primary/15">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles size={12} className="text-primary" />
           <p className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-            Next Payout
+            Số dư ví
           </p>
         </div>
-        <p className="text-[18px] font-bold tabular-nums leading-none mt-1">
-          {formatCurrency(4250)}
-        </p>
-        <p className="text-[11.5px] text-on-surface-variant mt-1">
-          Settles{" "}
-          <span className="text-on-surface font-medium">in 2 days</span> ·
-          Stripe ••4521
-        </p>
+        {available !== undefined ? (
+          <>
+            <p className="text-[18px] font-bold tabular-nums leading-none mt-1">
+              {formatCurrency(available)}
+            </p>
+            <p className="text-[11.5px] text-on-surface-variant mt-1">
+              Khả dụng rút ngay
+              {pending !== undefined && pending > 0 && (
+                <> · <span className="text-on-surface font-medium">{formatCurrency(pending)} đang chờ</span></>
+              )}
+            </p>
+          </>
+        ) : (
+          <p className="text-[13px] text-on-surface-variant mt-1">Đang tải…</p>
+        )}
       </div>
     </motion.aside>
   );

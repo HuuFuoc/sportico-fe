@@ -90,7 +90,7 @@ export function getPayouts() {
 }
 
 export function getEarningsTotal() {
-  return mockEarnings.reduce(
+  const totals = mockEarnings.reduce(
     (acc, p) => ({
       gross: acc.gross + p.gross,
       net: acc.net + p.net,
@@ -98,4 +98,10 @@ export function getEarningsTotal() {
     }),
     { gross: 0, net: 0, sessions: 0 },
   );
+  const lastNet = mockEarnings[mockEarnings.length - 1]?.net ?? 0;
+  return {
+    ...totals,
+    available: lastNet,
+    pending: Math.round(lastNet * 0.2),
+  };
 }

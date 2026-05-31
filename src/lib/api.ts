@@ -96,6 +96,10 @@ import {
 export interface EarningsTotal {
   gross: number;
   net: number;
+  /** Balance that can be withdrawn immediately. */
+  available: number;
+  /** Balance still awaiting settlement (sessions completed, not yet credited). */
+  pending: number;
   sessions: number;
 }
 
@@ -495,7 +499,7 @@ export const api = {
   // ---- Earnings / payouts ------------------------------------------------
   fetchEarnings: (): Promise<EarningPoint[]> =>
     liveAuthed(async () => {
-      const page = await backend.walletTransactions({ pageSize: 200 });
+      const page = await backend.walletTransactions({ pageSize: 100 });
       return map.transactionsToEarnings(page.items ?? []);
     }, () => getEarnings()),
   fetchPayouts: (): Promise<Payout[]> =>
@@ -543,6 +547,21 @@ export const api = {
       }),
       () => null,
     ),
+  /** Admin: fetch receipt for any withdrawal. Returns null on 404. */
+  fetchAdminWithdrawalReceipt: (withdrawalId: string): Promise<WithdrawalReceiptResponse | null> =>
+    liveAuthed<WithdrawalReceiptResponse | null>(
+      () => backend.adminWithdrawalReceipt(withdrawalId).catch((err) => {
+        if (err instanceof ApiError && (err.status === 404 || err.status === 400)) return null;
+        throw err;
+      }),
+      () => null,
+    ),
+  markPaidWithdrawal: (id: string): Promise<void> =>
+    liveAuthed<void>(async () => { await backend.markPaidWithdrawal(id); }, () => undefined),
+  refreshPayoutStatus: (id: string): Promise<void> =>
+    liveAuthed<void>(async () => { await backend.refreshPayoutStatus(id); }, () => undefined),
+  retryPayout: (id: string): Promise<void> =>
+    liveAuthed<void>(async () => { await backend.retryPayout(id); }, () => undefined),
 
   fetchPayoutAccount: (): Promise<PayoutAccount | null> =>
     liveAuthed<PayoutAccount | null>(

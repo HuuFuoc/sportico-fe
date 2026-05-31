@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, Fragment, useContext, useMemo, useState } from "react";
+import { createContext, Fragment, useContext, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Bar,
@@ -22,7 +22,9 @@ import {
   ArrowUpRight,
   Banknote,
   Brain,
+  Building2,
   CalendarRange,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
@@ -31,15 +33,16 @@ import {
   Download,
   EllipsisVertical,
   Eye,
-  FileText,
   Filter,
   Flag,
   Globe,
   Hourglass,
   Info,
   Layers,
+  Loader2,
   Pause,
   Play,
+  Receipt,
   RefreshCw,
   Search,
   Settings2,
@@ -48,12 +51,14 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  X,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
+import type { WithdrawalReceiptResponse } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Coach, EarningPoint, Payout } from "@/types";
@@ -150,7 +155,7 @@ export default function AdminRevenuePage() {
     () =>
       Promise.all([
         api.fetchEarnings(),
-        api.fetchPayouts(),
+        api.fetchPendingWithdrawals(),
         api.fetchCoaches(),
       ]),
     [],
@@ -171,6 +176,49 @@ export default function AdminRevenuePage() {
   >("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [receiptState, setReceiptState] = useState<{
+    id: string;
+    data: WithdrawalReceiptResponse | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
+
+  const runAction = async (id: string, fn: () => Promise<void>) => {
+    setActionLoading(id);
+    try {
+      await fn();
+      refetch();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleApprove = (id: string) =>
+    runAction(id, () => api.approveWithdrawal(id));
+  const handleReject = async (id: string, note: string) => {
+    await runAction(id, () => api.rejectWithdrawal(id, note));
+    setRejectTarget(null);
+  };
+  const handleMarkPaid = (id: string) =>
+    runAction(id, () => api.markPaidWithdrawal(id));
+  const handleRetry = (id: string) =>
+    runAction(id, () => api.retryPayout(id));
+  const handleRefreshStatus = (id: string) =>
+    runAction(id, () => api.refreshPayoutStatus(id));
+
+  const handleViewReceipt = async (id: string) => {
+    setReceiptState({ id, data: null, loading: true, error: null });
+    try {
+      const d = await api.fetchAdminWithdrawalReceipt(id);
+      setReceiptState({ id, data: d, loading: false, error: d ? null : "Biên nhận chưa khả dụng." });
+    } catch {
+      setReceiptState({ id, data: null, loading: false, error: "Không tải được biên nhận." });
+    }
+  };
 
   // Enrich payouts
   const payouts = useMemo<EnrichedPayout[]>(
@@ -420,6 +468,13 @@ export default function AdminRevenuePage() {
               allSelected={allSelected}
               expanded={expanded}
               setExpanded={setExpanded}
+              actionLoading={actionLoading}
+              onApprove={handleApprove}
+              onReject={(id) => setRejectTarget(id)}
+              onMarkPaid={handleMarkPaid}
+              onRetry={handleRetry}
+              onRefreshStatus={handleRefreshStatus}
+              onViewReceipt={handleViewReceipt}
               reduce={reduce ?? false}
             />
           </div>
@@ -443,6 +498,26 @@ export default function AdminRevenuePage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Reject reason modal */}
+      {rejectTarget && (
+        <RejectReasonModal
+          onConfirm={(note) => void handleReject(rejectTarget, note)}
+          onClose={() => setRejectTarget(null)}
+          loading={actionLoading === rejectTarget}
+        />
+      )}
+
+      {/* Receipt modal */}
+      {receiptState && (
+        <AdminReceiptModal
+          receipt={receiptState.data}
+          loading={receiptState.loading}
+          error={receiptState.error}
+          onClose={() => setReceiptState(null)}
+          onRetry={() => void handleViewReceipt(receiptState.id)}
+        />
+      )}
       </AppShell>
     </CoachLookupContext.Provider>
   );
@@ -1122,6 +1197,13 @@ function PayoutTable({
   allSelected,
   expanded,
   setExpanded,
+  actionLoading,
+  onApprove,
+  onReject,
+  onMarkPaid,
+  onRetry,
+  onRefreshStatus,
+  onViewReceipt,
   reduce,
 }: {
   payouts: EnrichedPayout[];
@@ -1135,6 +1217,13 @@ function PayoutTable({
   allSelected: boolean;
   expanded: string | null;
   setExpanded: (id: string | null) => void;
+  actionLoading: string | null;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  onMarkPaid: (id: string) => void;
+  onRetry: (id: string) => void;
+  onRefreshStatus: (id: string) => void;
+  onViewReceipt: (id: string) => void;
   reduce: boolean;
 }) {
   const coachById = useContext(CoachLookupContext);
@@ -1410,17 +1499,35 @@ function PayoutTable({
                       className="pr-4 pl-2 py-2 text-right"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="inline-flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                        {p.status === "failed" && (
-                          <RowAction icon={RefreshCw} label="Thử lại" />
-                        )}
-                        {p.status === "pending" && (
-                          <RowAction icon={Pause} label="Giữ" />
-                        )}
-                        <RowAction icon={Eye} label="Xem" />
-                        <RowAction icon={ShieldAlert} label="Điều tra" />
-                        <RowAction icon={EllipsisVertical} label="Thêm" />
-                      </div>
+                      {actionLoading === p.id ? (
+                        <span className="inline-flex items-center justify-center w-7 h-7">
+                          <Loader2 size={12} className="animate-spin text-primary" />
+                        </span>
+                      ) : (
+                        <div className="inline-flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                          {p.status === "pending" && (
+                            <>
+                              <RowAction icon={CheckCircle2} label="Duyệt" onClick={() => onApprove(p.id)} />
+                              <RowAction icon={XCircle} label="Từ chối" onClick={() => onReject(p.id)} />
+                            </>
+                          )}
+                          {p.status === "processing" && (
+                            <>
+                              <RowAction icon={Play} label="Đánh dấu đã trả" onClick={() => onMarkPaid(p.id)} />
+                              <RowAction icon={RefreshCw} label="Thử lại" onClick={() => onRetry(p.id)} />
+                              <RowAction icon={Activity} label="Làm mới trạng thái" onClick={() => onRefreshStatus(p.id)} />
+                            </>
+                          )}
+                          {p.status === "failed" && (
+                            <RowAction icon={RefreshCw} label="Thử lại" onClick={() => onRetry(p.id)} />
+                          )}
+                          {p.status === "paid" && (
+                            <RowAction icon={Receipt} label="Biên nhận" onClick={() => onViewReceipt(p.id)} />
+                          )}
+                          <RowAction icon={Eye} label="Xem" />
+                          <RowAction icon={EllipsisVertical} label="Thêm" />
+                        </div>
+                      )}
                     </td>
                   </tr>
 
@@ -1480,22 +1587,29 @@ function PayoutTable({
                               </div>
                             </div>
                           )}
-                          <div className="flex items-center gap-1.5 mt-3">
-                            <ExpandedAction icon={Eye} label="Xem đầy đủ" />
-                            <ExpandedAction icon={FileText} label="Hóa đơn" />
-                            <ExpandedAction icon={Copy} label="Sao chép ID" />
-                            {p.status === "failed" && (
-                              <ExpandedAction
-                                icon={RefreshCw}
-                                label="Thử lại"
-                                primary
-                              />
+                          <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                            {p.status === "pending" && (
+                              <>
+                                <ExpandedAction icon={CheckCircle2} label="Duyệt" primary onClick={() => onApprove(p.id)} />
+                                <ExpandedAction icon={XCircle} label="Từ chối" danger onClick={() => onReject(p.id)} />
+                              </>
                             )}
-                            <ExpandedAction
-                              icon={Flag}
-                              label="Leo thang"
-                              danger
-                            />
+                            {p.status === "processing" && (
+                              <>
+                                <ExpandedAction icon={Play} label="Đánh dấu đã trả" primary onClick={() => onMarkPaid(p.id)} />
+                                <ExpandedAction icon={RefreshCw} label="Thử lại PayOS" onClick={() => onRetry(p.id)} />
+                                <ExpandedAction icon={Activity} label="Làm mới trạng thái" onClick={() => onRefreshStatus(p.id)} />
+                              </>
+                            )}
+                            {p.status === "failed" && (
+                              <ExpandedAction icon={RefreshCw} label="Thử lại" primary onClick={() => onRetry(p.id)} />
+                            )}
+                            {p.status === "paid" && (
+                              <ExpandedAction icon={Receipt} label="Xem biên nhận" onClick={() => onViewReceipt(p.id)} />
+                            )}
+                            <ExpandedAction icon={Eye} label="Xem đầy đủ" />
+                            <ExpandedAction icon={Copy} label="Sao chép ID" />
+                            <ExpandedAction icon={Flag} label="Leo thang" danger />
                           </div>
                         </td>
                       </motion.tr>
@@ -1563,14 +1677,17 @@ function ExpandedAction({
   label,
   primary,
   danger,
+  onClick,
 }: {
   icon: typeof Eye;
   label: string;
   primary?: boolean;
   danger?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <button
+      onClick={onClick}
       className={cn(
         "h-7 px-2.5 inline-flex items-center gap-1.5 rounded-md text-[11px] font-semibold transition-colors",
         primary
@@ -1589,14 +1706,17 @@ function ExpandedAction({
 function RowAction({
   icon: Icon,
   label,
+  onClick,
 }: {
   icon: typeof RefreshCw;
   label: string;
+  onClick?: () => void;
 }) {
   return (
     <button
       aria-label={label}
       title={label}
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       className="w-7 h-7 rounded-md hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center"
     >
       <Icon size={12} />
@@ -2007,6 +2127,181 @@ function BulkBtn({
       <Icon size={11} />
       <span className="hidden sm:inline">{label}</span>
     </button>
+  );
+}
+
+// ============================================================================
+// Reject reason modal
+// ============================================================================
+
+function RejectReasonModal({
+  onConfirm,
+  onClose,
+  loading,
+}: {
+  onConfirm: (note: string) => void;
+  onClose: () => void;
+  loading: boolean;
+}) {
+  const [note, setNote] = useState("");
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="w-full max-w-sm rounded-[16px] bg-surface-container-lowest border border-[var(--color-border-soft)] shadow-[0_20px_50px_-12px_rgba(15,15,30,0.35)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--color-border-soft)] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[8px] bg-[#ffdad6] flex items-center justify-center">
+              <XCircle size={14} className="text-[#ba1a1a]" />
+            </div>
+            <p className="text-[14.5px] font-semibold">Từ chối yêu cầu rút tiền</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-md hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors">
+            <X size={13} />
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-[12.5px] text-on-surface-variant">Nhập lý do để thông báo cho HLV.</p>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ví dụ: Thông tin tài khoản không hợp lệ..."
+            rows={3}
+            className="w-full px-3 py-2.5 bg-surface-container-low border border-[var(--color-border-soft)] focus:border-primary/40 focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[12.5px] resize-none transition-all"
+          />
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 h-9 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={() => onConfirm(note.trim())}
+              disabled={loading || !note.trim()}
+              className="flex-1 h-9 rounded-lg bg-[#ba1a1a] text-white text-[12.5px] font-semibold hover:bg-[#9b1515] disabled:opacity-60 inline-flex items-center justify-center gap-1.5 transition-colors"
+            >
+              {loading ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+              Từ chối
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Admin receipt modal
+// ============================================================================
+
+function AdminReceiptModal({
+  receipt,
+  loading,
+  error,
+  onClose,
+  onRetry,
+}: {
+  receipt: WithdrawalReceiptResponse | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="w-full max-w-md rounded-[16px] bg-surface-container-lowest border border-[var(--color-border-soft)] shadow-[0_20px_50px_-12px_rgba(15,15,30,0.35)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--color-border-soft)] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[8px] bg-gradient-to-br from-primary to-[#5b4ee8] flex items-center justify-center">
+              <Receipt size={14} className="text-white" />
+            </div>
+            <p className="text-[14.5px] font-semibold">Biên nhận thanh toán</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-md hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors">
+            <X size={13} />
+          </button>
+        </div>
+        <div className="px-5 py-4">
+          {loading && (
+            <div className="flex flex-col items-center gap-2 py-8 text-on-surface-variant">
+              <Loader2 size={18} className="animate-spin text-primary" />
+              <p className="text-[12.5px]">Đang tải biên nhận…</p>
+            </div>
+          )}
+          {error && !loading && (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className="w-9 h-9 rounded-full bg-[#ffdad6] flex items-center justify-center">
+                <XCircle size={16} className="text-[#ba1a1a]" />
+              </div>
+              <p className="text-[12.5px] text-on-surface-variant">{error}</p>
+              <button onClick={onRetry} className="px-4 h-8 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors">
+                Thử lại
+              </button>
+            </div>
+          )}
+          {receipt && !loading && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-[10px] bg-surface-container-low/50">
+                <p className="text-[11px] text-on-surface-variant font-medium">Số biên nhận</p>
+                <p className="text-[11.5px] font-mono font-semibold">{receipt.receiptNumber}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">HLV</p>
+                  <p className="text-[12.5px] font-semibold mt-0.5 truncate">{receipt.coachName}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Số tiền</p>
+                  <p className="text-[12.5px] font-bold tabular-nums mt-0.5">{formatCurrency(receipt.amount, receipt.currency)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Trạng thái</p>
+                  <p className="text-[12.5px] font-semibold mt-0.5">{receipt.status}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Ngày tạo</p>
+                  <p className="text-[12.5px] font-semibold mt-0.5">{new Date(receipt.createdAt).toLocaleDateString("vi-VN")}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 p-3 rounded-[10px] border border-[var(--color-border-soft)]">
+                <div className="w-8 h-8 rounded-[8px] bg-surface-container-high flex items-center justify-center shrink-0">
+                  <Building2 size={14} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-semibold truncate">{receipt.bankName}</p>
+                  <p className="text-[11px] text-on-surface-variant">{receipt.maskedAccountNumber} · {receipt.accountHolderName}</p>
+                </div>
+              </div>
+              {receipt.payOsReferenceId && (
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-on-surface-variant">Mã PayOS</span>
+                  <span className="font-mono">{receipt.payOsReferenceId}</span>
+                </div>
+              )}
+              {receipt.adminNote && (
+                <p className="text-[11px] text-on-surface-variant italic border-t border-[var(--color-border-soft)] pt-3">{receipt.adminNote}</p>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="px-5 pb-4 flex justify-end">
+          <button onClick={onClose} className="px-5 h-8 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

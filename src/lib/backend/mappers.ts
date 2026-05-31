@@ -424,6 +424,8 @@ export function walletToTotal(w: CoachWalletResponse) {
   return {
     gross: w.totalEarned,
     net: w.availableBalance + w.pendingBalance,
+    available: w.availableBalance,
+    pending: w.pendingBalance,
     sessions: 0,
   };
 }

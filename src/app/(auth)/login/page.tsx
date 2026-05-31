@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -48,11 +48,13 @@ export default function LoginPage() {
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
-  // Show a notice when the user was redirected here because their session expired.
-  const sessionExpired =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("session") === "expired";
+  useEffect(() => {
+    setSessionExpired(
+      new URLSearchParams(window.location.search).get("session") === "expired",
+    );
+  }, []);
 
   const {
     register,

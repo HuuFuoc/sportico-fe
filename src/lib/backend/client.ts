@@ -612,6 +612,26 @@ export const backend = {
       }),
     );
   },
+  async markPaidWithdrawal(id: string) {
+    return unwrap(
+      await PUT<WithdrawalRequestResponse>(ep.adminMarkPaidWithdrawal(id)),
+    );
+  },
+  async refreshPayoutStatus(id: string) {
+    return unwrap(
+      await PUT<WithdrawalRequestResponse>(ep.adminRefreshPayoutStatus(id)),
+    );
+  },
+  async retryPayout(id: string) {
+    return unwrap(
+      await POST<WithdrawalRequestResponse>(ep.adminRetryPayout(id)),
+    );
+  },
+  async adminWithdrawalReceipt(id: string) {
+    return unwrap(
+      await GET<WithdrawalReceiptResponse>(ep.adminWithdrawalReceipt(id)),
+    );
+  },
 };
 
 export default backend;

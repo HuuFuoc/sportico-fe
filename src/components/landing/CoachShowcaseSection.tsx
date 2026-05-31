@@ -6,7 +6,7 @@ import {
   useReducedMotion,
   type Easing,
 } from "motion/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -41,7 +41,14 @@ export function CoachShowcaseSection() {
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
 
   const { data: coachesData } = useApiResource(() => api.fetchCoaches(), []);
-  const coaches = useMemo(() => (coachesData ?? []).slice(0, 3), [coachesData]);
+  const coaches = useMemo(() => {
+    return (coachesData ?? [])
+      .filter((c) => {
+        const n = c.name.toLowerCase().trim();
+        return n !== "system" && n !== "admin" && n.length > 1;
+      })
+      .slice(0, 3);
+  }, [coachesData]);
 
   return (
     <section
@@ -168,17 +175,12 @@ export function CoachShowcaseSection() {
           </span>
         </motion.div>
 
-        {/* ============ COACH CARDS GRID ============
-            Asymmetric column track gives the featured card visual weight via
-            WIDTH instead of `row-span-2` — the previous row-span left phantom
-            row-2 cells in cols 2 and 3, producing the "floating disconnected
-            cards" + white-void feeling. */}
-        <div className="mt-10 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr]">
+        {/* ============ COACH CARDS GRID ============ */}
+        <div className="mt-10 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {coaches.map((coach, i) => (
             <CoachCard
               key={coach.id}
               coach={coach}
-              featured={i === 0}
               inView={inView}
               reduce={reduce ?? false}
               delay={0.32 + i * 0.1}
@@ -219,13 +221,11 @@ export function CoachShowcaseSection() {
 
 function CoachCard({
   coach,
-  featured,
   inView,
   reduce,
   delay,
 }: {
   coach: Coach;
-  featured?: boolean;
   inView: boolean;
   reduce: boolean;
   delay: number;
@@ -239,8 +239,32 @@ function CoachCard({
     return 2 + (hash % 6);
   }, [coach.id]);
 
+  const [imgError, setImgError] = useState(false);
+  const handleImgError = useCallback(() => setImgError(true), []);
+
+  // Load saved avatar focal-point; default to top-center for portrait photos.
+  const [avatarObjPos, setAvatarObjPos] = useState("50% 15%");
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`sportico_avatar_pos_${coach.id}`);
+      if (raw) {
+        const p = JSON.parse(raw) as { x: number; y: number };
+        if (typeof p.x === "number" && typeof p.y === "number") {
+          setAvatarObjPos(`${p.x}% ${p.y}%`);
+        }
+      }
+    } catch {}
+  }, [coach.id]);
+
+  const initials = coach.name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{
@@ -253,37 +277,30 @@ function CoachCard({
     <SpotlightCard
       radius={280}
       color="rgba(124,58,237,0.09)"
-      className={cn(
-        "group flex flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.1)] transition-all duration-500 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_24px_50px_-20px_rgba(124,58,237,0.2)]",
-        featured
-          ? "border-violet-200/60"
-          : "border-slate-200 hover:border-violet-200",
-      )}
+      className="group flex h-full flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.1)] transition-all duration-500 hover:border-violet-200 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_24px_50px_-20px_rgba(124,58,237,0.2)]"
     >
-      {/* Featured ribbon */}
-      {featured && (
-        <div className="absolute right-3 top-3 z-10">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.5)]">
-            <Sparkles size={9} />
-            Lựa chọn hàng đầu
-          </span>
-        </div>
-      )}
-
       {/* Cover image area */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-cyan-100">
-        <motion.img
-          src={coach.avatarUrl}
-          alt={coach.name}
-          initial={{ scale: 1.08 }}
-          animate={inView ? { scale: 1 } : {}}
-          transition={{
-            duration: reduce ? 0 : 1.2,
-            delay: reduce ? 0 : delay + 0.1,
-            ease: "easeOut",
-          }}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-        />
+      <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-cyan-100">
+        {imgError ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-violet-200 via-fuchsia-100 to-cyan-100">
+            <span className="text-4xl font-bold text-violet-600/60">{initials}</span>
+          </div>
+        ) : (
+          <motion.img
+            src={coach.avatarUrl}
+            alt={coach.name}
+            onError={handleImgError}
+            initial={{ scale: 1.08 }}
+            animate={inView ? { scale: 1 } : {}}
+            transition={{
+              duration: reduce ? 0 : 1.2,
+              delay: reduce ? 0 : delay + 0.1,
+              ease: "easeOut",
+            }}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+            style={{ objectPosition: avatarObjPos }}
+          />
+        )}
         {/* Bottom gradient for text */}
         <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
 
@@ -294,29 +311,19 @@ function CoachCard({
         </div>
 
         {/* Rating top right */}
-        {!featured && (
-          <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 backdrop-blur">
-            <Star size={10} fill="currentColor" strokeWidth={0} />
-            {coach.rating.toFixed(1)}
-          </div>
-        )}
+        <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 backdrop-blur">
+          <Star size={10} fill="currentColor" strokeWidth={0} />
+          {coach.rating.toFixed(1)}
+        </div>
 
         {/* Bottom: name + sport */}
-        <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold text-white">
-              {coach.name}
-            </p>
-            <p className="truncate text-[11.5px] text-white/85">
-              {coach.headline}
-            </p>
-          </div>
-          {featured && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/95 px-1.5 py-0.5 text-[10.5px] font-bold text-amber-700">
-              <Star size={10} fill="currentColor" strokeWidth={0} />
-              {coach.rating.toFixed(1)}
-            </span>
-          )}
+        <div className="absolute inset-x-3 bottom-3">
+          <p className="truncate text-[15px] font-semibold text-white">
+            {coach.name}
+          </p>
+          <p className="truncate text-[11.5px] text-white/85">
+            {coach.headline}
+          </p>
         </div>
       </div>
 

@@ -149,4 +149,12 @@ export const backendEndpoints = {
     `/api/admin/withdrawal-requests/${encodeURIComponent(id)}/approve`,
   adminRejectWithdrawal: (id: string) =>
     `/api/admin/withdrawal-requests/${encodeURIComponent(id)}/reject`,
+  adminMarkPaidWithdrawal: (id: string) =>
+    `/api/admin/withdrawal-requests/${encodeURIComponent(id)}/mark-paid`,
+  adminRefreshPayoutStatus: (id: string) =>
+    `/api/admin/withdrawal-requests/${encodeURIComponent(id)}/refresh-payout-status`,
+  adminRetryPayout: (id: string) =>
+    `/api/admin/withdrawal-requests/${encodeURIComponent(id)}/retry-payout`,
+  adminWithdrawalReceipt: (id: string) =>
+    `/api/admin/withdrawal-requests/${encodeURIComponent(id)}/receipt`,
 } as const;

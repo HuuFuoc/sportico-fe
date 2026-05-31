@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   CheckCircle2,
@@ -8,6 +8,8 @@ import {
   Image as ImageIcon,
   Loader2,
   MapPin,
+  Move,
+  RotateCcw,
   Save,
   Share2,
   Sparkles,
@@ -16,6 +18,7 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { getMyCoachProfile, updateMyCoachProfile } from "@/lib/coach-api";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 import { messageForApiError } from "@/lib/errors-vi";
 import { cn } from "@/lib/utils";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
@@ -31,6 +34,37 @@ function isHttpUrl(value: string): boolean {
     return false;
   }
 }
+
+interface CoverPosition {
+  x: number; // 0-100  (objectPosition X %)
+  y: number; // 0-100  (objectPosition Y %)
+}
+
+const DEFAULT_COVER_POS: CoverPosition = { x: 50, y: 50 };
+
+const COVER_POS_KEY = (id: string | number) => `sportico_cover_pos_${id}`;
+const AVATAR_POS_KEY = (id: string | number) => `sportico_avatar_pos_${id}`;
+
+function loadPos(key: string): CoverPosition {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return DEFAULT_COVER_POS;
+    const p = JSON.parse(raw) as CoverPosition;
+    if (typeof p.x === "number" && typeof p.y === "number") return p;
+  } catch {}
+  return DEFAULT_COVER_POS;
+}
+
+function savePos(key: string, pos: CoverPosition) {
+  try {
+    localStorage.setItem(key, JSON.stringify(pos));
+  } catch {}
+}
+
+const loadCoverPos = (id: string | number) => loadPos(COVER_POS_KEY(id));
+const saveCoverPos = (id: string | number, pos: CoverPosition) => savePos(COVER_POS_KEY(id), pos);
+const loadAvatarPos = (id: string | number) => loadPos(AVATAR_POS_KEY(id));
+const saveAvatarPos = (id: string | number, pos: CoverPosition) => savePos(AVATAR_POS_KEY(id), pos);
 
 interface FormState {
   headline: string;
@@ -79,14 +113,19 @@ export default function CoachProfilePage() {
   );
 
   const [form, setForm] = useState<FormState>(EMPTY);
+  const authUser = useAuthStore((s) => s.user);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [coverPos, setCoverPos] = useState<CoverPosition>(DEFAULT_COVER_POS);
+  const [avatarPos, setAvatarPos] = useState<CoverPosition>(DEFAULT_COVER_POS);
 
   // Seed the form from the loaded profile.
   useEffect(() => {
     if (!profile) return;
+    setCoverPos(loadCoverPos(profile.userId));
+    setAvatarPos(loadAvatarPos(profile.userId));
     setForm({
       headline: profile.headline ?? "",
       bio: profile.bio ?? "",
@@ -119,6 +158,20 @@ export default function CoachProfilePage() {
     setDirty(true);
     setSaved(false);
   };
+
+  const handleCoverPosChange = useCallback((pos: CoverPosition) => {
+    setCoverPos(pos);
+    if (profile?.userId) saveCoverPos(profile.userId, pos);
+  }, [profile?.userId]);
+
+  const resetCoverPos = () => handleCoverPosChange(DEFAULT_COVER_POS);
+
+  const handleAvatarPosChange = useCallback((pos: CoverPosition) => {
+    setAvatarPos(pos);
+    if (profile?.userId) saveAvatarPos(profile.userId, pos);
+  }, [profile?.userId]);
+
+  const resetAvatarPos = () => handleAvatarPosChange(DEFAULT_COVER_POS);
 
   const clientError = useMemo(() => {
     if (form.experienceYears !== "") {
@@ -391,18 +444,82 @@ export default function CoachProfilePage() {
             </Field>
           </Section>
 
-          {/* Cover preview hint */}
-          {form.coverImageUrl.trim() && isHttpUrl(form.coverImageUrl.trim()) && (
-            <div className="rounded-[12px] border border-[var(--color-border-soft)] overflow-hidden">
-              <div className="flex items-center gap-1.5 px-3 py-2 text-[11.5px] text-on-surface-variant border-b border-[var(--color-border-soft)]">
-                <ImageIcon size={13} /> Xem trước ảnh bìa
+          {/* Avatar repositioner — only shown when user has an avatar */}
+          {authUser?.avatarUrl && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: EASE }}
+              className="rounded-[16px] border border-[var(--color-border-soft)] overflow-hidden bg-surface-container-lowest"
+            >
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--color-border-soft)]">
+                <div className="flex items-center gap-2 text-[12px] text-on-surface-variant">
+                  <UserRound size={13} />
+                  <span>Căn chỉnh ảnh đại diện</span>
+                  <span className="text-[11px] text-on-surface-variant/60">
+                    · Kéo để đặt điểm lấy nét
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetAvatarPos}
+                  title="Đặt lại về giữa"
+                  className="flex items-center gap-1 text-[11px] text-on-surface-variant/70 hover:text-on-surface transition-colors"
+                >
+                  <RotateCcw size={11} />
+                  Đặt lại
+                </button>
               </div>
-              <img
-                src={form.coverImageUrl.trim()}
-                alt="Ảnh bìa"
-                className="w-full max-h-48 object-cover"
+              <AvatarRepositioner
+                src={authUser.avatarUrl}
+                position={avatarPos}
+                onPositionChange={handleAvatarPosChange}
               />
-            </div>
+              <div className="px-4 py-2 flex items-center gap-1.5 text-[11px] text-on-surface-variant/60 border-t border-[var(--color-border-soft)]">
+                <Move size={10} />
+                Vị trí: {Math.round(avatarPos.x)}% ngang · {Math.round(avatarPos.y)}% dọc
+                <span className="ml-auto text-[10px]">Lưu tự động trong trình duyệt</span>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Cover preview with drag-to-reposition */}
+          {form.coverImageUrl.trim() && isHttpUrl(form.coverImageUrl.trim()) && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: EASE }}
+              className="rounded-[16px] border border-[var(--color-border-soft)] overflow-hidden bg-surface-container-lowest"
+            >
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--color-border-soft)]">
+                <div className="flex items-center gap-2 text-[12px] text-on-surface-variant">
+                  <ImageIcon size={13} />
+                  <span>Xem trước ảnh bìa</span>
+                  <span className="text-[11px] text-on-surface-variant/60">
+                    · Kéo để căn chỉnh vị trí hiển thị
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetCoverPos}
+                  title="Đặt lại về giữa"
+                  className="flex items-center gap-1 text-[11px] text-on-surface-variant/70 hover:text-on-surface transition-colors"
+                >
+                  <RotateCcw size={11} />
+                  Đặt lại
+                </button>
+              </div>
+              <CoverImageRepositioner
+                src={form.coverImageUrl.trim()}
+                position={coverPos}
+                onPositionChange={handleCoverPosChange}
+              />
+              <div className="px-4 py-2 flex items-center gap-1.5 text-[11px] text-on-surface-variant/60 border-t border-[var(--color-border-soft)]">
+                <Move size={10} />
+                Vị trí: {Math.round(coverPos.x)}% ngang · {Math.round(coverPos.y)}% dọc
+                <span className="ml-auto text-[10px]">Lưu tự động trong trình duyệt</span>
+              </div>
+            </motion.div>
           )}
         </div>
       </div>
@@ -512,6 +629,306 @@ function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
       {...props}
       className={cn(fieldCls, "py-2.5 leading-relaxed resize-none", props.className)}
     />
+  );
+}
+
+// ---- CoverImageRepositioner -------------------------------------------------
+// Lets the coach drag to set the focal point of their cover image.
+// The position is stored as CSS objectPosition percentages (0-100 each axis).
+// Wherever the pointer is within the container becomes the new focal center.
+
+function CoverImageRepositioner({
+  src,
+  position,
+  onPositionChange,
+}: {
+  src: string;
+  position: CoverPosition;
+  onPositionChange: (pos: CoverPosition) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const [active, setActive] = useState(false);
+  const [hinted, setHinted] = useState(false);
+
+  const toPercent = useCallback(
+    (clientX: number, clientY: number): CoverPosition => {
+      if (!containerRef.current) return position;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
+      const y = Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+      return { x, y };
+    },
+    [position],
+  );
+
+  // Mouse events
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    setActive(true);
+    setHinted(true);
+    onPositionChange(toPercent(e.clientX, e.clientY));
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      onPositionChange(toPercent(e.clientX, e.clientY));
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      setActive(false);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [onPositionChange, toPercent]);
+
+  // Touch events
+  const onTouchStart = (e: React.TouchEvent) => {
+    isDragging.current = true;
+    setActive(true);
+    setHinted(true);
+    const t = e.touches[0];
+    onPositionChange(toPercent(t.clientX, t.clientY));
+  };
+
+  useEffect(() => {
+    const onMove = (e: TouchEvent) => {
+      if (!isDragging.current) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      onPositionChange(toPercent(t.clientX, t.clientY));
+    };
+    const onEnd = () => {
+      isDragging.current = false;
+      setActive(false);
+    };
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [onPositionChange, toPercent]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative w-full h-64 sm:h-80 select-none overflow-hidden group",
+        active ? "cursor-grabbing" : "cursor-grab",
+      )}
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
+    >
+      {/* The cover image */}
+      <img
+        src={src}
+        alt="Ảnh bìa"
+        draggable={false}
+        className="w-full h-full object-cover pointer-events-none transition-[object-position] duration-75"
+        style={{ objectPosition: `${position.x}% ${position.y}%` }}
+      />
+
+      {/* Focal point crosshair */}
+      <div
+        className="absolute w-8 h-8 pointer-events-none transition-[left,top] duration-75"
+        style={{
+          left: `${position.x}%`,
+          top: `${position.y}%`,
+          transform: "translate(-50%, -50%)",
+        }}
+      >
+        <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)] scale-75 group-hover:scale-100 transition-transform duration-200" />
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-white/80 -translate-y-1/2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/80 -translate-x-1/2 shadow-[1px_0_2px_rgba(0,0,0,0.5)]" />
+      </div>
+
+      {/* Drag hint overlay — fades after first interaction */}
+      <AnimatePresence>
+        {!hinted && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          >
+            <div className="flex items-center gap-2 bg-black/50 text-white text-[12px] font-medium px-4 py-2 rounded-full backdrop-blur-sm shadow-lg">
+              <Move size={13} />
+              Nhấn và kéo để căn chỉnh ảnh
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active drag indicator */}
+      <AnimatePresence>
+        {active && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 ring-2 ring-primary/60 ring-inset pointer-events-none rounded-[0px]"
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---- AvatarRepositioner -------------------------------------------------------
+// Lets the coach set the focal point of their avatar (circular crop).
+// Same drag mechanics as CoverImageRepositioner; uses an SVG spotlight overlay
+// to show the final circular crop area.
+
+function AvatarRepositioner({
+  src,
+  position,
+  onPositionChange,
+}: {
+  src: string;
+  position: CoverPosition;
+  onPositionChange: (pos: CoverPosition) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const [active, setActive] = useState(false);
+  const [hinted, setHinted] = useState(false);
+
+  const toPercent = useCallback(
+    (clientX: number, clientY: number): CoverPosition => {
+      if (!containerRef.current) return position;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
+      const y = Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+      return { x, y };
+    },
+    [position],
+  );
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    setActive(true);
+    setHinted(true);
+    onPositionChange(toPercent(e.clientX, e.clientY));
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      onPositionChange(toPercent(e.clientX, e.clientY));
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      setActive(false);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [onPositionChange, toPercent]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    isDragging.current = true;
+    setActive(true);
+    setHinted(true);
+    const t = e.touches[0];
+    onPositionChange(toPercent(t.clientX, t.clientY));
+  };
+
+  useEffect(() => {
+    const onMove = (e: TouchEvent) => {
+      if (!isDragging.current) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      onPositionChange(toPercent(t.clientX, t.clientY));
+    };
+    const onEnd = () => {
+      isDragging.current = false;
+      setActive(false);
+    };
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [onPositionChange, toPercent]);
+
+  return (
+    <div className="flex justify-center py-6 bg-surface-container-low/40">
+      <div
+        ref={containerRef}
+        className={cn(
+          "relative w-52 h-52 select-none overflow-hidden group rounded-full",
+          active ? "cursor-grabbing" : "cursor-grab",
+        )}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+      >
+        {/* Avatar image */}
+        <img
+          src={src}
+          alt="Ảnh đại diện"
+          draggable={false}
+          className="w-full h-full object-cover pointer-events-none transition-[object-position] duration-75"
+          style={{ objectPosition: `${position.x}% ${position.y}%` }}
+        />
+
+        {/* Focal point crosshair */}
+        <div
+          className="absolute w-7 h-7 pointer-events-none transition-[left,top] duration-75"
+          style={{
+            left: `${position.x}%`,
+            top: `${position.y}%`,
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)] scale-75 group-hover:scale-100 transition-transform duration-200" />
+          <div className="absolute top-1/2 left-0 right-0 h-px bg-white/80 -translate-y-1/2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/80 -translate-x-1/2 shadow-[1px_0_2px_rgba(0,0,0,0.5)]" />
+        </div>
+
+        {/* Drag hint overlay */}
+        <AnimatePresence>
+          {!hinted && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            >
+              <div className="flex items-center gap-2 bg-black/55 text-white text-[11px] font-medium px-3 py-1.5 rounded-full backdrop-blur-sm shadow-lg">
+                <Move size={12} />
+                Kéo để căn chỉnh
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Active ring */}
+        <AnimatePresence>
+          {active && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute inset-0 ring-2 ring-primary/70 ring-inset pointer-events-none rounded-full"
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
 

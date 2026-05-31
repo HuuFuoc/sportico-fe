@@ -17,6 +17,7 @@
 // the backend adds it.
 // ============================================================================
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
@@ -114,6 +115,28 @@ export default function CoachPreviewPage() {
   const packages = packagesResult?.items ?? [];
   const media: CoachProfileMediaResponse[] = profile?.media ?? [];
 
+  const [coverPos, setCoverPos] = useState("50% 50%");
+  const [avatarPos, setAvatarPos] = useState("50% 50%");
+  useEffect(() => {
+    if (!profile?.userId) return;
+    try {
+      const coverRaw = localStorage.getItem(`sportico_cover_pos_${profile.userId}`);
+      if (coverRaw) {
+        const p = JSON.parse(coverRaw) as { x: number; y: number };
+        if (typeof p.x === "number" && typeof p.y === "number") {
+          setCoverPos(`${p.x}% ${p.y}%`);
+        }
+      }
+      const avatarRaw = localStorage.getItem(`sportico_avatar_pos_${profile.userId}`);
+      if (avatarRaw) {
+        const p = JSON.parse(avatarRaw) as { x: number; y: number };
+        if (typeof p.x === "number" && typeof p.y === "number") {
+          setAvatarPos(`${p.x}% ${p.y}%`);
+        }
+      }
+    } catch {}
+  }, [profile?.userId]);
+
   const loading = profileLoading;
   const error = profileError;
 
@@ -161,6 +184,7 @@ export default function CoachPreviewPage() {
                 src={profile.coverImageUrl}
                 alt="Ảnh bìa"
                 className="h-full w-full object-cover"
+                style={{ objectPosition: coverPos }}
               />
             ) : (
               <div className="h-full w-full bg-gradient-to-br from-primary via-[#7d6dff] to-[#c084fc]" />
@@ -176,11 +200,12 @@ export default function CoachPreviewPage() {
                 <img
                   src={displayAvatar}
                   alt={displayName}
-                  className="h-[72px] w-[72px] rounded-full border-4 border-white/20 object-cover shadow-lg ring-2 ring-white/10"
+                  className="h-[96px] w-[96px] rounded-full border-4 border-white/20 object-cover shadow-lg ring-2 ring-white/10"
+                  style={{ objectPosition: avatarPos }}
                 />
               ) : (
-                <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white/20 bg-white/10 text-white/70 shadow-lg backdrop-blur-sm ring-2 ring-white/10">
-                  <span className="text-2xl font-bold">
+                <div className="flex h-[96px] w-[96px] items-center justify-center rounded-full border-4 border-white/20 bg-white/10 text-white/70 shadow-lg backdrop-blur-sm ring-2 ring-white/10">
+                  <span className="text-3xl font-bold">
                     {displayName.charAt(0).toUpperCase()}
                   </span>
                 </div>
