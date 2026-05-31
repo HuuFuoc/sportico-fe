@@ -35,8 +35,10 @@ export function CoachBrowser() {
   const coaches = useMemo(() => {
     return allCoaches
       .filter((c) => {
-        // Skip system/admin accounts and records without required fields
-        if (!c.name?.trim() || !c.sport || c.role !== "coach") return false;
+        // Require a valid id and display name — the only fields the mapper cannot
+        // fabricate from scratch. The "system" guard removes obvious seeded test
+        // accounts returned by the backend in development / staging environments.
+        if (!c.id || !c.name?.trim()) return false;
         const nameLower = c.name.toLowerCase();
         if (nameLower === "system" || nameLower.startsWith("system ")) return false;
         if (query) {

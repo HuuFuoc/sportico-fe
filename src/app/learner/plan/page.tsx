@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
@@ -24,6 +25,14 @@ import type {
 } from "@/types";
 
 export default function LearnerPlanPage() {
+  return (
+    <Suspense fallback={null}>
+      <LearnerPlanContent />
+    </Suspense>
+  );
+}
+
+function LearnerPlanContent() {
   const {
     data: bookingsData,
     loading,
@@ -32,11 +41,14 @@ export default function LearnerPlanPage() {
   } = useApiResource(() => api.fetchMyBookings(), []);
   const bookings = useMemo(() => bookingsData ?? [], [bookingsData]);
 
-  const [bookingId, setBookingId] = useState("");
+  const searchParams = useSearchParams();
+  const paramBookingId = searchParams.get("booking") ?? "";
+
+  const [bookingId, setBookingId] = useState(paramBookingId);
   useEffect(() => {
-    if (bookings.length && !bookings.some((b) => b.id === bookingId)) {
-      setBookingId(bookings[0].id);
-    }
+    if (!bookings.length) return;
+    if (bookingId && bookings.some((b) => b.id === bookingId)) return;
+    setBookingId(bookings[0].id);
   }, [bookings, bookingId]);
 
   if (loading) {

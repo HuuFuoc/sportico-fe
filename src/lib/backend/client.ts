@@ -11,6 +11,7 @@
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
+  AvailabilitySlotResponse,
   BookingResponse,
   ChangePasswordRequest,
   ChatMessageResponse,
@@ -18,6 +19,13 @@ import type {
   CoachPayoutAccountResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
+  ConfirmSessionRequest,
+  CreateAvailabilitySlotRequest,
+  CreateDayRequest,
+  CreateExerciseRequest,
+  CreateSessionRequest,
+  CreateTrainingPlanRequest,
+  CreateWeekRequest,
   CurrentUserResponse,
   LearnerAssessmentResponse,
   NotificationResponse,
@@ -29,9 +37,14 @@ import type {
   PurchasePayOsResponse,
   Result,
   TrainingPackageResponse,
+  TrainingPlanDayResponse,
+  TrainingPlanExerciseResponse,
   TrainingPlanResponse,
+  TrainingPlanWeekResponse,
   TrainingSessionResponse,
+  UpdateExerciseRequest,
   UpdateMeRequest,
+  UpdateTrainingPlanRequest,
   WithdrawalRequestResponse,
 } from "@/lib/backend/dto";
 
@@ -217,6 +230,10 @@ export const backend = {
   async booking(id: string) {
     return unwrap(await GET<BookingResponse>(ep.bookingById(id)));
   },
+  /** Coach-role booking detail — uses /api/bookings/coach/{id}, requires Coach JWT. */
+  async bookingByIdCoach(id: string) {
+    return unwrap(await GET<BookingResponse>(ep.coachBookingById(id)));
+  },
   async purchaseManual(trainingPackageId: string) {
     return unwrap(
       await POST<BookingResponse>(ep.purchaseManual, { trainingPackageId }),
@@ -389,6 +406,134 @@ export const backend = {
   async myPosts(p?: ListParams) {
     return unwrapPage(
       await GET<PagedResult<PostResponse>>(ep.myPosts + listQuery(p)),
+    );
+  },
+
+  // ---- Availability slots (coach CRUD) -----------------------------------
+  async myAvailabilitySlots(p?: ListParams & { startFrom?: string; startTo?: string; status?: string }) {
+    const query = qs({
+      Status: p?.status,
+      StartFrom: p?.startFrom,
+      StartTo: p?.startTo,
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+    });
+    return unwrapPage(
+      await GET<PagedResult<AvailabilitySlotResponse>>(
+        ep.myAvailabilitySlots + query,
+      ),
+    );
+  },
+  async createAvailabilitySlot(body: CreateAvailabilitySlotRequest) {
+    return unwrap(
+      await POST<AvailabilitySlotResponse>(ep.myAvailabilitySlots, body),
+    );
+  },
+  async cancelAvailabilitySlot(id: string) {
+    return unwrap(
+      await PUT<AvailabilitySlotResponse>(ep.myAvailabilitySlotCancel(id)),
+    );
+  },
+  /** Learner: view a coach's available slots */
+  async coachAvailabilitySlots(coachId: string, p?: { startFrom?: string; startTo?: string }) {
+    const query = qs({ StartFrom: p?.startFrom, StartTo: p?.startTo });
+    return unwrapPage(
+      await GET<PagedResult<AvailabilitySlotResponse>>(
+        ep.coachAvailabilitySlots(coachId) + query,
+      ),
+    );
+  },
+
+  // ---- Training sessions (global) ----------------------------------------
+  async myTrainingSessions(p?: ListParams & { startFrom?: string; startTo?: string }) {
+    const query = qs({
+      Status: p?.status,
+      StartFrom: p?.startFrom,
+      StartTo: p?.startTo,
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+    });
+    return unwrapPage(
+      await GET<PagedResult<TrainingSessionResponse>>(
+        ep.myTrainingSessions + query,
+      ),
+    );
+  },
+  async coachTrainingSessions(p?: ListParams & { startFrom?: string; startTo?: string }) {
+    const query = qs({
+      Status: p?.status,
+      StartFrom: p?.startFrom,
+      StartTo: p?.startTo,
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+    });
+    return unwrapPage(
+      await GET<PagedResult<TrainingSessionResponse>>(
+        ep.coachTrainingSessions + query,
+      ),
+    );
+  },
+  /** Book a session against an availability slot */
+  async createSession(bookingId: string, body: CreateSessionRequest) {
+    return unwrap(
+      await POST<TrainingSessionResponse>(ep.createBookingSession(bookingId), body),
+    );
+  },
+  async confirmSession(id: string, body?: ConfirmSessionRequest) {
+    return unwrap(
+      await PUT<TrainingSessionResponse>(ep.trainingSessionConfirm(id), body),
+    );
+  },
+  async cancelSession(id: string, reason?: string) {
+    return unwrap(
+      await PUT<TrainingSessionResponse>(ep.trainingSessionCancel(id), { reason }),
+    );
+  },
+  async completeSession(id: string) {
+    return unwrap(
+      await PUT<TrainingSessionResponse>(ep.trainingSessionComplete(id)),
+    );
+  },
+
+  // ---- Training plan CRUD ------------------------------------------------
+  async createTrainingPlan(bookingId: string, body: CreateTrainingPlanRequest) {
+    return unwrap(
+      await POST<TrainingPlanResponse>(ep.bookingTrainingPlan(bookingId), body),
+    );
+  },
+  async updateTrainingPlan(id: string, body: UpdateTrainingPlanRequest) {
+    return unwrap(
+      await PUT<TrainingPlanResponse>(ep.trainingPlanById(id), body),
+    );
+  },
+  async addPlanWeek(planId: string, body: CreateWeekRequest) {
+    return unwrap(
+      await POST<TrainingPlanWeekResponse>(ep.trainingPlanWeeks(planId), body),
+    );
+  },
+  async addPlanDay(weekId: string, body: CreateDayRequest) {
+    return unwrap(
+      await POST<TrainingPlanDayResponse>(ep.trainingPlanWeekDays(weekId), body),
+    );
+  },
+  async addExercise(dayId: string, body: CreateExerciseRequest) {
+    return unwrap(
+      await POST<TrainingPlanExerciseResponse>(ep.trainingPlanDayExercises(dayId), body),
+    );
+  },
+  async updateExercise(id: string, body: UpdateExerciseRequest) {
+    return unwrap(
+      await PUT<TrainingPlanExerciseResponse>(ep.trainingPlanExerciseById(id), body),
+    );
+  },
+  async deleteExercise(id: string) {
+    await apiFetch(ep.trainingPlanExerciseById(id), { method: "DELETE" });
+  },
+
+  // ---- Chat room creation ------------------------------------------------
+  async createChatRoom(coachId: string) {
+    return unwrap(
+      await POST<ChatRoomResponse>(ep.createChatRoom, { coachId }),
     );
   },
 

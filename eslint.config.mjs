@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Installed agent skills — third-party CommonJS/JS files, not project source.
+    ".agents/**",
+    ".claude/skills/**",
+    "skills-lock.json",
   ]),
   {
     rules: {

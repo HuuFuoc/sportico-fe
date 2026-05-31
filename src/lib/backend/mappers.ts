@@ -48,6 +48,7 @@ import type {
 import { avatarFor } from "@/lib/utils";
 
 const SPORTS: Sport[] = [
+  "Badminton",
   "Tennis",
   "Yoga",
   "HIIT",
@@ -201,6 +202,8 @@ export function trainingPlanToUi(p: TrainingPlanResponse): TrainingPlan {
     endDate: p.endDate,
     totalWeeks: p.totalWeeks,
     status: p.status ?? undefined,
+    isReadOnly: p.isReadOnly,
+    readOnlyReason: p.readOnlyReason ?? undefined,
     weeks: (p.weeks ?? []).map((w) => ({
       id: w.id,
       weekNumber: w.weekNumber,
@@ -326,6 +329,7 @@ export function sessionToSession(
     title: booking?.trainingPackageTitle ?? "Buổi tập",
     coachId: s.coachId,
     learnerId: s.learnerId,
+    bookingId: s.bookingId,
     start: s.startTime,
     durationMinutes: durationMinutes || 60,
     status: toSessionStatus(s.status),

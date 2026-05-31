@@ -153,7 +153,8 @@ export const api = {
   // ---- Users -------------------------------------------------------------
   fetchCoaches: (): Promise<Coach[]> =>
     live(async () => {
-      const page = await backend.publicCoaches({ pageSize: 60 });
+      // pageSize capped at 50 — backend service enforces this maximum.
+      const page = await backend.publicCoaches({ pageSize: 50 });
       return (page.items ?? []).map(map.publicCoachListItemToCoach);
     }, () => getCoaches()),
   fetchCoach: (id: string): Promise<Coach | undefined> =>
@@ -295,6 +296,25 @@ export const api = {
       const page = await backend.myBookings({ pageSize: 50 });
       return (page.items ?? []).map(map.bookingToUi);
     }, () => []),
+  fetchCoachBookings: (): Promise<Booking[]> =>
+    liveAuthed(async () => {
+      const page = await backend.coachBookings({ pageSize: 100 });
+      return (page.items ?? []).map(map.bookingToUi);
+    }, () => []),
+  fetchBooking: (id: string): Promise<Booking | null> =>
+    liveAuthed<Booking | null>(
+      () => {
+        // GET /api/bookings/{id} requires Learner role.
+        // GET /api/bookings/coach/{id} requires Coach role.
+        // Use the correct endpoint based on the authenticated role.
+        const role = getCurrentRole();
+        const fetch = role === "coach"
+          ? backend.bookingByIdCoach(id)
+          : backend.booking(id);
+        return fetch.then(map.bookingToUi).catch(() => null);
+      },
+      () => null,
+    ),
   fetchTrainingPlan: (bookingId: string): Promise<TrainingPlan | null> =>
     liveAuthed<TrainingPlan | null>(
       () =>

@@ -37,6 +37,7 @@ const LEARNER_NAV: NavGroup[] = [
   {
     label: "Hoạt động",
     items: [
+      { href: "/learner/bookings", label: "Gói tập", icon: "inventory_2" },
       { href: "/learner/plan", label: "Lộ trình", icon: "fitness_center" },
       { href: "/learner/messages", label: "Tin nhắn", icon: "forum" },
       { href: "/learner/progress", label: "Tiến độ", icon: "monitoring" },

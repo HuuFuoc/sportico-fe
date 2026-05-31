@@ -5,6 +5,49 @@
 
 ---
 
+# Required Agent Plugins / Skills
+
+This project must be worked on with the following agent workflows enabled or manually applied.
+
+## Taste Skill
+Source: https://github.com/leonxlnx/taste-skill
+Installed via: `npx skills add https://github.com/Leonxlnx/taste-skill --skill "design-taste-frontend"`
+
+Required behavior:
+- Apply `design-taste-frontend`, `redesign-existing-projects`, `full-output-enforcement`.
+- Do not create generic AI-looking UI — no oversized gradients, glassmorphism, fake badges, or unrelated decorative sections.
+- Redesign existing screens based on **real backend capabilities** only.
+- Maintain strong hierarchy, clean spacing, consistent typography, polished cards, and practical sports SaaS UX.
+- Visual direction: **premium badminton / sports coaching SaaS** for Vietnam market.
+- Detailed rules: `docs/agent-skills/taste-skill.md`
+
+## Superpowers
+Source: https://github.com/obra/superpowers
+Installed via: `npx skills add https://github.com/obra/superpowers`
+
+Required workflow:
+- Inspect the codebase before editing.
+- Plan work by module (DTO → endpoint → client → api.ts → component).
+- Make small, safe changes — one concern per edit.
+- Verify after each major batch: `npx tsc --noEmit`, `pnpm lint`, `pnpm build`.
+- Do not claim completion if verification fails.
+- Do not continue stale or unrelated tasks from previous sessions.
+- Detailed rules: `docs/agent-skills/superpowers.md`
+
+---
+
+# Hard Project Boundaries
+
+- **Work only in `D:\sportico-fe`** for frontend tasks.
+- The backend repo `D:\sportico-platform` or `https://github.com/hoaikhoitran/sportico-platform` is **read-only reference** unless the user explicitly asks to modify backend.
+- **Do not invent backend endpoints.** Confirm from backend source/docs/Swagger before adding.
+- **Do not silently replace real API data with mock data.** Show error state and retry button if API fails.
+- **Do not hotlink external athlete images in UI.** Use local assets from `public/images/` only.
+- **Do not continue old tasks** about coach price hiding, Vercel stale deployment, PayOS withdrawal, or backend payout unless the user explicitly asks.
+- **Run verification before claiming done**: `npx tsc --noEmit && pnpm lint && pnpm build`.
+
+---
+
 ## 1. Dự án là gì
 
 **Sportico — Smart Coach Hub** (legacy name: *ProCoach AI*).

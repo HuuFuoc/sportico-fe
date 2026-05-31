@@ -12,6 +12,7 @@ import type { Sport } from "@/types";
  * it returns this same list in mock mode.
  */
 export const AVAILABLE_SPORTS: Sport[] = [
+  "Badminton",
   "Tennis",
   "Yoga",
   "HIIT",

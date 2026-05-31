@@ -5,6 +5,7 @@
 export type Role = "learner" | "coach" | "admin";
 
 export type Sport =
+  | "Badminton"
   | "Tennis"
   | "Yoga"
   | "HIIT"
@@ -81,6 +82,7 @@ export interface Session {
   title: string;
   coachId: string;
   learnerId: string;
+  bookingId?: string;
   start: string; // ISO datetime
   durationMinutes: number;
   status: SessionStatus;
@@ -141,6 +143,8 @@ export interface TrainingPlan {
   endDate: string;
   totalWeeks: number;
   status?: string;
+  isReadOnly?: boolean;
+  readOnlyReason?: string;
   weeks: PlanWeek[];
 }
 

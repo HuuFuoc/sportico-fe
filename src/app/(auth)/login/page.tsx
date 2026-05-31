@@ -157,7 +157,7 @@ export default function LoginPage() {
               {...register("remember")}
             />
             <Link
-              href="/login"
+              href="/forgot-password"
               className="text-[12px] font-semibold text-indigo-700 underline-offset-4 hover:underline"
             >
               Quên mật khẩu?

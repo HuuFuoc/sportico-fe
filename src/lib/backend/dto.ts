@@ -422,7 +422,108 @@ export interface TrainingPlanResponse {
   status?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** ISO datetime when the underlying booking package expires. */
+  bookingExpiresAt?: string | null;
+  /** True when the plan cannot be edited (expired booking or terminal status). */
+  isReadOnly: boolean;
+  /** Human-readable reason the plan is read-only. */
+  readOnlyReason?: string | null;
   weeks?: TrainingPlanWeekResponse[] | null;
+}
+
+// ---- Availability slots ----------------------------------------------------
+
+export interface AvailabilitySlotResponse {
+  id: string;
+  coachId: string;
+  startTime: string;
+  endTime: string;
+  status?: string | null; // "available" | "booked" | "cancelled"
+  location?: string | null;
+  meetingUrl?: string | null;
+  isOnline: boolean;
+  note?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAvailabilitySlotRequest {
+  startTime: string;
+  endTime: string;
+  location?: string;
+  meetingUrl?: string;
+  isOnline?: boolean;
+  note?: string;
+}
+
+// ---- Training plan CRUD request bodies ------------------------------------
+
+// Matches backend CreateTrainingPlanRequest exactly (all non-null fields required).
+export interface CreateTrainingPlanRequest {
+  title: string;
+  goalType: string;
+  overview?: string;
+  startDate: string; // ISO datetime
+  endDate: string;   // ISO datetime
+  totalWeeks: number;
+}
+
+// Matches backend UpdateTrainingPlanRequest (includes status for plan lifecycle).
+export interface UpdateTrainingPlanRequest {
+  title: string;
+  goalType: string;
+  overview?: string;
+  startDate: string;
+  endDate: string;
+  totalWeeks: number;
+  status?: string;
+}
+
+export interface CreateWeekRequest {
+  weekNumber: number;
+  focus?: string;
+  notes?: string;
+}
+
+// Backend Title is required (empty string allowed, not null).
+export interface CreateDayRequest {
+  dayNumber: number;
+  title: string; // send "" if no title
+  notes?: string;
+}
+
+// Backend ExerciseName and OrderIndex are required.
+export interface CreateExerciseRequest {
+  exerciseName: string;
+  orderIndex: number;
+  sets?: number;
+  reps?: string;
+  intensity?: string;
+  restSeconds?: number;
+  notes?: string;
+}
+
+export interface UpdateExerciseRequest {
+  exerciseName: string;
+  orderIndex: number;
+  sets?: number;
+  reps?: string;
+  intensity?: string;
+  restSeconds?: number;
+  notes?: string;
+}
+
+// ---- Session booking / actions --------------------------------------------
+
+export interface CreateSessionRequest {
+  availabilitySlotId: string;
+  learnerNote?: string;
+}
+
+export interface ConfirmSessionRequest {
+  location?: string;
+  meetingUrl?: string;
+  coachNote?: string;
 }
 
 export interface LearnerAssessmentResponse {
