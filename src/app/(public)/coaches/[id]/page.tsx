@@ -254,31 +254,37 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       <PublicNavbar variant="solid" />
 
       <main className="flex-1 bg-surface px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[980px] pb-20">
-          {/* Back nav */}
-          <motion.div
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
+        <div className="mx-auto max-w-[1120px] pb-20">
+          {/* Breadcrumb nav */}
+          <motion.nav
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
-            className="mb-5"
+            aria-label="Breadcrumb"
+            className="mb-5 flex items-center gap-1.5 text-[12.5px]"
           >
             <Link
               href="/coaches"
-              className="inline-flex items-center gap-1.5 text-[13px] text-on-surface-variant transition-colors hover:text-primary"
+              className="inline-flex items-center gap-1 text-on-surface-variant transition-colors hover:text-primary"
             >
-              <ArrowLeft size={15} />
-              Tất cả huấn luyện viên
+              <ArrowLeft size={13} />
+              Huấn luyện viên
             </Link>
-          </motion.div>
+            <span className="text-on-surface-variant/40 select-none">/</span>
+            <span className="text-on-surface font-medium truncate max-w-[200px]">
+              {displayName}
+            </span>
+          </motion.nav>
 
           {/* ── Hero ──────────────────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, ease: EASE }}
-            className="relative mb-8 overflow-hidden rounded-[20px] shadow-[0_8px_32px_-8px_rgba(15,15,30,0.18)]"
+            className="relative mb-8"
           >
-            <div className="relative h-48 sm:h-64">
+            {/* Cover — own overflow-hidden; avatar protrudes via absolute positioning */}
+            <div className="relative h-44 sm:h-56 overflow-hidden rounded-[20px] shadow-[0_4px_24px_-8px_rgba(15,15,30,0.12)]">
               {coach.coverImage ? (
                 <img
                   src={coach.coverImage}
@@ -288,47 +294,56 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-primary via-[#7d6dff] to-[#c084fc]" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/15 to-transparent" />
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 flex items-end gap-4 px-6 pb-5">
-              <div className="shrink-0">
+            {/* Avatar + identity row — avatar is absolute so text height doesn't affect it */}
+            <div className="relative px-5 sm:px-7">
+              {/* Avatar — bleeds upward into cover */}
+              <div
+                className="absolute left-0 z-10 overflow-hidden rounded-full border-4 border-white bg-surface
+                            h-[88px] w-[88px] sm:h-[108px] sm:w-[108px]
+                            -top-[44px] sm:-top-[54px]
+                            shadow-[0_4px_20px_rgba(0,0,0,0.18)] ring-1 ring-black/5"
+              >
                 {coach.avatarUrl ? (
                   <img
                     src={coach.avatarUrl}
                     alt={displayName}
-                    className="h-[72px] w-[72px] rounded-full border-4 border-white/20 object-cover shadow-lg ring-2 ring-white/10"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white/20 bg-white/10 text-white/70 shadow-lg backdrop-blur-sm ring-2 ring-white/10">
-                    <span className="text-2xl font-bold">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-[#7d6dff] text-white">
+                    <span className="text-3xl sm:text-[34px] font-bold leading-none">
                       {displayName.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0 pb-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-[20px] font-bold text-white leading-tight">
+
+              {/* Identity — always on page background, left-indented past avatar */}
+              <div className="pl-[104px] sm:pl-[128px] pt-2 sm:pt-3 pb-3 space-y-0.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h1 className="text-[20px] sm:text-[22px] font-bold text-on-surface leading-tight">
                     {displayName}
                   </h1>
                   {coach.verified && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/80 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
                       <Sparkles size={10} />
                       Đã xác minh
                     </span>
                   )}
                 </div>
                 {coach.headline && (
-                  <p className="mt-0.5 text-[13px] text-white/75 truncate">
+                  <p className="text-[13px] text-on-surface-variant">
                     {coach.headline}
                   </p>
                 )}
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-[12px] text-white/60">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-on-surface-variant">
                   {hasRating && (
                     <span className="flex items-center gap-1">
                       <Star size={12} className="fill-amber-400 text-amber-400" />
-                      <span className="font-semibold text-white/80 tabular-nums">
+                      <span className="font-semibold text-on-surface tabular-nums">
                         {coach.rating.toFixed(1)}
                       </span>
                       <span className="tabular-nums">({coach.reviewCount})</span>
@@ -637,7 +652,7 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                           type="button"
                           onClick={() => void handleBook(selectedPackage.id)}
                           disabled={booking}
-                          className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-primary px-4 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-[#2d20b8] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#3525cd] to-[#7d6dff] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(53,37,205,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(53,37,205,0.55)] active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
                         >
                           {booking && <Loader2 size={15} className="animate-spin" />}
                           {booking ? "Đang xử lý…" : "Đặt lịch với gói này"}
@@ -672,7 +687,7 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                         <button
                           type="button"
                           disabled
-                          className="mt-3 w-full cursor-not-allowed rounded-[8px] bg-on-surface/10 px-4 py-2.5 text-[13px] font-semibold text-on-surface-variant/50"
+                          className="mt-3 w-full cursor-not-allowed rounded-[12px] bg-on-surface/8 px-4 py-3 text-[13px] font-semibold text-on-surface-variant/40"
                         >
                           Vui lòng chọn gói tập
                         </button>
@@ -684,9 +699,9 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                       type="button"
                       onClick={() => void handleMessage()}
                       disabled={messaging}
-                      className="flex w-full items-center justify-center gap-2 rounded-[8px] border border-[var(--color-border-soft)] px-4 py-2.5 text-[13px] font-medium text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white px-4 py-3 text-[13.5px] font-semibold text-slate-700 shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.04] hover:text-primary hover:shadow-[0_4px_12px_-2px_rgba(53,37,205,0.15)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-y-0"
                     >
-                      <MessageCircle size={14} />
+                      <MessageCircle size={15} />
                       {messaging ? "Đang mở…" : "Nhắn tin với HLV"}
                     </button>
 

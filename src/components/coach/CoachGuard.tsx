@@ -51,7 +51,7 @@ import { getAccessToken } from "@/lib/auth-token";
 import { useAuthStore, userIsCoach } from "@/lib/store/useAuthStore";
 import { LoadingState } from "@/components/common/AsyncStates";
 
-const ONBOARDING_PATH = "/coach/onboarding";
+const ONBOARDING_PATH = "/onboarding";
 const COACH_HOME = "/coach/dashboard";
 
 export function CoachGuard({ children }: { children: React.ReactNode }) {

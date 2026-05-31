@@ -33,7 +33,7 @@ const BASE_LINKS: NavLink[] = [
   { label: "Về Chúng Tôi", href: "/" },
 ];
 
-const BECOME_COACH_HREF = "/coach/onboarding";
+const BECOME_COACH_HREF = "/onboarding";
 const LOGIN_HREF = "/login";
 const REGISTER_HREF = "/register";
 

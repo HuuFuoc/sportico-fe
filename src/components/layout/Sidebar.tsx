@@ -90,7 +90,7 @@ const ADMIN_NAV: NavGroup[] = [
     label: "Quản lý",
     items: [
       { href: "/admin/users", label: "Người dùng", icon: "group" },
-      { href: "/admin/verifications", label: "Xác thực HLV", icon: "verified_user" },
+      { href: "/admin/verifications", label: "Duyệt gói tập", icon: "inventory_2" },
     ],
   },
   {
@@ -207,7 +207,7 @@ export function Sidebar({ role }: { role: AppRole }) {
         {role === "learner" && (
           <div className="px-3 pb-1 pt-1">
             <Link
-              href="/coach/onboarding"
+              href="/onboarding"
               className="flex w-full items-center justify-center gap-1.5 rounded-[9px] border border-primary/30 bg-primary/[0.06] py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/[0.1]"
             >
               <MaterialIcon name="workspace_premium" size={17} weight={500} />

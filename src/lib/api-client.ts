@@ -8,6 +8,21 @@
 
 import { getAccessToken, clearAuthTokens } from "@/lib/auth-token";
 
+// ── Refresh-token callback ────────────────────────────────────────────────────
+// Registered once at app boot by AuthBootstrap to break the circular import
+// cycle (api-client ← auth-api ← api-client). Must return true on success.
+type RefreshFn = () => Promise<boolean>;
+let _refreshCallback: RefreshFn | null = null;
+let _refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Register the token-refresh function. Called by AuthBootstrap on mount.
+ * Only the first registration wins; subsequent calls are no-ops.
+ */
+export function setRefreshCallback(fn: RefreshFn): void {
+  if (!_refreshCallback) _refreshCallback = fn;
+}
+
 /**
  * Base URL of the real backend — e.g. "https://api.sportico.app" or "/api".
  *
@@ -79,6 +94,7 @@ export interface ApiFetchOptions extends RequestInit {
 export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {},
+  _isRetry = false,
 ): Promise<T> {
   if (isMockMode()) {
     // Guard rail: in mock mode, callers must go through `getResource` so the
@@ -118,7 +134,26 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined" && !suppressAuthRedirect) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      // Attempt a single token refresh before abandoning the session.
+      // Multiple concurrent 401s share one refresh promise to avoid storms.
+      if (_refreshCallback && !_isRetry) {
+        if (!_refreshPromise) {
+          _refreshPromise = _refreshCallback().finally(() => {
+            _refreshPromise = null;
+          });
+        }
+        let refreshed = false;
+        try {
+          refreshed = await _refreshPromise;
+        } catch {
+          refreshed = false;
+        }
+        if (refreshed) {
+          return apiFetch<T>(path, options, true);
+        }
+      }
+      // Refresh failed or already retried — kill the session.
       clearAuthTokens();
       const redirect = encodeURIComponent(
         window.location.pathname + window.location.search,

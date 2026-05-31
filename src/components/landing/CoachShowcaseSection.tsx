@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { SpotlightCard } from "@/components/reactbits/SpotlightCard";
 import type { Coach } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as Easing;
@@ -109,7 +110,7 @@ export function CoachShowcaseSection() {
             }}
           >
             <Link
-              href="/learner/coaches"
+              href="/coaches"
               className="group inline-flex items-center gap-1.5 rounded-[12px] border border-slate-200 bg-white px-4 py-2.5 text-[13.5px] font-semibold text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-violet-300 hover:bg-violet-50/40 hover:text-violet-700 hover:shadow-[0_2px_8px_-2px_rgba(124,58,237,0.2)]"
             >
               Xem tất cả HLV
@@ -160,13 +161,10 @@ export function CoachShowcaseSection() {
             ))}
           </div>
 
-          {/* Live coaches indicator */}
+          {/* Verified indicator */}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-            <span className="relative inline-flex h-1.5 w-1.5">
-              <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </span>
-            <span className="tabular-nums">247</span> đang trống hôm nay
+            <BadgeCheck size={12} />
+            Hồ sơ đã xác minh
           </span>
         </motion.div>
 
@@ -201,14 +199,9 @@ export function CoachShowcaseSection() {
         >
           <Sparkles size={14} className="text-violet-600" />
           <p className="text-[13.5px] text-slate-600">
-            Thêm{" "}
-            <span className="font-semibold text-slate-900 tabular-nums">
-              1.247
-            </span>{" "}
-            HLV đã xác thực trên{" "}
-            <span className="font-semibold text-slate-900">13 bộ môn</span> ·{" "}
+            Xem thêm huấn luyện viên trên nhiều bộ môn khác nhau ·{" "}
             <Link
-              href="/learner/coaches"
+              href="/coaches"
               className="font-semibold text-violet-700 underline-offset-4 hover:underline"
             >
               Khám phá toàn bộ sàn →
@@ -256,8 +249,12 @@ function CoachCard({
         ease: EASE,
       }}
       whileHover={reduce ? {} : { y: -6 }}
+    >
+    <SpotlightCard
+      radius={280}
+      color="rgba(124,58,237,0.09)"
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.1)] transition-all duration-500 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_24px_50px_-20px_rgba(124,58,237,0.2)]",
+        "group flex flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_14px_36px_-18px_rgba(15,23,42,0.1)] transition-all duration-500 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_24px_50px_-20px_rgba(124,58,237,0.2)]",
         featured
           ? "border-violet-200/60"
           : "border-slate-200 hover:border-violet-200",
@@ -325,32 +322,6 @@ function CoachCard({
 
       {/* Body */}
       <div className="p-4">
-        {/* Compatibility (only featured) */}
-        {featured && (
-          <div className="mb-3 rounded-[10px] border border-violet-100 bg-violet-50/40 px-3 py-2">
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-violet-700">
-                <Sparkles size={10} />
-                Độ tương thích AI
-              </span>
-              <span className="text-[14px] font-semibold text-violet-700 tabular-nums">
-                96%
-              </span>
-            </div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-violet-100">
-              <motion.span
-                initial={{ width: 0 }}
-                animate={inView ? { width: "96%" } : {}}
-                transition={{
-                  duration: reduce ? 0 : 1.4,
-                  delay: reduce ? 0 : delay + 0.5,
-                  ease: EASE,
-                }}
-                className="block h-full rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Specialty tags */}
         <div className="flex flex-wrap gap-1.5">
@@ -395,6 +366,7 @@ function CoachCard({
           </Link>
         </div>
       </div>
+    </SpotlightCard>
     </motion.div>
   );
 }

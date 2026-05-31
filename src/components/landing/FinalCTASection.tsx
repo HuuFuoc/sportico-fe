@@ -7,9 +7,7 @@ import {
   type Easing,
 } from "motion/react";
 import {
-  useEffect,
   useRef,
-  useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import Link from "next/link";
@@ -20,19 +18,9 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
-  Zap,
 } from "lucide-react";
-import { avatarFor, cn } from "@/lib/utils";
 
 const EASE = [0.16, 1, 0.3, 1] as Easing;
-
-const AVATARS = [
-  avatarFor("learner-1"),
-  avatarFor("learner-11"),
-  avatarFor("learner-2"),
-  avatarFor("learner-6"),
-  avatarFor("coach-1"),
-];
 
 // Deterministic sparkle positions
 const SPARKLES = Array.from({ length: 22 }, (_, i) => {
@@ -66,15 +54,6 @@ export function FinalCTASection() {
     btnRef.current?.style.setProperty("--by", "0px");
   };
 
-  // Live counter — pseudo-realtime increment
-  const [liveCount, setLiveCount] = useState(347);
-  useEffect(() => {
-    if (reduce) return;
-    const id = setInterval(() => {
-      setLiveCount((c) => c + Math.floor(Math.random() * 3));
-    }, 4200);
-    return () => clearInterval(id);
-  }, [reduce]);
 
   return (
     <section
@@ -176,24 +155,6 @@ export function FinalCTASection() {
         </div>
 
         <div className="relative">
-          {/* Live counter pill */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{
-              duration: reduce ? 0 : 0.55,
-              delay: 0.15,
-              ease: EASE,
-            }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white backdrop-blur"
-          >
-            <span className="relative inline-flex h-2 w-2">
-              <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-80" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            </span>
-            <span className="tabular-nums">{liveCount.toLocaleString()}</span>
-            <span className="text-white/75">vận động viên tham gia tuần này</span>
-          </motion.div>
 
           {/* Eyebrow badge */}
           <motion.div
@@ -222,11 +183,11 @@ export function FinalCTASection() {
               delay: 0.3,
               ease: EASE,
             }}
-            className="mx-auto mt-6 max-w-3xl text-[36px] font-semibold leading-[1.04] tracking-[-0.03em] text-white sm:text-[56px]"
+            className="mx-auto mt-6 max-w-3xl text-[36px] font-semibold leading-[1.04] tracking-[-0.03em] text-white sm:text-[52px]"
           >
-            Bước đột phá tiếp theo của bạn{" "}
+            Bắt đầu tập luyện{" "}
             <span className="bg-[linear-gradient(110deg,#fff_0%,#f0abfc_45%,#67e8f9_100%)] bg-clip-text text-transparent">
-              chỉ cách một cú ghép nối.
+              có định hướng.
             </span>
           </motion.h2>
 
@@ -240,8 +201,8 @@ export function FinalCTASection() {
             }}
             className="mx-auto mt-5 max-w-lg text-[15.5px] leading-relaxed text-white/75 sm:text-[17px]"
           >
-            Tham gia cùng hàng nghìn vận động viên đang tập với HLV ưu tú do
-            AI ghép nối. Tìm HLV phù hợp trong chưa đầy một phút.
+            Tìm huấn luyện viên phù hợp, nhắn tin để hiểu nhau, chọn gói tập
+            và theo dõi tiến trình — tất cả trong một nơi.
           </motion.p>
 
           {/* CTA cluster */}
@@ -259,7 +220,7 @@ export function FinalCTASection() {
               ref={btnRef}
               onMouseMove={onBtnMove}
               onMouseLeave={onBtnLeave}
-              href="/learner/dashboard"
+              href="/coaches"
               className="group relative inline-flex items-center gap-2 overflow-hidden rounded-[12px] bg-white px-6 py-3.5 text-[14.5px] font-semibold text-slate-900 shadow-[0_18px_42px_-12px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.02]"
               style={
                 {
@@ -278,58 +239,22 @@ export function FinalCTASection() {
                 className="relative text-violet-700"
                 strokeWidth={2.5}
               />
-              <span className="relative">Bắt đầu — Miễn phí</span>
+              <span className="relative">Tìm huấn luyện viên</span>
               <ArrowRight
                 size={15}
                 className="relative text-violet-700 transition-transform group-hover:translate-x-1"
               />
             </Link>
             <Link
-              href="/learner/coaches"
+              href="/register"
               className="inline-flex items-center gap-2 rounded-[12px] border border-white/30 bg-white/5 px-6 py-3.5 text-[14.5px] font-semibold text-white backdrop-blur transition-all hover:border-white/50 hover:bg-white/10"
             >
-              Khám phá HLV
+              Đăng ký miễn phí
               <ArrowRight
                 size={15}
                 className="transition-transform group-hover:translate-x-0.5"
               />
             </Link>
-          </motion.div>
-
-          {/* Avatar trust + numbers */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{
-              duration: reduce ? 0 : 0.65,
-              delay: 0.6,
-              ease: EASE,
-            }}
-            className="mx-auto mt-10 inline-flex items-center gap-3"
-          >
-            <div className="flex -space-x-2">
-              {AVATARS.map((src, i) => (
-                <motion.img
-                  key={src}
-                  src={src}
-                  alt=""
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={inView ? { opacity: 1, scale: 1 } : {}}
-                  transition={{
-                    delay: 0.7 + i * 0.06,
-                    duration: 0.35,
-                    ease: EASE,
-                  }}
-                  className="h-7 w-7 rounded-full border-2 border-white/90 object-cover"
-                />
-              ))}
-            </div>
-            <p className="text-[12.5px] text-white/85">
-              <span className="font-bold tabular-nums text-white">25.000+</span>{" "}
-              vận động viên ·{" "}
-              <span className="font-bold tabular-nums text-white">94%</span> độ
-              chính xác AI
-            </p>
           </motion.div>
 
           {/* Trust signals row */}
@@ -338,13 +263,12 @@ export function FinalCTASection() {
             animate={inView ? { opacity: 1 } : {}}
             transition={{
               duration: reduce ? 0 : 0.6,
-              delay: 0.85,
+              delay: 0.7,
             }}
             className="mx-auto mt-9 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/15 pt-7 text-[11.5px] text-white/65"
           >
-            <TrustItem icon={ShieldCheck} label="Đạt chuẩn SOC 2 · GDPR" />
-            <TrustItem icon={Lock} label="Mã hóa cấp ngân hàng" />
-            <TrustItem icon={Zap} label="Ghép nối trong 0,8 giây" />
+            <TrustItem icon={ShieldCheck} label="Hồ sơ HLV đã xác minh" />
+            <TrustItem icon={Lock} label="Bảo mật thông tin người dùng" />
             <TrustItem icon={Users} label="Hủy bất cứ lúc nào" />
           </motion.div>
 
@@ -352,15 +276,15 @@ export function FinalCTASection() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: reduce ? 0 : 0.55, delay: 1.0 }}
+            transition={{ duration: reduce ? 0 : 0.55, delay: 0.9 }}
             className="mx-auto mt-7 inline-flex items-center gap-2 text-[12.5px] text-white/65"
           >
             <span>Bạn là huấn luyện viên?</span>
             <Link
-              href="/coach/dashboard"
+              href="/onboarding"
               className="group inline-flex items-center gap-1 font-semibold text-white underline-offset-4 hover:underline"
             >
-              Phát triển sự nghiệp với học viên do AI ghép nối
+              Tạo hồ sơ và quản lý học viên
               <ArrowRight
                 size={12}
                 className="transition-transform group-hover:translate-x-0.5"
@@ -388,5 +312,3 @@ function TrustItem({
   );
 }
 
-// Reserved
-void cn;

@@ -42,9 +42,9 @@ const TABS: TabDef[] = [
     label: "Tiến độ",
     icon: LineChartIcon,
     bullets: [
-      "Điểm thể lực tổng hợp — vận động, sức mạnh, sức bền",
-      "Cảnh báo phục hồi từ chỉ số HRV",
-      "Chuỗi liên tục + thành tích theo cấp bậc",
+      "Theo dõi kế hoạch tập luyện do HLV tạo và cập nhật",
+      "Lịch sử buổi tập và nhận xét từ huấn luyện viên",
+      "Xem tiến độ so với mục tiêu ban đầu của bạn",
     ],
   },
   {
@@ -52,9 +52,9 @@ const TABS: TabDef[] = [
     label: "Lịch tập",
     icon: Calendar,
     bullets: [
-      "Một lịch duy nhất cho buổi đã đặt, gợi ý và AI hướng dẫn",
-      "Đổi lịch thông minh khi xung đột — không phải nhắn qua lại",
-      "Lịch trống cập nhật trực tiếp của mọi HLV bạn theo dõi",
+      "Lịch tập từ HLV hiển thị rõ ràng theo từng ngày",
+      "Xem các buổi sắp tới và lịch sử đã hoàn thành",
+      "Quản lý booking và trạng thái buổi tập trong ứng dụng",
     ],
   },
   {
@@ -62,9 +62,9 @@ const TABS: TabDef[] = [
     label: "Tin nhắn",
     icon: MessageCircle,
     bullets: [
-      "Hộp thoại có cả HLV thật + Trợ lý AI",
-      "Thẻ bài tập, ghi âm, video review ngay trong tin nhắn",
-      "Tự động tóm tắt để bạn không bỏ lỡ điều quan trọng",
+      "Nhắn tin trực tiếp với huấn luyện viên của bạn",
+      "Gửi câu hỏi, hình ảnh và cập nhật tiến độ",
+      "Lịch sử hội thoại lưu trữ đầy đủ",
     ],
   },
 ];
@@ -232,19 +232,19 @@ export function ProductPreviewSection() {
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-emerald-600">
               <Check size={11} strokeWidth={3} />
             </span>
-            Đồng bộ Apple Health + Strava
+            Kế hoạch tập luyện cá nhân hóa
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-emerald-600">
               <Check size={11} strokeWidth={3} />
             </span>
-            Cảnh báo phục hồi theo HRV
+            Nhắn tin với HLV trong ứng dụng
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-emerald-600">
               <Check size={11} strokeWidth={3} />
             </span>
-            Bảo mật là ưu tiên mặc định
+            Theo dõi tiến trình buổi tập
           </span>
         </motion.div>
       </div>
@@ -307,14 +307,14 @@ function DashboardMockup({
       {/* Floating chips */}
       <FloatingTag
         icon={Brain}
-        text="AI cảnh báo"
+        text="Kế hoạch tập"
         cls="-left-6 top-12 hidden lg:flex"
         delay={1.1}
         reduce={reduce}
       />
       <FloatingTag
         icon={Flame}
-        text="Chuỗi +1"
+        text="Đang hoạt động"
         cls="-right-3 bottom-16 hidden lg:flex"
         delay={1.3}
         reduce={reduce}
@@ -400,12 +400,12 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
 
       {/* 3 mini metric rows */}
       <div className="grid grid-cols-3 gap-2">
-        <MiniMetric icon={Heart} label="HRV" value="52" tone="violet" />
-        <MiniMetric icon={Activity} label="Cường độ" value="71" tone="cyan" />
+        <MiniMetric icon={Heart} label="Buổi tập" value="12" tone="violet" />
+        <MiniMetric icon={Activity} label="Tuần này" value="3/4" tone="cyan" />
         <MiniMetric icon={Flame} label="Chuỗi" value="8 ngày" tone="amber" />
       </div>
 
-      {/* AI insight */}
+      {/* Coach note */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -416,11 +416,10 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
           <Sparkles size={11} />
         </span>
         <p className="text-[11.5px] leading-relaxed text-slate-700">
-          HRV giảm 6% — hôm nay nên đổi buổi sức mạnh sang{" "}
+          HLV ghi chú:{" "}
           <span className="font-semibold text-violet-700">
-            chuỗi vận động 15 phút
+            Tốt — giữ nhịp độ hiện tại tuần này.
           </span>
-          .
         </p>
       </motion.div>
     </motion.div>
@@ -433,9 +432,9 @@ function ProgressMock({ reduce }: { reduce: boolean }) {
 
 function ScheduleMock({ reduce }: { reduce: boolean }) {
   const sessions = [
-    { time: "07:00", title: "Chạy tempo + sải bước", coach: "Sarah Jenkins", tone: "violet" as const },
-    { time: "13:30", title: "Chuỗi vận động", coach: "Elena Voss", tone: "cyan" as const },
-    { time: "18:00", title: "Phục hồi AI hướng dẫn", coach: "Sportico AI", tone: "fuchsia" as const, ai: true },
+    { time: "07:00", title: "Buổi tập buổi sáng", coach: "HLV của bạn", tone: "violet" as const },
+    { time: "12:00", title: "Bài tập linh hoạt", coach: "HLV của bạn", tone: "cyan" as const },
+    { time: "18:30", title: "Tổng kết tuần", coach: "HLV của bạn", tone: "fuchsia" as const, ai: false },
   ];
   return (
     <motion.div
@@ -545,11 +544,11 @@ function MessagesMock({ reduce }: { reduce: boolean }) {
         </div>
         <div>
           <p className="text-[13px] font-semibold text-slate-900">
-            Sportico AI
+            HLV của bạn
           </p>
           <p className="text-[10.5px] text-emerald-600 inline-flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Trợ lý huấn luyện · Trực tuyến
+            Đang hoạt động
           </p>
         </div>
       </div>
@@ -562,8 +561,8 @@ function MessagesMock({ reduce }: { reduce: boolean }) {
           transition={{ duration: 0.4, delay: 0.2, ease: EASE }}
           className="max-w-[80%] rounded-[14px] rounded-bl-[4px] bg-violet-50 px-3 py-2 text-[12px] text-slate-700"
         >
-          Chào Alex! HRV của bạn giảm 6% qua đêm. Mình gợi ý đổi sang lịch tập
-          vận động hôm nay — giữ chuỗi mà không gây quá tải.
+          Chào! Buổi tập hôm nay xong rồi nhé. Bạn cảm thấy thế nào — tập
+          tiếp hay cần nghỉ một ngày?
         </motion.div>
 
         <motion.div
@@ -572,7 +571,7 @@ function MessagesMock({ reduce }: { reduce: boolean }) {
           transition={{ duration: 0.4, delay: 0.4, ease: EASE }}
           className="ml-auto max-w-[70%] rounded-[14px] rounded-br-[4px] bg-gradient-to-br from-violet-600 to-fuchsia-500 px-3 py-2 text-[12px] text-white shadow-[0_4px_14px_-2px_rgba(124,58,237,0.45)]"
         >
-          Đồng ý — đặt lịch giúp mình nhé.
+          Mình ổn — tập tiếp được. Ngày mai mình có thể tập lúc mấy giờ?
         </motion.div>
 
         {/* Typing indicator */}
