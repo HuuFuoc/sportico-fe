@@ -20,6 +20,7 @@ import type {
   AIInsight,
   AnalyticsDailyPoint,
   AnyUser,
+  AvailabilitySlot,
   Booking,
   Coach,
   CoachPost,
@@ -49,7 +50,8 @@ import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
 import * as map from "@/lib/backend/mappers";
 import { NOW } from "@/lib/mock/clock";
-import type { BookingResponse } from "@/lib/backend/dto";
+import type { BookingResponse, WithdrawalReceiptResponse } from "@/lib/backend/dto";
+export type { WithdrawalReceiptResponse };
 import { AVAILABLE_SPORTS } from "@/lib/constants";
 
 // --- mock fixtures: imported in THIS FILE ONLY ------------------------------
@@ -147,6 +149,23 @@ async function liveLearnerSessions(): Promise<Session[]> {
 async function liveCoachSessions(): Promise<Session[]> {
   const page = await backend.coachBookings({ pageSize: 50 });
   return liveSessionsForBookings(page.items ?? []);
+}
+
+// ---- Helpers ---------------------------------------------------------------
+
+function slotToUi(s: import("@/lib/backend/dto").AvailabilitySlotResponse): AvailabilitySlot {
+  return {
+    id: s.id,
+    coachId: s.coachId,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    status: s.status ?? "available",
+    location: s.location ?? undefined,
+    isOnline: s.isOnline,
+    meetingUrl: s.meetingUrl ?? undefined,
+    note: s.note ?? undefined,
+    createdAt: s.createdAt,
+  };
 }
 
 export const api = {
@@ -515,6 +534,16 @@ export const api = {
         method: "Chuyển khoản ngân hàng",
       }),
     ),
+  /** Coach: fetch receipt for a completed/approved withdrawal. Returns null on 404. */
+  fetchWithdrawalReceipt: (withdrawalId: string): Promise<WithdrawalReceiptResponse | null> =>
+    liveAuthed<WithdrawalReceiptResponse | null>(
+      () => backend.withdrawalReceipt(withdrawalId).catch((err) => {
+        if (err instanceof ApiError && (err.status === 404 || err.status === 400)) return null;
+        throw err;
+      }),
+      () => null,
+    ),
+
   fetchPayoutAccount: (): Promise<PayoutAccount | null> =>
     liveAuthed<PayoutAccount | null>(
       () => backend.payoutAccount().then(map.payoutAccountToUi).catch(() => null),
@@ -590,6 +619,110 @@ export const api = {
         ...(payouts.items ?? []).map(map.payoutAccountToVerification),
       ];
     }, () => getVerifications()),
+
+  // ---- Availability slots (coach CRUD + learner view) --------------------
+  /** Coach: fetch own availability slots. */
+  fetchMySlots: (p?: {
+    startFrom?: string;
+    startTo?: string;
+    status?: string;
+  }): Promise<AvailabilitySlot[]> =>
+    liveAuthed(async () => {
+      const page = await backend.myAvailabilitySlots({
+        pageSize: 100,
+        startFrom: p?.startFrom,
+        startTo: p?.startTo,
+        status: p?.status,
+      });
+      return (page.items ?? []).map(slotToUi);
+    }, () => []),
+
+  /** Coach: create a new availability slot. */
+  createSlot: (body: {
+    startTime: string;
+    endTime: string;
+    location?: string;
+    isOnline?: boolean;
+    meetingUrl?: string;
+    note?: string;
+  }): Promise<AvailabilitySlot> =>
+    liveAuthed(
+      async () => slotToUi(await backend.createAvailabilitySlot(body)),
+      () => ({
+        id: `mock-slot-${Date.now()}`,
+        coachId: getCurrentUserId() ?? "coach-1",
+        ...body,
+        isOnline: body.isOnline ?? false,
+        status: "available",
+        createdAt: new Date().toISOString(),
+      }),
+    ),
+
+  /** Coach: cancel an availability slot. */
+  cancelSlot: (id: string): Promise<AvailabilitySlot> =>
+    liveAuthed(
+      async () => slotToUi(await backend.cancelAvailabilitySlot(id)),
+      () => ({ id, coachId: "", startTime: "", endTime: "", status: "cancelled", isOnline: false, createdAt: "" }),
+    ),
+
+  /** Learner: view a coach's available slots. */
+  fetchCoachSlots: (
+    coachId: string,
+    p?: { startFrom?: string; startTo?: string },
+  ): Promise<AvailabilitySlot[]> =>
+    liveAuthed(async () => {
+      const page = await backend.coachAvailabilitySlots(coachId, p);
+      return (page.items ?? []).map(slotToUi);
+    }, () => []),
+
+  /** Learner: book a session against an availability slot within a booking. */
+  bookSession: (
+    bookingId: string,
+    availabilitySlotId: string,
+    learnerNote?: string,
+  ): Promise<Session> =>
+    liveAuthed(
+      async () => {
+        const s = await backend.createSession(bookingId, { availabilitySlotId, learnerNote });
+        return map.sessionToSession(s);
+      },
+      () => ({
+        id: `mock-sess-${Date.now()}`,
+        title: "Buổi tập",
+        coachId: "",
+        learnerId: getCurrentUserId() ?? "learner-1",
+        bookingId,
+        start: new Date().toISOString(),
+        durationMinutes: 60,
+        status: "pending_confirmation" as const,
+        type: "1-on-1" as const,
+        price: 0,
+      }),
+    ),
+
+  /** Coach: confirm a session (optionally set location/note). */
+  confirmSession: (
+    sessionId: string,
+    body?: { location?: string; meetingUrl?: string; coachNote?: string },
+  ): Promise<void> =>
+    liveAuthed<void>(
+      async () => { await backend.confirmSession(sessionId, body); },
+      () => undefined,
+    ),
+
+  /** Coach or learner: cancel a session. */
+  cancelSession: (sessionId: string, reason?: string): Promise<void> =>
+    liveAuthed<void>(
+      async () => { await backend.cancelSession(sessionId, reason); },
+      () => undefined,
+    ),
+
+  /** Coach: mark a session as completed. */
+  completeSession: (sessionId: string): Promise<void> =>
+    liveAuthed<void>(
+      async () => { await backend.completeSession(sessionId); },
+      () => undefined,
+    ),
 
   // ---- Reference data (no GET sports endpoint) → mock --------------------
   fetchSports: (): Promise<Sport[]> => Promise.resolve(AVAILABLE_SPORTS),

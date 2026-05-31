@@ -34,6 +34,8 @@ export const backendEndpoints = {
   coachWallet: "/api/coaches/me/wallet",
   coachWalletTransactions: "/api/coaches/me/wallet/transactions",
   coachWithdrawals: "/api/coaches/me/withdrawal-requests",
+  coachWithdrawalReceipt: (id: string) =>
+    `/api/coaches/me/withdrawal-requests/${encodeURIComponent(id)}/receipt`,
 
   // ---- Availability slots -----------------------------------------------
   /** Coach manages their own slots */

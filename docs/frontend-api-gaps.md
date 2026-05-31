@@ -3,7 +3,71 @@
 This document tracks backend endpoints that are either missing, unclear, or not yet confirmed as implemented.
 It is updated as the integration progresses.
 
-Last updated: 2026-05-31
+Last updated: 2026-05-31 (updated with wallet, schedule, sessions, training plan verification; learner identity and receipt gaps documented 2026-05-31)
+
+---
+
+## Coach Wallet API Verification
+
+Confirmed from `CoachWalletsController.cs` (role: Coach).
+
+| Purpose | Frontend Function | Confirmed Backend Endpoint | Method | Auth Role | Notes |
+|---|---|---|---|---|---|
+| Get coach wallet | `backend.wallet()` → `api.fetchEarningsTotal()` | `GET /api/coaches/me/wallet` | GET | Coach | Returns `Result<CoachWalletResponse>`: availableBalance, pendingBalance, totalEarned, totalWithdrawn |
+| Get wallet transactions | `backend.walletTransactions()` → `api.fetchEarnings()` | `GET /api/coaches/me/wallet/transactions` | GET | Coach | Paged; filter: Type, Direction, PageNumber, PageSize |
+| Get withdrawal requests | `backend.myWithdrawals()` → `api.fetchPayouts()` | `GET /api/coaches/me/withdrawal-requests` | GET | Coach | Paged |
+| Create withdrawal | `backend.createWithdrawal(amount)` → `api.createWithdrawal()` | `POST /api/coaches/me/withdrawal-requests` | POST | Coach | Body: `{ amount }` |
+| Get withdrawal receipt | Not yet implemented in frontend | `GET /api/coaches/me/withdrawal-requests/{id}/receipt` | GET | Coach | Returns `WithdrawalReceiptResponse` |
+| Get payout account | `backend.payoutAccount()` → `api.fetchPayoutAccount()` | `GET /api/coaches/me/payout-account` | GET | Coach | Returns `CoachPayoutAccountResponse` |
+| Save payout account | `backend.upsertPayoutAccount(body)` → `api.upsertPayoutAccount()` | `PUT /api/coaches/me/payout-account` | PUT | Coach | Body: payoutMethod, bankName, bankAccountNumber, bankAccountHolder |
+
+**Coach Earnings page fix**: Removed dependency on `api.fetchCoach()` (public coach profile). The earnings page now loads independently using auth token. Empty earnings shows a wallet summary instead of an error state.
+
+---
+
+## Schedule / Availability API Verification
+
+Confirmed from `CoachAvailabilitySlotsController.cs` (roles: Coach/Authorized).
+
+| Purpose | Frontend Function | Confirmed Backend Endpoint | Method | Auth Role | Notes |
+|---|---|---|---|---|---|
+| Coach: fetch own slots | `api.fetchMySlots(p?)` | `GET /api/coaches/me/availability-slots` | GET | Coach | Filter: Status, StartFrom, StartTo, PageNumber, PageSize |
+| Coach: create slot | `api.createSlot(body)` | `POST /api/coaches/me/availability-slots` | POST | Coach | Body: startTime, endTime, location, isOnline, meetingUrl, note |
+| Coach: cancel slot | `api.cancelSlot(id)` | `PUT /api/coaches/me/availability-slots/{id}/cancel` | PUT | Coach | No body required |
+| Learner: view coach slots | `api.fetchCoachSlots(coachId, p?)` | `GET /api/coaches/{coachId}/availability-slots` | GET | Any Auth | Filter: StartFrom, StartTo |
+
+---
+
+## Training Sessions API Verification
+
+Confirmed from `TrainingSessionsController.cs`.
+
+| Purpose | Frontend Function | Confirmed Backend Endpoint | Method | Auth Role | Notes |
+|---|---|---|---|---|---|
+| Learner: get own sessions | `api.fetchSessionsForLearner()` | `GET /api/learners/me/training-sessions` | GET | Learner | Paged; Filter: Status, StartFrom, StartTo |
+| Coach: get own sessions | `api.fetchSessionsForCoach()` | `GET /api/coaches/me/training-sessions` | GET | Coach | Paged; Filter: Status, StartFrom, StartTo |
+| Get sessions for booking | `backend.bookingSessions(bookingId)` | `GET /api/bookings/{bookingId}/sessions` | GET | Any Auth | Accessible by both learner and coach |
+| Learner: create session | `api.bookSession(bookingId, slotId)` | `POST /api/bookings/{bookingId}/sessions` | POST | Learner | Body: `{ availabilitySlotId, learnerNote }` |
+| Coach: confirm session | `api.confirmSession(id, body)` | `PUT /api/training-sessions/{id}/confirm` | PUT | Coach | Body: `{ location, meetingUrl, coachNote }` |
+| Coach or Learner: cancel | `api.cancelSession(id, reason)` | `PUT /api/training-sessions/{id}/cancel` | PUT | Any Auth | Body: `{ reason }` |
+| Coach: complete session | `api.completeSession(id)` | `PUT /api/training-sessions/{id}/complete` | PUT | Coach | No body |
+
+---
+
+## Training Plan API Verification
+
+Confirmed from `TrainingPlansController.cs` (Coach-only write; Any Auth read).
+
+| Purpose | Frontend Function | Confirmed Backend Endpoint | Method | Auth Role | Notes |
+|---|---|---|---|---|---|
+| Create plan for booking | `backend.createTrainingPlan()` | `POST /api/bookings/{bookingId}/training-plan` | POST | Coach | |
+| Get plan for booking | `api.fetchTrainingPlan(bookingId)` | `GET /api/bookings/{bookingId}/training-plan` | GET | Any Auth | Both learner and coach can read |
+| Update plan header | `backend.updateTrainingPlan()` | `PUT /api/training-plans/{id}` | PUT | Coach | |
+| Add week to plan | `backend.addPlanWeek()` | `POST /api/training-plans/{id}/weeks` | POST | Coach | |
+| Add day to week | `backend.addPlanDay()` | `POST /api/training-plan-weeks/{weekId}/days` | POST | Coach | |
+| Add exercise to day | `backend.addExercise()` | `POST /api/training-plan-days/{dayId}/exercises` | POST | Coach | |
+| Update exercise | `backend.updateExercise()` | `PUT /api/training-plan-exercises/{id}` | PUT | Coach | |
+| Delete exercise | `backend.deleteExercise()` | `DELETE /api/training-plan-exercises/{id}` | DELETE | Coach | |
 
 ---
 
@@ -147,6 +211,30 @@ These endpoints were added to the frontend endpoint map (`src/lib/backend/endpoi
 ## ❌ Missing from Backend (Not Implemented)
 
 These features were requested in the task but no corresponding backend endpoint was found in the swagger/controller inspection.
+
+### Coach schedule — Learner display name / avatar in sessions
+
+**Confirmed gap** (verified from `TrainingSessionResponse.cs`):
+
+`GET /api/coaches/me/training-sessions` returns only `learnerId` (GUID). There is no `learnerName`, `learnerFullName`, `learnerAvatarUrl`, or nested learner object.
+
+**Frontend impact:** Coach schedule page (`/coach/schedule`) uses `useLearner(session.learnerId)` which looks up a local mock-data map. In live mode with real UUIDs this always misses, so the UI falls back to:
+- Avatar: indigo initials tile derived from the first 2 chars of the UUID
+- Name: `"Học viên {id.slice(0, 6).toUpperCase()}"` (shown in PendingConfirmations) or blank (session block + sidebar rows)
+
+**Recommended backend fix:** Extend `TrainingSessionResponse` with `learnerDisplayName?: string` and `learnerAvatarUrl?: string` populated from the `User` table. Until then, the frontend fallback is the best available UX.
+
+---
+
+### Receipt endpoint — availability per withdrawal status
+
+`GET /api/coaches/me/withdrawal-requests/{id}/receipt` confirmed in `WithdrawalRequestsController.cs`.
+
+**Known limitation:** Receipt may only be generated for withdrawals that were processed through PayOS (i.e. `payOsPayoutId` is not null). For withdrawals approved/paid manually by admin, the receipt data may be partial. The frontend gracefully handles `null` receipts by showing "Biên nhận chưa khả dụng cho yêu cầu này."
+
+**Live test:** Could not be performed — no live browser session with an authenticated coach having a `paid` withdrawal was available.
+
+---
 
 ### Learner assessments via coach
 

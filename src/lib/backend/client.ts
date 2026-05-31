@@ -45,6 +45,7 @@ import type {
   UpdateExerciseRequest,
   UpdateMeRequest,
   UpdateTrainingPlanRequest,
+  WithdrawalReceiptResponse,
   WithdrawalRequestResponse,
 } from "@/lib/backend/dto";
 
@@ -384,6 +385,11 @@ export const backend = {
   async createWithdrawal(amount: number) {
     return unwrap(
       await POST<WithdrawalRequestResponse>(ep.coachWithdrawals, { amount }),
+    );
+  },
+  async withdrawalReceipt(id: string) {
+    return unwrap(
+      await GET<WithdrawalReceiptResponse>(ep.coachWithdrawalReceipt(id)),
     );
   },
   async payoutAccount() {

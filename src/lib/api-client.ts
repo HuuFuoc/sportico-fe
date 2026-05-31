@@ -134,7 +134,10 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined") {
+    // suppressAuthRedirect: callers on auth paths (e.g. GET /api/auth/me during
+    // the login flow) must NOT trigger a redirect or a refresh attempt — a 401
+    // there is a recoverable failure, not an expired session.
+    if (res.status === 401 && typeof window !== "undefined" && !suppressAuthRedirect) {
       // Attempt a single token refresh before abandoning the session.
       // Multiple concurrent 401s share one refresh promise to avoid storms.
       if (_refreshCallback && !_isRetry) {

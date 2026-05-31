@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   Area,
@@ -22,6 +22,7 @@ import {
   ArrowDownToLine,
   ArrowUpRight,
   Banknote,
+  Building2,
   CalendarRange,
   CheckCircle2,
   ChevronDown,
@@ -34,6 +35,7 @@ import {
   Filter,
   Hourglass,
   Lightbulb,
+  Loader2,
   Receipt,
   Search,
   Send,
@@ -42,6 +44,7 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  X,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -50,7 +53,7 @@ import { ClientOnly } from "@/components/common/ClientOnly";
 import { WithdrawModal } from "@/components/coach/WithdrawModal";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { devUserIdForRole } from "@/lib/auth";
+import type { WithdrawalReceiptResponse } from "@/lib/api";
 import { getCurrentUserId } from "@/lib/auth-session";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
@@ -98,23 +101,20 @@ const STATUS_META: Record<
 };
 
 export default function CoachEarningsPage() {
-  // Use the real user ID from the JWT when in live mode; fall back to the
-  // dev hard-code so mock mode (no NEXT_PUBLIC_API_BASE_URL) keeps working.
-  const coachId = getCurrentUserId() ?? devUserIdForRole("coach");
+  const currentUserId = getCurrentUserId();
+
   const { data, loading, error, refetch } = useApiResource(
     () =>
       Promise.all([
         api.fetchEarnings(),
         api.fetchPayouts(),
-        api.fetchCoach(coachId),
         api.fetchEarningsTotal(),
       ]),
-    [coachId],
+    [],
   );
   const earnings = useMemo(() => data?.[0] ?? [], [data]);
   const payouts = useMemo(() => data?.[1] ?? [], [data]);
-  const coach = data?.[2];
-  const earningsTotal = data?.[3];
+  const earningsTotal = data?.[2];
 
   const reduce = useReducedMotion();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -152,16 +152,48 @@ export default function CoachEarningsPage() {
 
   if (loading) {
     return (
-      <AppShell role="coach" title="Earnings">
+      <AppShell role="coach" title="Thu nhập">
         <LoadingState label="Đang tải dữ liệu thu nhập…" />
       </AppShell>
     );
   }
 
-  if (error || !coach || earnings.length === 0) {
+  if (error) {
     return (
-      <AppShell role="coach" title="Earnings">
+      <AppShell role="coach" title="Thu nhập">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
+      </AppShell>
+    );
+  }
+
+  // Empty state: coach has no transactions yet — show wallet summary if available,
+  // otherwise a friendly empty income screen.
+  if (earnings.length === 0) {
+    return (
+      <AppShell role="coach" title="Thu nhập">
+        <div className="max-w-[1340px] mx-auto">
+          <div className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-10 sm:p-16 text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary to-[#5b4ee8] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(53,37,205,0.4)]">
+              <Wallet size={24} className="text-on-primary" />
+            </div>
+            <h2 className="text-[20px] font-bold tracking-tight">Chưa có thu nhập</h2>
+            <p className="text-[14px] text-on-surface-variant mt-2 max-w-sm mx-auto">
+              Thu nhập sẽ xuất hiện ở đây sau khi các buổi tập hoàn thành và được ghi nhận vào ví.
+            </p>
+            {earningsTotal && (
+              <div className="mt-6 inline-flex gap-6 text-center">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold">Số dư khả dụng</p>
+                  <p className="text-[22px] font-bold tabular-nums mt-0.5">{formatCurrency(earningsTotal.net)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold">Tổng tích lũy</p>
+                  <p className="text-[22px] font-bold tabular-nums mt-0.5">{formatCurrency(earningsTotal.gross)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </AppShell>
     );
   }
@@ -169,7 +201,9 @@ export default function CoachEarningsPage() {
   const last = earnings[earnings.length - 1];
   const prev = earnings[earnings.length - 2] ?? last;
   const total = earnings.reduce((s, x) => s + x.gross, 0);
-  const myPayouts = payouts.filter((p) => p.coachId === coach.id);
+  const myPayouts = payouts.filter((p) =>
+    !currentUserId || p.coachId === currentUserId,
+  );
   const pendingTotal = myPayouts
     .filter((p) => p.status !== "paid")
     .reduce((s, p) => s + p.amount, 0);
@@ -191,7 +225,7 @@ export default function CoachEarningsPage() {
   ];
 
   return (
-    <AppShell role="coach" title="Earnings">
+    <AppShell role="coach" title="Thu nhập">
       <div className="max-w-[1340px] mx-auto space-y-6">
         {/* ============ PAGE HEADER ============ */}
         <motion.header
@@ -1136,8 +1170,30 @@ function PayoutTable({
   reduce: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<Payout | null>(null);
+  const [receiptData, setReceiptData] = useState<WithdrawalReceiptResponse | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+
+  const handleViewReceipt = async (e: React.MouseEvent, p: Payout) => {
+    e.stopPropagation();
+    setViewingReceipt(p);
+    setReceiptData(null);
+    setReceiptError(null);
+    setReceiptLoading(true);
+    try {
+      const data = await api.fetchWithdrawalReceipt(p.id);
+      setReceiptData(data);
+      if (!data) setReceiptError("Biên nhận chưa khả dụng cho yêu cầu này.");
+    } catch {
+      setReceiptError("Không tải được biên nhận. Vui lòng thử lại.");
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
 
   return (
+    <>
     <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -1292,19 +1348,22 @@ function PayoutTable({
                     </td>
                     <td className="px-5 sm:px-6 py-3.5 text-right">
                       <div className="inline-flex items-center gap-1">
+                        {p.status === "paid" && (
+                          <button
+                            onClick={(e) => void handleViewReceipt(e, p)}
+                            aria-label="Tải biên nhận"
+                            title="Tải biên nhận"
+                            className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
+                          >
+                            <Receipt size={13} />
+                          </button>
+                        )}
                         <button
                           onClick={(e) => e.stopPropagation()}
                           aria-label="View"
                           className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center"
                         >
                           <ExternalLink size={13} />
-                        </button>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label="Download invoice"
-                          className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
-                        >
-                          <Download size={13} />
                         </button>
                       </div>
                     </td>
@@ -1344,10 +1403,15 @@ function PayoutTable({
                           />
                         </div>
                         <div className="flex items-center gap-2 mt-3">
-                          <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors">
-                            <FileText size={12} />
-                            Hóa đơn PDF
-                          </button>
+                          {p.status === "paid" && (
+                            <button
+                              onClick={(e) => void handleViewReceipt(e, p)}
+                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors"
+                            >
+                              <Receipt size={12} />
+                              Tải biên nhận
+                            </button>
+                          )}
                           <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors">
                             <Send size={12} />
                             Gửi email
@@ -1363,6 +1427,18 @@ function PayoutTable({
         </table>
       </div>
     </motion.section>
+
+    {viewingReceipt && (
+      <ReceiptModal
+        payout={viewingReceipt}
+        receipt={receiptData}
+        loading={receiptLoading}
+        error={receiptError}
+        onClose={() => { setViewingReceipt(null); setReceiptData(null); setReceiptError(null); }}
+        onRetry={() => void handleViewReceipt({ stopPropagation: () => {} } as React.MouseEvent, viewingReceipt)}
+      />
+    )}
+  </>
   );
 }
 
@@ -1507,6 +1583,150 @@ function QuickActionsPanel({
         </p>
       </div>
     </motion.aside>
+  );
+}
+
+// ============================================================================
+// Receipt Modal
+// ============================================================================
+
+function ReceiptModal({
+  payout,
+  receipt,
+  loading,
+  error,
+  onClose,
+  onRetry,
+}: {
+  payout: Payout;
+  receipt: WithdrawalReceiptResponse | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="w-full max-w-md rounded-[20px] bg-surface-container-lowest border border-[var(--color-border-soft)] shadow-[0_24px_60px_-12px_rgba(15,15,30,0.35)] overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-[var(--color-border-soft)] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-primary to-[#5b4ee8] flex items-center justify-center shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)]">
+              <Receipt size={15} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[15px] font-semibold tracking-tight">Biên nhận rút tiền</p>
+              <p className="text-[11.5px] text-on-surface-variant">
+                {formatCurrency(payout.amount, payout.currency)}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          {loading && (
+            <div className="flex flex-col items-center gap-2 py-10 text-on-surface-variant">
+              <Loader2 size={20} className="animate-spin text-primary" />
+              <p className="text-[12.5px]">Đang tải biên nhận…</p>
+            </div>
+          )}
+
+          {error && !loading && (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-[#ffdad6] flex items-center justify-center">
+                <XCircle size={18} className="text-[#ba1a1a]" />
+              </div>
+              <p className="text-[13px] text-on-surface-variant">{error}</p>
+              <button
+                onClick={onRetry}
+                className="px-4 h-8 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
+              >
+                Thử lại
+              </button>
+            </div>
+          )}
+
+          {receipt && !loading && (
+            <div className="space-y-4">
+              {/* Receipt number */}
+              <div className="flex items-center justify-between p-3 rounded-[10px] bg-surface-container-low/50">
+                <p className="text-[11.5px] text-on-surface-variant font-medium">Số biên nhận</p>
+                <p className="text-[12px] font-mono font-semibold">{receipt.receiptNumber}</p>
+              </div>
+
+              {/* Key details grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <ReceiptField label="Số tiền" value={formatCurrency(receipt.amount, receipt.currency)} mono />
+                <ReceiptField label="Trạng thái" value={receipt.status} />
+                <ReceiptField label="Ngày tạo" value={new Date(receipt.createdAt).toLocaleDateString("vi-VN")} />
+                {receipt.paidAt && (
+                  <ReceiptField label="Ngày thanh toán" value={new Date(receipt.paidAt).toLocaleDateString("vi-VN")} />
+                )}
+              </div>
+
+              {/* Bank account */}
+              <div className="flex items-center gap-3 p-3 rounded-[10px] border border-[var(--color-border-soft)]">
+                <div className="w-9 h-9 rounded-[8px] bg-surface-container-high flex items-center justify-center shrink-0">
+                  <Building2 size={16} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold truncate">{receipt.bankName}</p>
+                  <p className="text-[11.5px] text-on-surface-variant">
+                    {receipt.maskedAccountNumber} · {receipt.accountHolderName}
+                  </p>
+                </div>
+              </div>
+
+              {/* PayOS reference */}
+              {receipt.payOsReferenceId && (
+                <div className="flex items-center justify-between text-[11.5px]">
+                  <span className="text-on-surface-variant">Mã tham chiếu PayOS</span>
+                  <span className="font-mono text-on-surface">{receipt.payOsReferenceId}</span>
+                </div>
+              )}
+
+              {/* Note */}
+              {receipt.note && (
+                <p className="text-[11px] text-on-surface-variant/70 italic border-t border-[var(--color-border-soft)] pt-3">
+                  {receipt.note}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 pb-4 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 h-9 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13px] font-medium transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReceiptField({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">{label}</p>
+      <p className={cn("text-[13px] font-bold mt-0.5 tabular-nums", mono ? "font-mono" : "")}>{value ?? "—"}</p>
+    </div>
   );
 }
 

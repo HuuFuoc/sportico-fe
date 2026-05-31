@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -10,8 +10,10 @@ import {
 } from "recharts";
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
   ArrowUpRight,
+  Ban,
   CalendarPlus,
   CheckCircle2,
   ChevronLeft,
@@ -20,6 +22,7 @@ import {
   Compass,
   DollarSign,
   Filter,
+  Loader2,
   MapPin,
   MessageCircle,
   Plus,
@@ -30,6 +33,7 @@ import {
   TrendingUp,
   Users,
   Video,
+  X,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -37,13 +41,15 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency, initials, localDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { isMockMode } from "@/lib/api-client";
+import { getCurrentUserId } from "@/lib/auth-session";
 import { devUserIdForRole } from "@/lib/auth";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-// NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
-// TODO(api): once the backend returns real timestamps, use `new Date()` here.
-import { NOW } from "@/lib/mock/clock";
-import type { Learner, Session } from "@/types";
+import type { AvailabilitySlot, Learner, Session } from "@/types";
+
+// Use real current date — the mock clock is only for static demo fixtures.
+const NOW = new Date();
 
 // Page-local learner lookup so calendar blocks and rows can resolve a session's
 // learner without each one fetching (or importing mock data) individually.
@@ -79,8 +85,9 @@ function seedSpark(seed: number, base: number, jitter: number, len = 8) {
 }
 
 export default function CoachSchedulePage() {
-  // TODO(auth): hard-coded current coach until real session auth lands.
-  const coachId = devUserIdForRole("coach");
+  // Use the real authenticated coach ID from the JWT; fall back to dev hard-code
+  // in mock mode (no backend configured) so the demo keeps working.
+  const coachId = getCurrentUserId() ?? devUserIdForRole("coach");
   const {
     data: sessionsData,
     loading,
@@ -88,6 +95,9 @@ export default function CoachSchedulePage() {
     refetch,
   } = useApiResource(() => api.fetchSessionsForCoach(coachId), [coachId]);
   const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
+
+  const [showCreateSlot, setShowCreateSlot] = useState(false);
+  const [detailSlot, setDetailSlot] = useState<AvailabilitySlot | null>(null);
 
   // Learner lookup map (single fetch) provided to calendar blocks via context.
   const { data: learnersData } = useApiResource(() => api.fetchLearners(), []);
@@ -122,6 +132,24 @@ export default function CoachSchedulePage() {
     d.setDate(d.getDate() + 7);
     return d;
   }, [weekStart]);
+
+  const { data: slotsData, refetch: refetchSlots } = useApiResource(
+    () => api.fetchMySlots({ startFrom: weekStart.toISOString(), startTo: weekEnd.toISOString() }),
+    [weekStart.toISOString(), weekEnd.toISOString()],
+  );
+  const slots = useMemo(() => slotsData ?? [], [slotsData]);
+
+  // Bucket availability slots by day (parallel to dayBuckets)
+  const slotDayBuckets = useMemo(
+    () =>
+      weekDays.map((d) => {
+        const key = localDateKey(d);
+        return slots
+          .filter((sl) => localDateKey(new Date(sl.startTime)) === key)
+          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+      }),
+    [weekDays, slots],
+  );
 
   const weekSessions = useMemo(
     () =>
@@ -318,9 +346,12 @@ export default function CoachSchedulePage() {
               </button>
             </div>
 
-            <button className="ml-1 inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+            <button
+              onClick={() => setShowCreateSlot(true)}
+              className="ml-1 inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
               <Plus size={16} strokeWidth={2.5} />
-              New Session
+              New Slot
             </button>
           </div>
         </motion.header>
@@ -378,6 +409,7 @@ export default function CoachSchedulePage() {
           <PendingConfirmations
             pending={pending}
             reduce={reduce ?? false}
+            onRefetch={refetch}
           />
         )}
 
@@ -512,6 +544,17 @@ export default function CoachSchedulePage() {
                           session={s}
                           delay={dayIdx * 0.03 + i * 0.04}
                           reduce={reduce ?? false}
+                          onRefetch={refetch}
+                        />
+                      ))}
+                      {/* Availability slot blocks */}
+                      {slotDayBuckets[dayIdx].map((sl, i) => (
+                        <SlotBlock
+                          key={sl.id}
+                          slot={sl}
+                          delay={dayIdx * 0.03 + i * 0.04 + 0.02}
+                          reduce={reduce ?? false}
+                          onDetailOpen={setDetailSlot}
                         />
                       ))}
                     </div>
@@ -589,10 +632,23 @@ export default function CoachSchedulePage() {
               sessions={upcomingNext}
               reduce={reduce ?? false}
             />
-            <QuickActions reduce={reduce ?? false} />
+            <QuickActions reduce={reduce ?? false} onNewSlot={() => setShowCreateSlot(true)} />
           </aside>
         </div>
       </div>
+      {showCreateSlot && (
+        <CreateSlotModal
+          onClose={() => setShowCreateSlot(false)}
+          onCreated={() => { setShowCreateSlot(false); refetchSlots(); }}
+        />
+      )}
+      {detailSlot && (
+        <SlotDetailModal
+          slot={detailSlot}
+          onClose={() => setDetailSlot(null)}
+          onCancelled={() => { setDetailSlot(null); refetchSlots(); }}
+        />
+      )}
       </AppShell>
     </LearnerLookupContext.Provider>
   );
@@ -741,11 +797,28 @@ function SummaryCard({
 function PendingConfirmations({
   pending,
   reduce,
+  onRefetch,
 }: {
   pending: Session[];
   reduce: boolean;
+  onRefetch: () => void;
 }) {
   const learnerById = useContext(LearnerLookupContext);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [declining, setDeclining] = useState<string | null>(null);
+
+  const handleConfirm = useCallback(async (id: string) => {
+    if (isMockMode()) return;
+    setConfirming(id);
+    try { await api.confirmSession(id); onRefetch(); } finally { setConfirming(null); }
+  }, [onRefetch]);
+
+  const handleDecline = useCallback(async (id: string) => {
+    if (isMockMode()) return;
+    setDeclining(id);
+    try { await api.cancelSession(id, "Huấn luyện viên từ chối"); onRefetch(); } finally { setDeclining(null); }
+  }, [onRefetch]);
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -775,19 +848,27 @@ function PendingConfirmations({
         <ul className="space-y-2">
           {pending.map((s) => {
             const learner = learnerById.get(s.learnerId);
+            const isConfirming = confirming === s.id;
+            const isDeclining = declining === s.id;
             return (
               <li
                 key={s.id}
                 className="flex items-center gap-3 bg-surface-container-lowest rounded-[14px] p-3 border border-[var(--color-border-soft)] hover:border-[#f59e0b]/30 transition-colors"
               >
-                <img
-                  src={learner?.avatarUrl}
-                  alt={learner?.name}
-                  className="w-10 h-10 rounded-full object-cover shrink-0"
-                />
+                <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden text-[11px] flex items-center justify-center text-primary font-semibold shrink-0">
+                  {learner?.avatarUrl ? (
+                    <img
+                      src={learner.avatarUrl}
+                      alt={learner.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    initials(learner?.name ?? s.learnerId.slice(0, 2).toUpperCase())
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13.5px] font-semibold truncate">
-                    {learner?.name} — {s.title}
+                    {learner?.name ?? `Học viên ${s.learnerId.slice(0, 6)}`} — {s.title}
                   </p>
                   <p className="text-[12px] text-on-surface-variant mt-0.5">
                     {new Date(s.start).toLocaleString("en-US", {
@@ -801,12 +882,18 @@ function PendingConfirmations({
                 </div>
                 <button
                   aria-label="Decline"
-                  className="h-9 w-9 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-on-surface-variant hover:text-[#ba1a1a] transition-colors flex items-center justify-center"
+                  disabled={isDeclining || isConfirming}
+                  onClick={() => handleDecline(s.id)}
+                  className="h-9 w-9 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-on-surface-variant hover:text-[#ba1a1a] transition-colors flex items-center justify-center disabled:opacity-50"
                 >
-                  <XCircle size={15} />
+                  {isDeclining ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={15} />}
                 </button>
-                <button className="h-9 px-3.5 rounded-lg bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.55)] hover:scale-[1.02] active:scale-95 transition-all inline-flex items-center gap-1">
-                  <CheckCircle2 size={13} />
+                <button
+                  disabled={isConfirming || isDeclining}
+                  onClick={() => handleConfirm(s.id)}
+                  className="h-9 px-3.5 rounded-lg bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.55)] hover:scale-[1.02] active:scale-95 transition-all inline-flex items-center gap-1 disabled:opacity-60 disabled:scale-100"
+                >
+                  {isConfirming ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   Confirm
                 </button>
               </li>
@@ -854,12 +941,16 @@ function SessionBlock({
   session,
   delay,
   reduce,
+  onRefetch,
 }: {
   session: Session;
   delay: number;
   reduce: boolean;
+  onRefetch: () => void;
 }) {
   const learner = useLearner(session.learnerId);
+  const [cancelling, setCancelling] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const start = new Date(session.start);
   const hour = start.getHours();
   const minute = start.getMinutes();
@@ -877,6 +968,36 @@ function SessionBlock({
     hour: "numeric",
     minute: "2-digit",
   });
+
+  const isOnline = session.location?.toLowerCase() === "online";
+  const meetingUrl = session.notes?.match(/https?:\/\/\S+/)?.[0];
+  const canJoin = isOnline || !!meetingUrl;
+  const isInProgress = session.status === "in_progress";
+
+  function handleJoin(e: React.MouseEvent) {
+    e.stopPropagation();
+    const url = meetingUrl ?? (isOnline ? session.location : undefined);
+    if (url && url.startsWith("http")) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      alert("Không có link tham gia cho buổi này.");
+    }
+  }
+
+  async function handleCancel(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm("Bạn chắc chắn muốn hủy buổi này?")) return;
+    if (isMockMode()) return;
+    setCancelling(true);
+    try { await api.cancelSession(session.id); onRefetch(); } finally { setCancelling(false); }
+  }
+
+  async function handleComplete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (isMockMode()) return;
+    setCompleting(true);
+    try { await api.completeSession(session.id); onRefetch(); } finally { setCompleting(false); }
+  }
 
   return (
     <motion.div
@@ -943,11 +1064,34 @@ function SessionBlock({
 
       {/* Hover quick actions */}
       <div className="absolute inset-x-1 bottom-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button className="flex-1 h-5 rounded-[6px] bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[9px] font-bold shadow-[0_2px_6px_-1px_rgba(53,37,205,0.5)]">
-          Join
-        </button>
-        <button className="flex-1 h-5 rounded-[6px] bg-surface-container-lowest border border-[var(--color-border-soft)] text-[9px] font-bold text-on-surface">
-          Edit
+        {isInProgress ? (
+          <button
+            onClick={handleComplete}
+            disabled={completing}
+            className="flex-1 h-5 rounded-[6px] bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[9px] font-bold"
+          >
+            {completing ? "…" : "Hoàn thành"}
+          </button>
+        ) : (
+          <button
+            onClick={handleJoin}
+            title={canJoin ? undefined : "Không có link tham gia"}
+            className={cn(
+              "flex-1 h-5 rounded-[6px] text-[9px] font-bold",
+              canJoin
+                ? "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_2px_6px_-1px_rgba(53,37,205,0.5)]"
+                : "bg-surface-container-low text-on-surface-variant cursor-not-allowed",
+            )}
+          >
+            Join
+          </button>
+        )}
+        <button
+          onClick={handleCancel}
+          disabled={cancelling}
+          className="flex-1 h-5 rounded-[6px] bg-surface-container-lowest border border-[#f43f5e]/30 text-[9px] font-bold text-[#ba1a1a] hover:bg-[#f43f5e]/10 transition-colors"
+        >
+          {cancelling ? "…" : "Hủy"}
         </button>
       </div>
     </motion.div>
@@ -1456,7 +1600,7 @@ const QA_ACCENT = {
   amber: "from-[#f59e0b] to-[#fb923c]",
 } as const;
 
-function QuickActions({ reduce }: { reduce: boolean }) {
+function QuickActions({ reduce, onNewSlot }: { reduce: boolean; onNewSlot: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1470,6 +1614,25 @@ function QuickActions({ reduce }: { reduce: boolean }) {
       <div className="grid grid-cols-2 gap-2.5">
         {QUICK_ACTIONS.map((q, i) => {
           const Icon = q.icon;
+          const isNewSlot = q.label === "Buổi mới";
+          const inner = (
+            <>
+              <div
+                className={cn(
+                  "w-9 h-9 rounded-[10px] bg-gradient-to-br flex items-center justify-center text-white shadow-[0_3px_10px_-2px_rgba(15,15,30,0.18)] mb-2 transition-transform group-hover:scale-105",
+                  QA_ACCENT[q.accent],
+                )}
+              >
+                <Icon size={15} strokeWidth={2.25} />
+              </div>
+              <p className="text-[12.5px] font-semibold leading-tight">
+                {q.label}
+              </p>
+              <p className="text-[10.5px] text-on-surface-variant mt-0.5">
+                {q.desc}
+              </p>
+            </>
+          );
           return (
             <motion.div
               key={q.label}
@@ -1481,25 +1644,21 @@ function QuickActions({ reduce }: { reduce: boolean }) {
                 ease: EASE,
               }}
             >
-              <Link
-                href={q.href}
-                className="group block rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent p-3 transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-6px_rgba(15,15,30,0.12)]"
-              >
-                <div
-                  className={cn(
-                    "w-9 h-9 rounded-[10px] bg-gradient-to-br flex items-center justify-center text-white shadow-[0_3px_10px_-2px_rgba(15,15,30,0.18)] mb-2 transition-transform group-hover:scale-105",
-                    QA_ACCENT[q.accent],
-                  )}
+              {isNewSlot ? (
+                <button
+                  onClick={onNewSlot}
+                  className="group w-full text-left rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent p-3 transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-6px_rgba(15,15,30,0.12)]"
                 >
-                  <Icon size={15} strokeWidth={2.25} />
-                </div>
-                <p className="text-[12.5px] font-semibold leading-tight">
-                  {q.label}
-                </p>
-                <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-                  {q.desc}
-                </p>
-              </Link>
+                  {inner}
+                </button>
+              ) : (
+                <Link
+                  href={q.href}
+                  className="group block rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent p-3 transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-6px_rgba(15,15,30,0.12)]"
+                >
+                  {inner}
+                </Link>
+              )}
             </motion.div>
           );
         })}
@@ -1508,5 +1667,493 @@ function QuickActions({ reduce }: { reduce: boolean }) {
   );
 }
 
-// Silence Zap unused import warning (kept reserved for future quick action)
+// Silence unused import warnings
 void Zap;
+
+// ============================================================================
+// Availability Slot Block (absolutely positioned in calendar grid)
+// ============================================================================
+
+const SLOT_STATUS_STYLES: Record<string, { bg: string; border: string; bar: string; label: string }> = {
+  available: {
+    bg: "from-[#8b5cf6]/8 to-[#c084fc]/4",
+    border: "border-dashed border-[#8b5cf6]/35",
+    bar: "bg-gradient-to-b from-[#8b5cf6] to-[#c084fc]",
+    label: "Khả dụng",
+  },
+  booked: {
+    bg: "from-[#10b981]/8 to-[#34d399]/4",
+    border: "border-dashed border-[#10b981]/35",
+    bar: "bg-gradient-to-b from-[#10b981] to-[#34d399]",
+    label: "Đã đặt",
+  },
+  cancelled: {
+    bg: "from-surface-container-low to-surface-container-low/50",
+    border: "border-dashed border-[var(--color-border-soft)]/60",
+    bar: "bg-[var(--color-border-soft)]",
+    label: "Đã hủy",
+  },
+};
+
+function SlotBlock({
+  slot,
+  delay,
+  reduce,
+  onDetailOpen,
+}: {
+  slot: AvailabilitySlot;
+  delay: number;
+  reduce: boolean;
+  onDetailOpen: (slot: AvailabilitySlot) => void;
+}) {
+  const start = new Date(slot.startTime);
+  const end = new Date(slot.endTime);
+  const hour = start.getHours();
+  const minute = start.getMinutes();
+
+  if (hour < START_HOUR || hour >= END_HOUR) return null;
+
+  const top = (hour - START_HOUR) * HOUR_HEIGHT + (minute / 60) * HOUR_HEIGHT;
+  const durationMin = (end.getTime() - start.getTime()) / 60000;
+  const height = Math.max(28, (durationMin / 60) * HOUR_HEIGHT - 2);
+
+  const style = SLOT_STATUS_STYLES[slot.status] ?? SLOT_STATUS_STYLES.available;
+  const timeLabel = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: reduce ? 0 : 0.35, delay: reduce ? 0 : delay, ease: EASE }}
+      onClick={() => onDetailOpen(slot)}
+      style={{ top, height }}
+      className={cn(
+        "absolute left-1 right-1 z-[5] overflow-hidden rounded-[8px] border bg-gradient-to-br opacity-80 hover:opacity-100 transition-all cursor-pointer hover:scale-[1.02] hover:z-[6]",
+        style.bg,
+        style.border,
+      )}
+      title={`${style.label} — nhấn để xem chi tiết`}
+    >
+      <span className={cn("absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full", style.bar)} />
+      <div className="pl-2 pr-1 py-1">
+        <p className="text-[9.5px] font-bold text-on-surface-variant tabular-nums leading-none">
+          {timeLabel}
+        </p>
+        <p className="text-[9px] font-semibold text-on-surface-variant/80 mt-0.5 truncate">
+          {style.label}{slot.isOnline ? " · Online" : slot.location ? ` · ${slot.location}` : ""}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// Create Availability Slot Modal
+// ============================================================================
+
+function toLocalDatetimeString(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function CreateSlotModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [startTime, setStartTime] = useState(() => toLocalDatetimeString(new Date(Date.now() + 3600_000)));
+  const [endTime, setEndTime] = useState(() => toLocalDatetimeString(new Date(Date.now() + 7200_000)));
+  const [location, setLocation] = useState("");
+  const [isOnline, setIsOnline] = useState(false);
+  const [meetingUrl, setMeetingUrl] = useState("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  function validateAndSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      setError("Ngày giờ không hợp lệ."); return;
+    }
+    if (start >= end) {
+      setError("Thời gian bắt đầu phải trước thời gian kết thúc."); return;
+    }
+    doSubmit(start.toISOString(), end.toISOString());
+  }
+
+  async function doSubmit(startISO: string, endISO: string) {
+    setSubmitting(true);
+    try {
+      await api.createSlot({
+        startTime: startISO,
+        endTime: endISO,
+        location: location.trim() || undefined,
+        isOnline,
+        meetingUrl: isOnline && meetingUrl.trim() ? meetingUrl.trim() : undefined,
+        note: note.trim() || undefined,
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi. Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const isPast = new Date(startTime) < new Date();
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ duration: 0.25, ease: EASE }}
+        className="w-full max-w-md bg-surface-container-lowest rounded-[24px] border border-[var(--color-border-soft)] shadow-[0_24px_60px_-12px_rgba(15,15,30,0.35)] overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)]">
+              <CalendarPlus size={16} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-[16px] font-semibold tracking-tight">Tạo Slot Khả Dụng</h2>
+              <p className="text-[11.5px] text-on-surface-variant">Học viên có thể đặt lịch vào slot này</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors"
+          >
+            <XCircle size={16} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={validateAndSubmit} className="px-6 py-5 space-y-4">
+          {/* Past-time warning */}
+          {isPast && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-[#f59e0b]/10 border border-[#f59e0b]/25 text-[12px] text-[#b45309]">
+              <Clock size={13} className="mt-0.5 shrink-0" />
+              Thời gian bắt đầu đã qua — slot vẫn được tạo nhưng học viên có thể không đặt được.
+            </div>
+          )}
+
+          {/* Start / End */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
+                Bắt đầu *
+              </label>
+              <input
+                type="datetime-local"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                required
+                className="w-full h-10 px-3 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low text-[13px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
+                Kết thúc *
+              </label>
+              <input
+                type="datetime-local"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+                className="w-full h-10 px-3 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low text-[13px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Online toggle */}
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className={cn(
+              "relative w-10 h-5 rounded-full transition-colors",
+              isOnline ? "bg-primary" : "bg-surface-container-high",
+            )}>
+              <div className={cn(
+                "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all",
+                isOnline ? "left-5" : "left-0.5",
+              )} />
+            </div>
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={isOnline}
+              onChange={(e) => setIsOnline(e.target.checked)}
+            />
+            <div>
+              <p className="text-[13px] font-medium">Buổi online</p>
+              <p className="text-[11px] text-on-surface-variant">Học qua video call</p>
+            </div>
+            <Video size={15} className={cn("ml-auto transition-colors", isOnline ? "text-primary" : "text-on-surface-variant")} />
+          </label>
+
+          {/* Location / Meeting URL */}
+          {isOnline ? (
+            <div>
+              <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
+                Link tham gia (tuỳ chọn)
+              </label>
+              <input
+                type="url"
+                value={meetingUrl}
+                onChange={(e) => setMeetingUrl(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                className="w-full h-10 px-3 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low text-[13px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
+                Địa điểm (tuỳ chọn)
+              </label>
+              <div className="relative">
+                <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Sân cầu lông ABC..."
+                  className="w-full h-10 pl-8 pr-3 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low text-[13px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Note */}
+          <div>
+            <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
+              Ghi chú (tuỳ chọn)
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              placeholder="Yêu cầu đặc biệt, chuẩn bị dụng cụ..."
+              className="w-full px-3 py-2 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-low text-[13px] resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="px-3 py-2.5 rounded-xl bg-[#ba1a1a]/10 border border-[#ba1a1a]/25 text-[12px] text-[#ba1a1a]">
+              {error}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-11 rounded-xl border border-[var(--color-border-soft)] text-[13.5px] font-medium hover:bg-surface-container-low transition-colors"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 h-11 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13.5px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:scale-100 inline-flex items-center justify-center gap-2"
+            >
+              {submitting ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+              {submitting ? "Đang tạo…" : "Tạo Slot"}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Slot Detail / Cancel Modal
+// ============================================================================
+
+const SLOT_STATUS_LABEL: Record<string, { label: string; pill: string }> = {
+  available: { label: "Khả dụng", pill: "bg-[#8b5cf6]/10 text-[#7c3aed] border-[#8b5cf6]/25" },
+  booked:    { label: "Đã đặt",  pill: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  cancelled: { label: "Đã hủy", pill: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]" },
+};
+
+function SlotDetailModal({
+  slot,
+  onClose,
+  onCancelled,
+}: {
+  slot: AvailabilitySlot;
+  onClose: () => void;
+  onCancelled: () => void;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const start = new Date(slot.startTime);
+  const end   = new Date(slot.endTime);
+  const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
+  const statusMeta = SLOT_STATUS_LABEL[slot.status] ?? SLOT_STATUS_LABEL.available;
+
+  const canCancel = slot.status === "available";
+
+  const formatDt = (d: Date) =>
+    d.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" }) +
+    " · " +
+    d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+  async function handleCancel() {
+    if (!window.confirm("Bạn chắc chắn muốn hủy khung giờ này?\nHọc viên sẽ không thể đặt slot này nữa.")) return;
+    if (isMockMode()) { onCancelled(); return; }
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await api.cancelSlot(slot.id);
+      onCancelled();
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : "Hủy thất bại. Vui lòng thử lại.");
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full sm:max-w-sm bg-surface-container-lowest rounded-t-[24px] sm:rounded-[24px] border border-[var(--color-border-soft)] shadow-[0_24px_60px_-12px_rgba(15,15,30,0.35)] overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--color-border-soft)] flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center shadow-[0_3px_10px_-2px_rgba(139,92,246,0.4)] shrink-0">
+              <Clock size={15} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[15px] font-semibold tracking-tight">Chi tiết khung giờ</p>
+              <span className={cn(
+                "inline-flex items-center border px-2 py-0.5 rounded-full text-[10.5px] font-semibold mt-0.5",
+                statusMeta.pill,
+              )}>
+                {statusMeta.label}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors shrink-0"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-3">
+          {/* Time row */}
+          <div className="flex items-start gap-3 p-3 rounded-[12px] bg-surface-container-low/60">
+            <div className="w-8 h-8 rounded-[8px] bg-gradient-to-br from-[#8b5cf6]/15 to-[#c084fc]/10 flex items-center justify-center shrink-0">
+              <Clock size={14} className="text-[#7c3aed]" />
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-on-surface">{formatDt(start)}</p>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                đến {end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                {" "}· {durationMin} phút
+              </p>
+            </div>
+          </div>
+
+          {/* Location / Online */}
+          <div className="flex items-center gap-3 p-3 rounded-[12px] bg-surface-container-low/60">
+            <div className="w-8 h-8 rounded-[8px] bg-gradient-to-br from-[#8b5cf6]/15 to-[#c084fc]/10 flex items-center justify-center shrink-0">
+              {slot.isOnline ? <Video size={14} className="text-[#7c3aed]" /> : <MapPin size={14} className="text-[#7c3aed]" />}
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-on-surface">
+                {slot.isOnline ? "Trực tuyến (Online)" : (slot.location ?? "Chưa đặt địa điểm")}
+              </p>
+              {slot.isOnline && slot.meetingUrl && (
+                <a
+                  href={slot.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary hover:underline break-all"
+                >
+                  {slot.meetingUrl}
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Note */}
+          {slot.note && (
+            <p className="text-[12px] text-on-surface-variant italic px-1">
+              📝 {slot.note}
+            </p>
+          )}
+
+          {/* Booked/Cancelled explanation */}
+          {slot.status === "booked" && (
+            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-700">
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+              Slot này đã có học viên đặt lịch — không thể hủy trực tiếp.
+            </div>
+          )}
+          {slot.status === "cancelled" && (
+            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-surface-container-low border border-[var(--color-border-soft)] text-[12px] text-on-surface-variant">
+              <Ban size={14} className="mt-0.5 shrink-0" />
+              Slot này đã bị hủy.
+            </div>
+          )}
+
+          {/* Error */}
+          {cancelError && (
+            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-[#ffdad6] border border-[#f43f5e]/30 text-[12px] text-[#ba1a1a]">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              {cancelError}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 pb-5 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 h-10 rounded-xl border border-[var(--color-border-soft)] text-[13px] font-medium hover:bg-surface-container-low transition-colors"
+          >
+            Đóng
+          </button>
+          {canCancel && (
+            <button
+              onClick={() => void handleCancel()}
+              disabled={cancelling}
+              className="flex-1 h-10 rounded-xl bg-[#f43f5e] text-white text-[13px] font-semibold shadow-[0_3px_10px_-2px_rgba(244,63,94,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(244,63,94,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:scale-100 inline-flex items-center justify-center gap-1.5"
+            >
+              {cancelling ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+              {cancelling ? "Đang hủy…" : "Hủy khung giờ"}
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}

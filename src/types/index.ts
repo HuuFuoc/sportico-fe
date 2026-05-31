@@ -317,6 +317,23 @@ export interface NotificationItem {
 }
 
 // ============================================================================
+// Availability Slots
+// ============================================================================
+
+export interface AvailabilitySlot {
+  id: string;
+  coachId: string;
+  startTime: string; // ISO datetime
+  endTime: string;   // ISO datetime
+  status: "available" | "booked" | "cancelled" | string;
+  location?: string;
+  isOnline: boolean;
+  meetingUrl?: string;
+  note?: string;
+  createdAt: string;
+}
+
+// ============================================================================
 // Admin / Verification
 // ============================================================================
 

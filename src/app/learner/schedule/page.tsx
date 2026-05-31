@@ -10,11 +10,13 @@ import {
   CalendarCheck,
   CalendarPlus,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   Compass,
   Flame,
+  Loader2,
   MapPin,
   Plus,
   Search,
@@ -30,13 +32,14 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, initials, localDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { getCurrentUserId } from "@/lib/auth-session";
 import { devUserIdForRole } from "@/lib/auth";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-// NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
-// TODO(api): once the backend returns real timestamps, use `new Date()` here.
-import { NOW } from "@/lib/mock/clock";
-import type { Coach, Session } from "@/types";
+import type { AvailabilitySlot, Coach, Session } from "@/types";
+
+// Use real current date — the mock clock is only for static demo fixtures.
+const NOW = new Date();
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -52,8 +55,9 @@ function startOfWeek(d: Date) {
 }
 
 export default function LearnerSchedulePage() {
-  // TODO(auth): hard-coded current learner until real session auth lands.
-  const learnerId = devUserIdForRole("learner");
+  // Use the real authenticated learner ID from the JWT; fall back to dev hard-code
+  // in mock mode so the demo keeps working.
+  const learnerId = getCurrentUserId() ?? devUserIdForRole("learner");
   const {
     data: sessionsData,
     loading,
@@ -432,6 +436,11 @@ export default function LearnerSchedulePage() {
           {/* ============ RIGHT: SIDEBAR ============ */}
           <aside className="space-y-5 lg:order-last">
             <AICoachCard reduce={reduce ?? false} missedCount={missed} />
+            <BookSessionPanel
+              learnerId={learnerId}
+              reduce={reduce ?? false}
+              onSessionBooked={refetch}
+            />
             <UpcomingSessions
               upcoming={upcoming}
               coachById={coachById}
@@ -1028,6 +1037,308 @@ function QuickActions({ reduce }: { reduce: boolean }) {
         </kbd>
       </button>
     </motion.div>
+  );
+}
+
+// ============================================================================
+// Book Session Panel (sidebar)
+// ============================================================================
+
+function BookSessionPanel({
+  reduce,
+  onSessionBooked,
+}: {
+  learnerId?: string;
+  reduce: boolean;
+  onSessionBooked?: () => void;
+}) {
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [bookingStates, setBookingStates] = useState<
+    Record<string, "idle" | "loading" | "success" | "error">
+  >({});
+
+  // Load all of the learner's bookings
+  const {
+    data: bookingsData,
+    loading: bookingsLoading,
+    error: bookingsError,
+    refetch: refetchBookings,
+  } = useApiResource(() => api.fetchMyBookings(), []);
+
+  const activeBookings = useMemo(
+    () => (bookingsData ?? []).filter((b) => b.status.toLowerCase() === "active"),
+    [bookingsData],
+  );
+
+  const selectedBooking = useMemo(
+    () => activeBookings.find((b) => b.id === selectedBookingId) ?? null,
+    [activeBookings, selectedBookingId],
+  );
+
+  // Load coach slots when a booking is selected
+  const slotsEnabled = !!selectedBooking;
+  const {
+    data: slotsData,
+    loading: slotsLoading,
+    error: slotsError,
+    refetch: refetchSlots,
+  } = useApiResource(
+    () =>
+      slotsEnabled
+        ? api.fetchCoachSlots(selectedBooking.coachId, {
+            startFrom: new Date().toISOString(),
+          })
+        : Promise.resolve([] as AvailabilitySlot[]),
+    [selectedBooking?.coachId, slotsEnabled],
+  );
+
+  const availableSlots = useMemo(
+    () => (slotsData ?? []).filter((s) => s.status === "available"),
+    [slotsData],
+  );
+
+  async function handleBook(slot: AvailabilitySlot) {
+    if (!selectedBooking) return;
+    setBookingStates((prev) => ({ ...prev, [slot.id]: "loading" }));
+    try {
+      await api.bookSession(selectedBooking.id, slot.id);
+      setBookingStates((prev) => ({ ...prev, [slot.id]: "success" }));
+      onSessionBooked?.();
+      // Refresh slots so the booked slot disappears
+      refetchSlots();
+    } catch {
+      setBookingStates((prev) => ({ ...prev, [slot.id]: "error" }));
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.19, ease: EASE }}
+      className="relative overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3 flex items-center gap-2">
+        <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-white shadow-[0_3px_8px_-2px_rgba(53,37,205,0.4)] shrink-0">
+          <CalendarPlus size={14} strokeWidth={2.25} />
+        </div>
+        <h3 className="text-[16px] font-semibold tracking-tight">
+          Đặt buổi tập
+        </h3>
+      </div>
+
+      <div className="px-4 pb-4 space-y-3">
+        {/* Bookings loading / error */}
+        {bookingsLoading && (
+          <div className="flex items-center gap-2 py-3 text-[12.5px] text-on-surface-variant">
+            <Loader2 size={14} className="animate-spin text-primary" />
+            Đang tải gói tập…
+          </div>
+        )}
+        {bookingsError && (
+          <div className="rounded-[10px] bg-error-container/30 border border-error/20 px-3 py-2.5 text-[12px] text-on-surface-variant">
+            <p className="font-medium text-error mb-1">Không tải được gói tập.</p>
+            <button
+              onClick={refetchBookings}
+              className="text-primary font-semibold hover:underline"
+            >
+              Thử lại
+            </button>
+          </div>
+        )}
+
+        {/* No active bookings */}
+        {!bookingsLoading && !bookingsError && activeBookings.length === 0 && (
+          <div className="text-center py-5 px-3">
+            <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-surface-container-low flex items-center justify-center">
+              <CalendarPlus size={15} className="text-on-surface-variant" />
+            </div>
+            <p className="text-[12.5px] font-medium text-on-surface">
+              Chưa có gói tập
+            </p>
+            <p className="text-[11.5px] text-on-surface-variant mt-0.5">
+              Bạn chưa có gói tập đang hoạt động.
+            </p>
+            <Link
+              href="/learner/coaches"
+              className="mt-2.5 inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary/10 text-primary text-[12px] font-semibold hover:bg-primary/15 transition-colors"
+            >
+              Tìm HLV
+              <ArrowRight size={11} />
+            </Link>
+          </div>
+        )}
+
+        {/* Booking selector dropdown */}
+        {!bookingsLoading && !bookingsError && activeBookings.length > 0 && (
+          <div className="relative">
+            <select
+              value={selectedBookingId ?? ""}
+              onChange={(e) => {
+                setSelectedBookingId(e.target.value || null);
+                setBookingStates({});
+              }}
+              className="w-full h-9 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low pl-3 pr-8 text-[12.5px] text-on-surface appearance-none focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
+            >
+              <option value="">— Chọn gói tập —</option>
+              {activeBookings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title} ({b.completedSessions}/{b.totalSessions} buổi)
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant"
+            />
+          </div>
+        )}
+
+        {/* Slots section */}
+        {selectedBooking && (
+          <>
+            {slotsLoading && (
+              <div className="flex items-center gap-2 py-2 text-[12px] text-on-surface-variant">
+                <Loader2 size={13} className="animate-spin text-primary" />
+                Đang tải lịch khả dụng…
+              </div>
+            )}
+            {slotsError && (
+              <div className="rounded-[10px] bg-error-container/30 border border-error/20 px-3 py-2.5 text-[12px]">
+                <p className="font-medium text-error mb-1">
+                  Không tải được lịch HLV.
+                </p>
+                <button
+                  onClick={refetchSlots}
+                  className="text-primary font-semibold hover:underline"
+                >
+                  Thử lại
+                </button>
+              </div>
+            )}
+            {!slotsLoading && !slotsError && availableSlots.length === 0 && (
+              <div className="text-center py-4 px-2">
+                <Clock size={16} className="mx-auto mb-1.5 text-on-surface-variant/60" />
+                <p className="text-[12px] text-on-surface-variant">
+                  HLV chưa có lịch khả dụng.
+                </p>
+              </div>
+            )}
+            {!slotsLoading && !slotsError && availableSlots.length > 0 && (
+              <div
+                className="space-y-2 overflow-y-auto pr-0.5"
+                style={{ maxHeight: 300 }}
+              >
+                <p className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant px-0.5">
+                  {availableSlots.length} lịch trống
+                </p>
+                {availableSlots.map((slot) => (
+                  <SlotCard
+                    key={slot.id}
+                    slot={slot}
+                    state={bookingStates[slot.id] ?? "idle"}
+                    onBook={() => handleBook(slot)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function SlotCard({
+  slot,
+  state,
+  onBook,
+}: {
+  slot: AvailabilitySlot;
+  state: "idle" | "loading" | "success" | "error";
+  onBook: () => void;
+}) {
+  const start = new Date(slot.startTime);
+  const end = new Date(slot.endTime);
+  const dateLabel = start.toLocaleDateString("vi-VN", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  const timeLabel = `${start.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })} – ${end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`;
+
+  const isBooked = state === "success";
+  const isLoading = state === "loading";
+  const isError = state === "error";
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-2.5 rounded-[12px] border p-2.5 transition-all",
+        isBooked
+          ? "border-[#10b981]/30 bg-[#10b981]/[0.05]"
+          : isError
+            ? "border-error/25 bg-error-container/20"
+            : "border-[var(--color-border-soft)] bg-surface-container-lowest hover:border-primary/20 hover:bg-primary/[0.02]",
+      )}
+    >
+      {/* Time/date column */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[11.5px] font-semibold text-on-surface tabular-nums leading-tight">
+          {timeLabel}
+        </p>
+        <p className="text-[10.5px] text-on-surface-variant mt-0.5">{dateLabel}</p>
+        <div className="flex items-center gap-1.5 mt-1">
+          {slot.isOnline ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9.5px] font-semibold">
+              <Video size={9} />
+              Trực tuyến
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant text-[9.5px] font-semibold">
+              <MapPin size={9} />
+              {slot.location ? slot.location : "Trực tiếp"}
+            </span>
+          )}
+          {isError && (
+            <span className="text-[9.5px] text-error font-medium">Thất bại</span>
+          )}
+        </div>
+      </div>
+
+      {/* Action button */}
+      <button
+        onClick={onBook}
+        disabled={isLoading || isBooked}
+        className={cn(
+          "shrink-0 h-8 px-3 rounded-[9px] text-[12px] font-semibold transition-all",
+          isBooked
+            ? "bg-[#10b981]/15 text-[#1f7a4d] cursor-default"
+            : isError
+              ? "bg-primary/10 text-primary hover:bg-primary/20"
+              : isLoading
+                ? "bg-primary/20 text-primary cursor-wait"
+                : "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_3px_8px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_12px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.97]",
+        )}
+      >
+        {isLoading ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : isBooked ? (
+          <span className="flex items-center gap-1">
+            <CheckCircle2 size={12} />
+            Đã đặt
+          </span>
+        ) : isError ? (
+          "Thử lại"
+        ) : (
+          "Đặt"
+        )}
+      </button>
+    </div>
   );
 }
 

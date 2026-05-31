@@ -261,6 +261,31 @@ export interface WithdrawalRequestResponse {
   updatedAt: string;
 }
 
+/** Receipt returned by GET /api/coaches/me/withdrawal-requests/{id}/receipt */
+export interface WithdrawalReceiptResponse {
+  receiptNumber: string;
+  withdrawalRequestId: string;
+  coachId: string;
+  coachName: string;
+  coachEmail: string;
+  amount: number;
+  currency: string;
+  status: string;
+  payOsPayoutId?: string | null;
+  payOsReferenceId?: string | null;
+  payOsPayoutStatus?: string | null;
+  failureReason?: string | null;
+  createdAt: string;
+  processingAt?: string | null;
+  paidAt?: string | null;
+  bankName: string;
+  bankBin?: string | null;
+  maskedAccountNumber: string;
+  accountHolderName: string;
+  adminNote?: string | null;
+  note?: string | null;
+}
+
 // ---- Posts -----------------------------------------------------------------
 
 export interface PostResponse {
