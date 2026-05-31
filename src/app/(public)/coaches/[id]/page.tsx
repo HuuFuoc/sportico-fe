@@ -28,7 +28,9 @@ import { LoadingState, ErrorState } from "@/components/common/AsyncStates";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { backend } from "@/lib/backend/client";
-import { isMockMode } from "@/lib/api-client";
+import { isMockMode, ApiError } from "@/lib/api-client";
+import { getAccessToken } from "@/lib/auth-token";
+import { getCurrentRole } from "@/lib/auth-session";
 import { messageForApiError } from "@/lib/errors-vi";
 import { cn } from "@/lib/utils";
 import type { PublicCoachDetailResponse } from "@/lib/backend/dto";
@@ -156,21 +158,33 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
 
   const handleMessage = async () => {
     if (messaging) return;
+
+    // Unauthenticated: redirect to login with return URL.
+    if (!isMockMode() && !getAccessToken()) {
+      router.push(`/login?returnUrl=${encodeURIComponent(`/coaches/${id}`)}`);
+      return;
+    }
+
     setMessaging(true);
     setMessageNote(null);
     try {
-      const roomId = await api.findChatRoomWith(id);
-      if (roomId) {
-        router.push(`/learner/messages?thread=${encodeURIComponent(roomId)}`);
-      } else {
-        setMessageNote(
-          "Bạn cần đặt lịch trước để mở cuộc trò chuyện với huấn luyện viên.",
-        );
-      }
+      // POST /api/chat/rooms is idempotent — creates or returns the existing room.
+      const roomId = await api.createOrGetChatRoom(id);
+      const role = isMockMode() ? "learner" : getCurrentRole();
+      const base = role === "coach" ? "/coach/messages" : "/learner/messages";
+      router.push(`${base}?thread=${encodeURIComponent(roomId)}`);
     } catch (err) {
-      setMessageNote(
-        err instanceof Error ? err.message : "Không mở được tin nhắn.",
-      );
+      if (err instanceof ApiError) {
+        if (err.status === 403) {
+          setMessageNote("Bạn không thể tự nhắn tin với chính mình.");
+        } else if (err.status === 404) {
+          setMessageNote("Không tìm thấy hồ sơ huấn luyện viên.");
+        } else {
+          setMessageNote("Không thể mở cuộc trò chuyện. Vui lòng thử lại.");
+        }
+      } else {
+        setMessageNote("Không thể mở cuộc trò chuyện. Vui lòng thử lại.");
+      }
     } finally {
       setMessaging(false);
     }
@@ -677,9 +691,9 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                     </button>
 
                     {messageNote && (
-                      <div className="flex items-start gap-2 rounded-[8px] border border-amber-200 bg-amber-50 p-2.5">
-                        <Info size={14} className="mt-0.5 shrink-0 text-amber-600" />
-                        <p className="text-[12px] text-amber-800 leading-snug">
+                      <div className="flex items-start gap-2 rounded-[8px] border border-red-200 bg-red-50 p-2.5">
+                        <Info size={14} className="mt-0.5 shrink-0 text-red-500" />
+                        <p className="text-[12px] text-red-700 leading-snug">
                           {messageNote}
                         </p>
                       </div>

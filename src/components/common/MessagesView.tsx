@@ -97,11 +97,26 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
     });
   }, [threads, initialThreadId]);
 
-  const { data: messagesData } = useApiResource(
+  const { data: messagesData, refetch: refetchMessages } = useApiResource(
     () =>
       activeId ? api.fetchMessages(activeId) : Promise.resolve<Message[]>([]),
     [activeId],
   );
+
+  // Poll messages every 6 seconds; pause when the browser tab is hidden.
+  useEffect(() => {
+    if (!activeId) return;
+    const tick = () => {
+      if (!document.hidden) refetchMessages();
+    };
+    const id = window.setInterval(tick, 6000);
+    const onVisibility = () => { if (!document.hidden) refetchMessages(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [activeId, refetchMessages]);
 
   // Optimistically-appended messages not yet reflected in the fetched list.
   // Cleared on thread switch — switching back re-fetches the canonical list.

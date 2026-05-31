@@ -406,8 +406,9 @@ export const api = {
       }),
     ),
   /** Look up an existing 1-1 chat room with `otherUserId`. Returns the room id
-   *  if one exists, otherwise null (backend has no "create room" endpoint, so
-   *  callers must surface the limitation themselves). */
+   *  if one exists, otherwise null.
+   *  @deprecated Use `createOrGetChatRoom` instead — POST /api/chat/rooms is
+   *  idempotent (returns existing room if already created). */
   findChatRoomWith: (otherUserId: string): Promise<string | null> =>
     liveAuthed<string | null>(
       async () => {
@@ -425,6 +426,29 @@ export const api = {
         const threads = getThreadsForUser(me);
         const t = threads.find((th) => th.participantIds.includes(otherUserId));
         return t?.id ?? null;
+      },
+    ),
+
+  /** Create (or get existing) 1-1 chat room with a coach.
+   *
+   *  POST /api/chat/rooms is idempotent — calling it repeatedly for the same
+   *  user-coach pair returns the same room. Auth is required; the function
+   *  throws ApiError(401) when called without a valid token in live mode.
+   *
+   *  Returns the chat room id so the caller can navigate directly to it.
+   */
+  createOrGetChatRoom: (coachId: string): Promise<string> =>
+    liveAuthed<string>(
+      async () => {
+        const room = await backend.createChatRoom(coachId);
+        return room.id;
+      },
+      () => {
+        // Mock: find or fabricate a thread for this coach id.
+        const me = getCurrentUserId() ?? "learner-1";
+        const threads = getThreadsForUser(me);
+        const t = threads.find((th) => th.participantIds.includes(coachId));
+        return t?.id ?? `mock-room-${coachId.slice(0, 8)}`;
       },
     ),
 
