@@ -61,6 +61,13 @@ export interface ApiFetchOptions extends RequestInit {
    * Override per call only if a specific endpoint genuinely needs cookies.
    */
   credentials?: RequestCredentials;
+  /**
+   * When true, a 401 response will NOT trigger the automatic redirect to /login.
+   * Use for auth-path calls (e.g. GET /api/auth/me during the login flow) where
+   * a 401 is a recoverable failure — clearing the just-issued tokens and
+   * redirecting would break the login success handler.
+   */
+  suppressAuthRedirect?: boolean;
 }
 
 /**
@@ -84,7 +91,7 @@ export async function apiFetch<T>(
   }
 
   const url = /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
-  const { headers, credentials, body, ...rest } = options;
+  const { headers, credentials, body, suppressAuthRedirect, ...rest } = options;
 
   // Bearer-token auth: replay the stored access token. A per-call `Authorization`
   // header (e.g. login passing a fresh token) still wins via the later spread.
@@ -111,7 +118,7 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined") {
+    if (res.status === 401 && typeof window !== "undefined" && !suppressAuthRedirect) {
       clearAuthTokens();
       const redirect = encodeURIComponent(
         window.location.pathname + window.location.search,

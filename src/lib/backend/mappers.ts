@@ -345,6 +345,7 @@ export function roomToThread(
   r: ChatRoomResponse,
   meId: string | null,
   preview?: { text: string; at: string; unread: number },
+  participant?: { name?: string; avatarUrl?: string | null },
 ): MessageThread {
   return {
     id: r.id,
@@ -352,6 +353,8 @@ export function roomToThread(
     lastMessagePreview: preview?.text ?? "",
     lastMessageAt: preview?.at ?? r.createdAt,
     unreadCount: preview?.unread ?? 0,
+    otherName: participant?.name ?? undefined,
+    otherAvatarUrl: participant?.avatarUrl ?? undefined,
   };
 }
 

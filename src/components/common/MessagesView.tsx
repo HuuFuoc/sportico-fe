@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Activity,
+  AlertTriangle,
   Bot,
   CheckCheck,
   Copy,
@@ -14,6 +15,7 @@ import {
   MoreHorizontal,
   Paperclip,
   Phone,
+  RefreshCw,
   Search,
   Send,
   Smile,
@@ -24,8 +26,8 @@ import {
 import { cn, initials } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
-import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type { AnyUser, Message } from "@/types";
+import { LoadingState } from "@/components/common/AsyncStates";
+import type { Message, MessageThread } from "@/types";
 
 interface MessagesViewProps {
   userId: string;
@@ -45,6 +47,22 @@ const AI_SUGGESTIONS = [
   { icon: Zap, label: "HIIT nhanh 15 phút" },
 ];
 
+/** Display name for the other participant. Falls back to a Vietnamese placeholder. */
+function participantName(thread: MessageThread | undefined, userId: string): string {
+  if (!thread) return "";
+  if (thread.isAI) return "Sportico AI";
+  if (thread.otherName) return thread.otherName;
+  // No name from backend — derive a short placeholder from their ID
+  const otherId = thread.participantIds.find((id) => id !== userId) ?? "";
+  return otherId ? `Người dùng ${otherId.slice(0, 4).toUpperCase()}` : "Người dùng";
+}
+
+/** Avatar URL for the other participant, or null to show initials. */
+function participantAvatar(thread: MessageThread | undefined): string | null {
+  if (!thread || thread.isAI) return null;
+  return thread.otherAvatarUrl ?? null;
+}
+
 export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
   const {
     data: threadsData,
@@ -62,74 +80,107 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
   const reduce = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Resolve participant users. No batch endpoint yet, so fetch each once and
-  // cache in a map; keyed on a stable string so it only re-runs when ids change.
-  const otherIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const t of threads) {
-      if (t.isAI) continue;
-      const oid = t.participantIds.find((id) => id !== userId);
-      if (oid) ids.add(oid);
-    }
-    return Array.from(ids).sort();
-  }, [threads, userId]);
+  // Tracks whether a message send is in flight — prevents double-submit and updates button style.
+  const [isSending, setIsSending] = useState(false);
 
-  const { data: usersData } = useApiResource(
-    () => Promise.all(otherIds.map((id) => api.fetchUser(id))),
-    [otherIds.join(",")],
-  );
-  const userById = useMemo(() => {
-    const map = new Map<string, AnyUser>();
-    for (const u of usersData ?? []) if (u) map.set(u.id, u);
-    return map;
-  }, [usersData]);
-
-  // Select the first thread once threads load (or if the active one disappears).
-  // Honour `initialThreadId` when it matches a real thread, otherwise fall back
-  // to the first one.
+  // ── Thread pre-selection ──────────────────────────────────────────────────
+  // Honour `initialThreadId` even if it arrives in the list after the first
+  // auto-selection (e.g. the room was just created and isn't in the list yet).
   useEffect(() => {
     if (threads.length === 0) return;
     setActiveId((cur) => {
-      const candidate = cur || initialThreadId || "";
-      return candidate && threads.some((t) => t.id === candidate)
-        ? candidate
-        : threads[0].id;
+      // Always prefer the requested thread once it appears in the list.
+      if (initialThreadId && threads.some((t) => t.id === initialThreadId)) {
+        return initialThreadId;
+      }
+      // Keep the current selection if it's still valid.
+      if (cur && threads.some((t) => t.id === cur)) {
+        return cur;
+      }
+      // Default to the first thread.
+      return threads[0].id;
     });
   }, [threads, initialThreadId]);
 
-  const { data: messagesData, refetch: refetchMessages } = useApiResource(
-    () =>
-      activeId ? api.fetchMessages(activeId) : Promise.resolve<Message[]>([]),
-    [activeId],
-  );
+  // ── Messages — separate state so polling never flickers the list ──────────
+  const [serverMessages, setServerMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+  // Ref so polling closure always sees the latest activeId without recreating the interval.
+  const activeIdRef = useRef(activeId);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
 
-  // Poll messages every 6 seconds; pause when the browser tab is hidden.
+  // Initial load when the selected thread changes.
   useEffect(() => {
-    if (!activeId) return;
-    const tick = () => {
-      if (!document.hidden) refetchMessages();
-    };
-    const id = window.setInterval(tick, 6000);
-    const onVisibility = () => { if (!document.hidden) refetchMessages(); };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [activeId, refetchMessages]);
-
-  // Optimistically-appended messages not yet reflected in the fetched list.
-  // Cleared on thread switch — switching back re-fetches the canonical list.
-  const [pending, setPending] = useState<Message[]>([]);
-  useEffect(() => {
-    setPending([]);
+    if (!activeId) { setServerMessages([]); return; }
+    setMessagesLoading(true);
+    setMessagesError(null);
+    api.fetchMessages(activeId).then((msgs) => {
+      if (activeIdRef.current === activeId) {
+        setServerMessages(msgs);
+        setMessagesLoading(false);
+      }
+    }).catch(() => {
+      if (activeIdRef.current === activeId) {
+        setMessagesError("Không tải được tin nhắn. Thử lại?");
+        setMessagesLoading(false);
+      }
+    });
   }, [activeId]);
 
+  // Background polling every 6 s — silent, no loading state reset.
+  useEffect(() => {
+    if (!activeId) return;
+    const poll = () => {
+      if (document.hidden) return;
+      const pollFor = activeIdRef.current;
+      api.fetchMessages(pollFor).then((msgs) => {
+        // Only apply if the room hasn't changed since this poll started.
+        if (activeIdRef.current === pollFor) setServerMessages(msgs);
+      }).catch(() => {
+        // Silently ignore poll errors (500 from backend doesn't log the user out).
+      });
+    };
+    const intervalId = window.setInterval(poll, 6_000);
+    const onVisibility = () => { if (!document.hidden) poll(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [activeId]);
+
+  const retryMessages = useCallback(() => {
+    if (!activeId) return;
+    setMessagesLoading(true);
+    setMessagesError(null);
+    api.fetchMessages(activeId).then((msgs) => {
+      if (activeIdRef.current === activeId) {
+        setServerMessages(msgs);
+        setMessagesLoading(false);
+      }
+    }).catch(() => {
+      if (activeIdRef.current === activeId) {
+        setMessagesError("Không tải được tin nhắn. Thử lại?");
+        setMessagesLoading(false);
+      }
+    });
+  }, [activeId]);
+
+  // Clear pending optimistic messages whenever the thread changes.
+  const [pending, setPending] = useState<Message[]>([]);
+  useEffect(() => { setPending([]); }, [activeId]);
+
+  // Merge server + optimistic messages, deduplicating by id so a sent message
+  // that already came back in the next poll doesn't appear twice.
   const messages = useMemo(() => {
-    const base = messagesData ?? [];
-    const extra = pending.filter((m) => m.threadId === activeId);
+    const base = serverMessages;
+    const baseIds = new Set(base.map((m) => m.id));
+    const extra = pending.filter(
+      (m) => m.threadId === activeId && !baseIds.has(m.id),
+    );
     return extra.length ? [...base, ...extra] : base;
-  }, [messagesData, pending, activeId]);
+  }, [serverMessages, pending, activeId]);
 
   const filteredThreads = useMemo(() => {
     let list = threads;
@@ -138,40 +189,54 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter((t) => {
-        const oid = t.participantIds.find((id) => id !== userId) ?? "";
-        const usr = t.isAI ? null : userById.get(oid);
-        const name = t.isAI ? "ask ai" : (usr?.name ?? "").toLowerCase();
-        return (
-          name.includes(q) || t.lastMessagePreview.toLowerCase().includes(q)
-        );
+        const name = participantName(t, userId).toLowerCase();
+        return name.includes(q) || t.lastMessagePreview.toLowerCase().includes(q);
       });
     }
     return list;
-  }, [threads, filter, query, userId, userById]);
+  }, [threads, filter, query, userId]);
 
   const active = threads.find((t) => t.id === activeId);
-  const otherId = active?.participantIds.find((id) => id !== userId) ?? "";
-  const other = active?.isAI ? null : (userById.get(otherId) ?? null);
+  const otherName = participantName(active, userId);
+  const otherAvatarUrl = participantAvatar(active);
 
-  // Auto-scroll to bottom when conversation changes, messages load, or typing.
+  // ── Scroll behaviour ──────────────────────────────────────────────────────
+  // On thread switch: always jump to bottom.
+  // On new messages (polling/send): only scroll if the user is near the bottom
+  // so reading older messages isn't interrupted.
+  const prevActiveIdRef = useRef(activeId);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    const threadChanged = prevActiveIdRef.current !== activeId;
+    prevActiveIdRef.current = activeId;
+    if (threadChanged || isAITyping) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      });
+      return;
+    }
+    const isNearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isNearBottom) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
   }, [activeId, isAITyping, messages]);
 
   const handleSend = async () => {
     const text = composer.trim();
-    if (!text || !active) return;
+    if (!text || !active || isSending) return;
+    setIsSending(true);
     setComposer("");
 
     // AI thread has no backend room — keep the simulated typing reply.
     if (active.isAI) {
       setIsAITyping(true);
-      setTimeout(() => setIsAITyping(false), 2200);
+      setTimeout(() => { setIsAITyping(false); setIsSending(false); }, 2200);
       return;
     }
 
+    // eslint-disable-next-line react-hooks/purity
     const tempId = `temp-${Date.now()}`;
     const optimistic: Message = {
       id: tempId,
@@ -183,10 +248,14 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
     setPending((p) => [...p, optimistic]);
     try {
       const saved = await api.sendMessage(active.id, text);
+      // Replace temp id with server id — the next poll will deduplicate it.
       setPending((p) => p.map((m) => (m.id === tempId ? saved : m)));
     } catch {
+      // Remove the optimistic message and restore the composer so the user can retry.
       setPending((p) => p.filter((m) => m.id !== tempId));
       setComposer(text);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -203,10 +272,9 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
   if (threadsError) {
     return (
       <div className="h-[calc(100vh-7rem)] flex items-center justify-center">
-        <ErrorState
-          title="Không tải được tin nhắn"
+        <InlineError
+          message="Không tải được danh sách trò chuyện."
           onRetry={refetchThreads}
-          className="max-w-md"
         />
       </div>
     );
@@ -301,10 +369,9 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
 
           <div className="space-y-0.5">
             {filteredThreads.map((t) => {
-              const oid = t.participantIds.find((id) => id !== userId) ?? "";
-              const usr = t.isAI ? null : userById.get(oid);
               const isActive = t.id === activeId;
-              const name = t.isAI ? "Sportico AI" : (usr?.name ?? "Unknown");
+              const name = participantName(t, userId);
+              const avatarUrl = participantAvatar(t);
               return (
                 <button
                   key={t.id}
@@ -341,14 +408,14 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                     >
                       {t.isAI ? (
                         <Sparkles size={18} className="drop-shadow-sm" />
-                      ) : usr?.avatarUrl ? (
+                      ) : avatarUrl ? (
                         <img
-                          src={usr.avatarUrl}
-                          alt={usr.name}
+                          src={avatarUrl}
+                          alt={name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        initials(usr?.name ?? "?")
+                        initials(name)
                       )}
                     </div>
                     {/* Online dot */}
@@ -428,14 +495,14 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                 >
                   {active.isAI ? (
                     <Sparkles size={18} />
-                  ) : other?.avatarUrl ? (
+                  ) : otherAvatarUrl ? (
                     <img
-                      src={other.avatarUrl}
-                      alt={other.name}
+                      src={otherAvatarUrl}
+                      alt={otherName}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    initials(other?.name ?? "?")
+                    initials(otherName)
                   )}
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-surface-container-lowest" />
@@ -444,7 +511,7 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-[15px] font-semibold truncate">
-                    {active.isAI ? "Sportico AI" : (other?.name ?? "Unknown")}
+                    {active.isAI ? "Sportico AI" : otherName}
                   </p>
                   {active.isAI && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-primary/10 to-primary/5 text-primary text-[10.5px] font-medium border border-primary/15">
@@ -478,11 +545,20 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
               }}
             >
               <div className="max-w-3xl mx-auto">
-                <DateSeparator />
+                {messagesLoading && messages.length === 0 && (
+                  <div className="flex justify-center py-12">
+                    <LoadingState label="Đang tải…" />
+                  </div>
+                )}
+                {messagesError && !messagesLoading && (
+                  <InlineError message={messagesError} onRetry={retryMessages} />
+                )}
+                {!messagesLoading && !messagesError && <DateSeparator />}
                 <MessageList
                   messages={messages}
                   userId={userId}
-                  other={other}
+                  otherName={otherName}
+                  otherAvatarUrl={otherAvatarUrl}
                   reduce={reduce ?? false}
                 />
                 <AnimatePresence>
@@ -561,11 +637,11 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
 
                     <button
                       onClick={() => void handleSend()}
-                      disabled={!composer.trim()}
+                      disabled={!composer.trim() || isSending}
                       aria-label="Send message"
                       className={cn(
                         "shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200",
-                        composer.trim()
+                        composer.trim() && !isSending
                           ? "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_16px_-2px_rgba(53,37,205,0.55)] hover:scale-105 active:scale-95"
                           : "bg-surface-container-low text-on-surface-variant cursor-not-allowed",
                       )}
@@ -611,12 +687,14 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
 function MessageList({
   messages,
   userId,
-  other,
+  otherName,
+  otherAvatarUrl,
   reduce,
 }: {
   messages: Message[];
   userId: string;
-  other: AnyUser | null;
+  otherName: string;
+  otherAvatarUrl: string | null;
   reduce: boolean;
 }) {
   return (
@@ -659,14 +737,14 @@ function MessageList({
                   >
                     {fromAI ? (
                       <Sparkles size={13} />
-                    ) : other?.avatarUrl ? (
+                    ) : otherAvatarUrl ? (
                       <img
-                        src={other.avatarUrl}
-                        alt={other.name}
+                        src={otherAvatarUrl}
+                        alt={otherName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      initials(other?.name ?? "?")
+                      initials(otherName)
                     )}
                   </div>
                 )}
@@ -825,6 +903,32 @@ function EmptyState() {
       <p className="text-[13px] text-on-surface-variant max-w-xs">
         Pick a thread from your inbox or start a new chat with your AI coach.
       </p>
+    </div>
+  );
+}
+
+function InlineError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-10 text-center px-6">
+      <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center">
+        <AlertTriangle size={16} className="text-rose-500" />
+      </div>
+      <p className="text-[13px] text-on-surface-variant">{message}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="flex items-center gap-1.5 px-4 h-8 rounded-full bg-surface-container-low border border-[var(--color-border-soft)] text-[12.5px] font-medium text-on-surface hover:bg-surface-container transition-colors"
+        >
+          <RefreshCw size={12} />
+          Thử lại
+        </button>
+      )}
     </div>
   );
 }

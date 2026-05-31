@@ -379,7 +379,28 @@ export const api = {
     liveAuthed(async () => {
       const rooms = await backend.chatRooms();
       const me = getCurrentUserId();
-      return rooms.map((r) => map.roomToThread(r, me));
+
+      // Build a participant map from the public coaches list.
+      // Coaches are the most common chat counterpart; best-effort (never blocks
+      // thread rendering even if this call fails or returns no results).
+      const coachMap = new Map<string, { name: string; avatarUrl?: string }>();
+      try {
+        const page = await backend.publicCoaches({ pageSize: 50 });
+        for (const c of page.items ?? []) {
+          coachMap.set(c.coachId, {
+            name: c.fullName?.trim() || `Coach ${c.coachId.slice(0, 4).toUpperCase()}`,
+            avatarUrl: c.avatarUrl ?? undefined,
+          });
+        }
+      } catch {
+        // Participant lookup is best-effort; missing it just shows initials.
+      }
+
+      return rooms.map((r) => {
+        const otherId = r.user1Id === me ? r.user2Id : r.user1Id;
+        const participant = coachMap.get(otherId);
+        return map.roomToThread(r, me, undefined, participant);
+      });
     }, () => getThreadsForUser(userId)),
   fetchThread: (id: string): Promise<MessageThread | undefined> =>
     liveAuthed(async () => {

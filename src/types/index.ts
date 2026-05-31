@@ -187,6 +187,10 @@ export interface MessageThread {
   lastMessageAt: string;
   unreadCount: number;
   isAI?: boolean;
+  /** Display name of the other participant resolved from the backend. */
+  otherName?: string;
+  /** Avatar URL of the other participant, if available from the backend. */
+  otherAvatarUrl?: string;
 }
 
 export interface Message {

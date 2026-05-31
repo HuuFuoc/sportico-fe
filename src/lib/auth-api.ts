@@ -224,6 +224,9 @@ export async function getCurrentUser(): Promise<CurrentUserResponse> {
   }
   const result = await request<CurrentUserResponse>(endpoints.auth.me, {
     method: "GET",
+    // Suppress auto-redirect: a 401 here (e.g. during the login post-flow)
+    // must not discard the just-issued tokens and loop back to /login.
+    suppressAuthRedirect: true,
   });
   if (!result.isSuccess || !result.data) {
     throw new AuthError(
@@ -265,7 +268,7 @@ async function mockLogin(payload: LoginPayload): Promise<AuthTokens> {
  *  ApiErrors to AuthErrors. */
 async function request<T = unknown>(
   path: string,
-  init: RequestInit,
+  init: RequestInit & { suppressAuthRedirect?: boolean },
 ): Promise<Result<T>> {
   try {
     const raw = await apiFetch<unknown>(path, init);

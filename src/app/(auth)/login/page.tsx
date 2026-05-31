@@ -68,8 +68,7 @@ export default function LoginPage() {
     setServerError(null);
     try {
       // Calls the real Auth API in live mode; resolves a demo success in mock
-      // mode. `login()` stores the access/refresh tokens centrally. Never a fake
-      // setTimeout success.
+      // mode. `login()` stores the access/refresh tokens centrally.
       await login({
         email: values.email,
         password: values.password,
@@ -78,24 +77,32 @@ export default function LoginPage() {
 
       setSuccess(true);
 
-      // Login returns no role/user. In live mode read GET /api/auth/me (the
-      // authoritative roles + profiles) and route by backend roles; fall back to
-      // the JWT claims in mock mode or if /me is unavailable.
+      // Decode the JWT locally — the access token issued by login already
+      // contains the user's role and id claims, so no extra network call is
+      // needed here. This avoids a race where GET /api/auth/me returns 401
+      // (e.g. token not yet propagated, unverified account) and the 401
+      // handler would wipe the just-issued tokens and loop back to /login.
+      //
+      // Background-hydrate the auth store so downstream pages have the full
+      // user object without an extra round-trip; errors are intentionally
+      // swallowed — pages will re-hydrate on load.
       let role: Role = "learner";
+      const jwt = getCurrentUser(); // auth-session.ts — local JWT decode, no network
+      role = jwt?.role ?? "learner";
+      if (jwt?.userId) setCurrentUserId(jwt.userId);
+
       if (!isMockMode()) {
-        const me = await useAuthStore.getState().hydrate({ force: true });
-        if (me) {
-          role = roleFromBackend(me.roles);
-          if (me.id) setCurrentUserId(me.id);
-        } else {
-          const jwt = getCurrentUser();
-          role = jwt?.role ?? "learner";
-          if (jwt?.userId) setCurrentUserId(jwt.userId);
-        }
-      } else {
-        const jwt = getCurrentUser();
-        role = jwt?.role ?? "learner";
-        if (jwt?.userId) setCurrentUserId(jwt.userId);
+        useAuthStore.getState().hydrate({ force: true }).then((me) => {
+          if (me) {
+            // If the JWT role differs from the authoritative backend role
+            // (e.g. coach profile just created), update the store silently.
+            const backendRole = roleFromBackend(me.roles);
+            useAppStore.getState().setRole(backendRole);
+            if (me.id) useAppStore.getState().setCurrentUserId(me.id);
+          }
+        }).catch(() => {
+          // Background hydration failure is non-fatal.
+        });
       }
 
       setRole(role);
