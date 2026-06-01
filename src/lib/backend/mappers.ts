@@ -331,11 +331,15 @@ export function sessionToSession(
     learnerId: s.learnerId,
     bookingId: s.bookingId,
     start: s.startTime,
+    endTime: s.endTime,
     durationMinutes: durationMinutes || 60,
     status: toSessionStatus(s.status),
     type: "1-on-1",
     notes: s.coachNote ?? s.learnerNote ?? undefined,
     location: s.location ?? (s.meetingUrl ? "Online" : undefined),
+    meetingUrl: s.meetingUrl ?? undefined,
+    learnerNote: s.learnerNote ?? undefined,
+    coachNote: s.coachNote ?? undefined,
     price: booking?.perSessionCoachAmount ?? 0,
   };
 }

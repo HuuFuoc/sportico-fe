@@ -39,6 +39,8 @@ import { messageForApiError } from "@/lib/errors-vi";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import type { PublicCoachDetailResponse } from "@/lib/backend/dto";
+import { BookSessionModal } from "@/components/common/BookSessionModal";
+import { CalendarPlus } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -258,6 +260,26 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       [id],
     );
 
+  // ── Learner existing booking check (determines CTA state) ───────────────────
+  // Load learner's bookings to determine if they already have a package with
+  // this coach — so the CTA can show "Đặt buổi tập" instead of "Mua gói".
+  const isAuthed = !isMockMode() && !!getAccessToken();
+  const { data: myBookingsData, refetch: refetchMyBookings } = useApiResource<import("@/types").Booking[]>(
+    () => isAuthed ? api.fetchMyBookings() : Promise.resolve([]),
+    [isAuthed],
+  );
+
+  // Find the most relevant booking for this coach (prefer active, then pending_payment).
+  const coachBooking = (myBookingsData ?? [])
+    .filter((b) => b.coachId === id)
+    .sort((a, b) => {
+      const rank = (s: string) =>
+        s === "active" ? 0 : s === "pending_payment" ? 1 : 2;
+      return rank(a.status?.toLowerCase()) - rank(b.status?.toLowerCase());
+    })[0] ?? null;
+
+  const [bookSessionOpen, setBookSessionOpen] = useState(false);
+
   // ── Booking ─────────────────────────────────────────────────────────────────
 
   const handleBook = async (packageId: string) => {
@@ -267,10 +289,26 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
     try {
       const result = await api.purchasePackage(packageId);
       if ("checkoutUrl" in result) {
+        // Save payment identifiers so /payment/success can reconcile even if
+        // PayOS does not pass orderCode back in the redirect URL.
+        try {
+          sessionStorage.setItem(
+            "pendingPayosPayment",
+            JSON.stringify({
+              bookingId: result.bookingId,
+              paymentId: result.paymentId,
+              orderCode: result.orderCode,
+              createdAt: new Date().toISOString(),
+            }),
+          );
+        } catch {
+          // sessionStorage unavailable (private mode) — reconcile will fall
+          // back to the URL param.
+        }
         window.location.href = result.checkoutUrl;
         return;
       }
-      router.push("/learner/schedule");
+      router.push("/learner/bookings");
     } catch (err) {
       setBookingError(
         err instanceof Error ? err.message : "Đặt lịch thất bại. Vui lòng thử lại.",
@@ -901,16 +939,45 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                           </div>
                         </div>
 
-                        {/* CTA */}
-                        <button
-                          type="button"
-                          onClick={() => void handleBook(selectedPackage.id)}
-                          disabled={booking}
-                          className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#3525cd] to-[#7d6dff] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(53,37,205,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(53,37,205,0.55)] active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
-                        >
-                          {booking && <Loader2 size={15} className="animate-spin" />}
-                          {booking ? "Đang xử lý…" : "Đặt lịch với gói này"}
-                        </button>
+                        {/* CTA — 4 states: active booking / pending_payment / unauthenticated / no booking */}
+                        {coachBooking?.status?.toLowerCase() === "active" ? (
+                          /* Learner already has an active package: book a session */
+                          <button
+                            type="button"
+                            onClick={() => setBookSessionOpen(true)}
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#10b981] to-[#34d399] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(16,185,129,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(16,185,129,0.55)] active:translate-y-0"
+                          >
+                            <CalendarPlus size={16} />
+                            Đặt buổi tập
+                          </button>
+                        ) : coachBooking?.status?.toLowerCase() === "pending_payment" ? (
+                          /* Payment pending: sync it */
+                          <Link
+                            href="/learner/bookings"
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-amber-500 px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(245,158,11,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(245,158,11,0.55)] active:translate-y-0"
+                          >
+                            Đồng bộ thanh toán
+                          </Link>
+                        ) : !isAuthed ? (
+                          /* Not logged in: redirect to login with returnUrl */
+                          <Link
+                            href={`/login?returnUrl=${encodeURIComponent(`/coaches/${id}`)}`}
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#3525cd] to-[#7d6dff] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(53,37,205,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(53,37,205,0.55)] active:translate-y-0"
+                          >
+                            Đăng nhập để mua gói
+                          </Link>
+                        ) : (
+                          /* Authenticated, no booking yet: purchase */
+                          <button
+                            type="button"
+                            onClick={() => void handleBook(selectedPackage.id)}
+                            disabled={booking}
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#3525cd] to-[#7d6dff] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(53,37,205,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(53,37,205,0.55)] active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
+                          >
+                            {booking && <Loader2 size={15} className="animate-spin" />}
+                            {booking ? "Đang xử lý…" : "Mua gói tập"}
+                          </button>
+                        )}
 
                         {bookingError && (
                           <div className="flex items-start gap-2 rounded-[8px] border border-red-200 bg-red-50 p-2.5">
@@ -994,6 +1061,21 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
             onPositionChange={handleAvatarPosChange}
             onReset={handleResetAvatarPos}
             onClose={() => setIsAvatarDialogOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Book Session Modal (for learners with active booking) ─────────── */}
+      <AnimatePresence>
+        {bookSessionOpen && coachBooking && coachBooking.status?.toLowerCase() === "active" && (
+          <BookSessionModal
+            booking={coachBooking}
+            onClose={() => setBookSessionOpen(false)}
+            onBooked={() => {
+              // Refetch bookings so completedSessions/progress is up-to-date.
+              // The modal already refetched coach slots internally.
+              refetchMyBookings();
+            }}
           />
         )}
       </AnimatePresence>

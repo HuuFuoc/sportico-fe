@@ -6,67 +6,125 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Activity,
   ArrowRight,
-  Brain,
   CalendarCheck,
   CalendarPlus,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Compass,
-  Flame,
   Loader2,
   MapPin,
-  Plus,
-  Search,
+  MessageSquare,
+  RefreshCw,
   Sparkles,
-  Sprout,
-  Target,
   TrendingUp,
-  Users,
   Video,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, initials, localDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { getCurrentUserId } from "@/lib/auth-session";
-import { devUserIdForRole } from "@/lib/auth";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type { AvailabilitySlot, Coach, Session } from "@/types";
+import type { Coach, Session } from "@/types";
 
-// Use real current date — the mock clock is only for static demo fixtures.
+// Use real current date.
 const NOW = new Date();
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const VIEW_OPTIONS = ["Day", "Week", "Month"] as const;
-type View = (typeof VIEW_OPTIONS)[number];
+const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+type TabId = "all" | "requested" | "upcoming" | "completed" | "cancelled";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "all",       label: "Tất cả" },
+  { id: "requested", label: "Chờ xác nhận" },
+  { id: "upcoming",  label: "Sắp tới" },
+  { id: "completed", label: "Hoàn thành" },
+  { id: "cancelled", label: "Đã huỷ" },
+];
+
+// Status display map
+const STATUS_DISPLAY: Record<string, { label: string; chip: string }> = {
+  pending_confirmation: { label: "Chờ xác nhận", chip: "bg-amber-50 text-amber-700 border-amber-200" },
+  scheduled:           { label: "Đã xác nhận",   chip: "bg-blue-50 text-blue-700 border-blue-200" },
+  in_progress:         { label: "Đang diễn ra",   chip: "bg-primary/10 text-primary border-primary/20" },
+  completed:           { label: "Hoàn thành",     chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  cancelled:           { label: "Đã huỷ",         chip: "bg-red-50 text-red-600 border-red-200" },
+};
+
+function statusDisplay(status: string) {
+  return STATUS_DISPLAY[status?.toLowerCase()] ?? {
+    label: status ?? "Không rõ",
+    chip: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
+  };
+}
 
 function startOfWeek(d: Date) {
   const date = new Date(d);
-  const day = (date.getDay() + 6) % 7; // Mon = 0
+  const day = (date.getDay() + 6) % 7; // Mon=0
   date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() - day);
   return date;
 }
 
+// ---- Tab filter helper ----------------------------------------------------
+
+function filterSessions(sessions: Session[], tab: TabId): Session[] {
+  const now = NOW.getTime();
+  switch (tab) {
+    case "requested":
+      return sessions.filter((s) => s.status === "pending_confirmation");
+    case "upcoming":
+      return sessions.filter(
+        (s) =>
+          (s.status === "scheduled" || s.status === "in_progress") &&
+          new Date(s.start).getTime() >= now,
+      );
+    case "completed":
+      return sessions.filter((s) => s.status === "completed");
+    case "cancelled":
+      return sessions.filter((s) => s.status === "cancelled");
+    default:
+      return sessions;
+  }
+}
+
+// ---- Cancel session -------------------------------------------------------
+
+function useCancelSession(onSuccess: () => void) {
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  async function cancel(sessionId: string) {
+    if (!window.confirm("Bạn chắc chắn muốn huỷ buổi tập này?")) return;
+    setCancelling(sessionId);
+    setCancelError(null);
+    try {
+      await api.cancelSession(sessionId);
+      onSuccess();
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : "Huỷ buổi thất bại.");
+    } finally {
+      setCancelling(null);
+    }
+  }
+
+  return { cancel, cancelling, cancelError };
+}
+
+// ---- Main page ------------------------------------------------------------
+
 export default function LearnerSchedulePage() {
-  // Use the real authenticated learner ID from the JWT; fall back to dev hard-code
-  // in mock mode so the demo keeps working.
-  const learnerId = getCurrentUserId() ?? devUserIdForRole("learner");
   const {
     data: sessionsData,
     loading,
     error,
     refetch,
-  } = useApiResource(() => api.fetchSessionsForLearner(learnerId), [learnerId]);
+  } = useApiResource(() => api.fetchMyTrainingSessions(), []);
   const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
 
-  // Coach lookup map (single fetch) so calendar cells don't fetch per session.
+  // Coach lookup for display names
   const { data: coachesData } = useApiResource(() => api.fetchCoaches(), []);
   const coachById = useMemo(
     () => new Map((coachesData ?? []).map((c) => [c.id, c])),
@@ -74,9 +132,10 @@ export default function LearnerSchedulePage() {
   );
 
   const reduce = useReducedMotion();
-
-  const [view, setView] = useState<View>("Week");
+  const [activeTab, setActiveTab] = useState<TabId>("all");
   const [weekOffset, setWeekOffset] = useState(0);
+
+  const { cancel, cancelling } = useCancelSession(refetch);
 
   const weekStart = useMemo(() => {
     const d = startOfWeek(new Date(NOW));
@@ -94,49 +153,44 @@ export default function LearnerSchedulePage() {
     [weekStart],
   );
 
+  const weekRangeLabel = `${weekStart.toLocaleDateString("vi-VN", {
+    day: "numeric",
+    month: "short",
+  })} - ${weekDays[6].toLocaleDateString("vi-VN", { day: "numeric", month: "short" })}`;
+
+  // Stats
+  const completed = sessions.filter((s) => s.status === "completed").length;
+  const upcoming = sessions.filter(
+    (s) =>
+      (s.status === "scheduled" || s.status === "pending_confirmation") &&
+      new Date(s.start) >= NOW,
+  ).length;
+  const requested = sessions.filter((s) => s.status === "pending_confirmation").length;
+  const cancelled = sessions.filter((s) => s.status === "cancelled").length;
+  const totalTracked = completed + cancelled + upcoming;
+  const consistency =
+    totalTracked > 0 ? Math.round((completed / Math.max(completed + cancelled, 1)) * 100) : 0;
+
+  const filteredSessions = useMemo(
+    () => filterSessions(sessions, activeTab),
+    [sessions, activeTab],
+  );
+
+  // Week calendar buckets
   const dayBuckets = useMemo(
     () =>
       weekDays.map((d) => {
         const key = localDateKey(d);
-        return sessions
+        return filteredSessions
           .filter((s) => localDateKey(new Date(s.start)) === key)
-          .sort(
-            (a, b) =>
-              new Date(a.start).getTime() - new Date(b.start).getTime(),
-          );
+          .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
       }),
-    [weekDays, sessions],
+    [weekDays, filteredSessions],
   );
-
-  const upcoming = sessions
-    .filter((s) => new Date(s.start) >= NOW && s.status !== "cancelled")
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-    .slice(0, 4);
-
-  const completed = sessions.filter((s) => s.status === "completed").length;
-  const booked = sessions.filter((s) =>
-    ["scheduled", "pending_confirmation"].includes(s.status),
-  ).length;
-  const missed = sessions.filter((s) => s.status === "cancelled").length;
-  const totalTracked = completed + missed + booked;
-  const consistency =
-    totalTracked > 0
-      ? Math.round(
-          (completed / Math.max(completed + missed + booked * 0.1, 1)) * 100,
-        )
-      : 0;
-
-  const weekRangeLabel = `${weekStart.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })} – ${weekDays[6].toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })}`;
 
   if (loading) {
     return (
-      <AppShell role="learner" title="My Schedule">
+      <AppShell role="learner" title="Lịch tập">
         <LoadingState label="Đang tải lịch tập…" />
       </AppShell>
     );
@@ -144,309 +198,188 @@ export default function LearnerSchedulePage() {
 
   if (error) {
     return (
-      <AppShell role="learner" title="My Schedule">
+      <AppShell role="learner" title="Lịch tập">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
   }
 
   return (
-    <AppShell role="learner" title="My Schedule">
-      <div className="max-w-[1320px] mx-auto space-y-6">
-        {/* ============ HERO HEADER ============ */}
+    <AppShell role="learner" title="Lịch tập">
+      <div className="max-w-[1200px] mx-auto space-y-6">
+        {/* ============ HEADER ============ */}
         <motion.header
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduce ? 0 : 0.45, ease: EASE }}
-          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4"
+          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
         >
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
-                <Sparkles size={11} />
-                AI-optimized week
-              </span>
-              <span className="text-[12px] text-on-surface-variant">
-                {weekRangeLabel}
-              </span>
-            </div>
-            <h1 className="text-[32px] leading-[1.1] font-bold tracking-tight text-on-surface">
-              My Schedule
+            <h1 className="text-[28px] font-bold tracking-tight text-on-surface">
+              Lịch tập của tôi
             </h1>
-            <p className="text-[14px] text-on-surface-variant mt-1.5">
-              Plan, train, recover — all in one rhythm.
+            <p className="text-[14px] text-on-surface-variant mt-1">
+              {sessions.length} buổi tập · {weekRangeLabel}
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setWeekOffset((w) => w - 1)}
-              aria-label="Previous week"
-              className="w-10 h-10 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low active:scale-95 transition-all flex items-center justify-center"
+              aria-label="Tuần trước"
+              className="w-9 h-9 rounded-[10px] border border-[var(--color-border-soft)] hover:bg-surface-container-low flex items-center justify-center transition-colors"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
             <button
               onClick={() => setWeekOffset(0)}
-              className="h-10 px-4 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13px] font-medium transition-colors"
+              className="h-9 px-3.5 rounded-[10px] border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
             >
-              Today
+              Hôm nay
             </button>
             <button
               onClick={() => setWeekOffset((w) => w + 1)}
-              aria-label="Next week"
-              className="w-10 h-10 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low active:scale-95 transition-all flex items-center justify-center"
+              aria-label="Tuần sau"
+              className="w-9 h-9 rounded-[10px] border border-[var(--color-border-soft)] hover:bg-surface-container-low flex items-center justify-center transition-colors"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
             <Link
-              href="/learner/coaches"
-              className="ml-1 inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              href="/learner/bookings"
+              className="ml-1 inline-flex items-center gap-1.5 h-10 px-4 rounded-[10px] bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
-              <Plus size={16} strokeWidth={2.5} />
-              Book Session
+              <CalendarPlus size={14} strokeWidth={2.5} />
+              Đặt buổi tập
             </Link>
           </div>
         </motion.header>
 
-        {/* ============ STATS ROW ============ */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatTile
-            icon={CalendarCheck}
-            label="Đã đặt lịch"
-            value={booked}
-            accent="indigo"
-            delay={0.05}
-            reduce={reduce ?? false}
-          />
-          <StatTile
-            icon={CheckCircle2}
-            label="Đã hoàn thành"
-            value={completed}
-            accent="emerald"
-            delay={0.1}
-            reduce={reduce ?? false}
-          />
-          <StatTile
-            icon={XCircle}
-            label="Vắng mặt"
-            value={missed}
-            accent="rose"
-            delay={0.15}
-            reduce={reduce ?? false}
-          />
-          <StatTile
-            icon={TrendingUp}
-            label="Đều đặn"
-            value={`${consistency}%`}
-            accent="violet"
-            delay={0.2}
-            reduce={reduce ?? false}
-          />
+        {/* ============ STATS ============ */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { icon: CalendarCheck, label: "Sắp tới", value: upcoming, accent: "indigo" },
+            { icon: CheckCircle2,  label: "Hoàn thành", value: completed, accent: "emerald" },
+            { icon: XCircle,       label: "Đã huỷ",  value: cancelled,  accent: "rose" },
+            { icon: TrendingUp,    label: "Đều đặn", value: `${consistency}%`, accent: "violet" },
+          ].map(({ icon: Icon, label, value, accent }, i) => {
+            const accents: Record<string, { iconBg: string; decor: string }> = {
+              indigo:  { iconBg: "bg-gradient-to-br from-primary to-[#7d6dff]",        decor: "from-primary/15 to-primary/0" },
+              emerald: { iconBg: "bg-gradient-to-br from-[#10b981] to-[#34d399]",      decor: "from-[#34d399]/15 to-transparent" },
+              rose:    { iconBg: "bg-gradient-to-br from-[#f43f5e] to-[#fb7185]",      decor: "from-[#fb7185]/15 to-transparent" },
+              violet:  { iconBg: "bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]",      decor: "from-[#c084fc]/15 to-transparent" },
+            };
+            const a = accents[accent];
+            return (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: reduce ? 0 : 0.45, delay: i * 0.05, ease: EASE }}
+                className="group relative overflow-hidden rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 shadow-[0_1px_2px_rgba(15,15,30,0.04)]"
+              >
+                <div className={cn("absolute -top-8 -right-8 w-20 h-20 rounded-full bg-gradient-to-br blur-xl opacity-50", a.decor)} />
+                <div className="relative flex items-center gap-3">
+                  <div className={cn("w-10 h-10 rounded-[12px] flex items-center justify-center text-white shrink-0", a.iconBg)}>
+                    <Icon size={17} strokeWidth={2.25} />
+                  </div>
+                  <div>
+                    <p className="text-[24px] font-bold tracking-tight tabular-nums leading-none">{value}</p>
+                    <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant mt-1">{label}</p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </section>
 
-        {/* ============ MAIN 2-COLUMN ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-5">
-          {/* ============ LEFT: CALENDAR ============ */}
-          <motion.section
+        {/* ============ MAIN LAYOUT ============ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
+          {/* ============ LEFT: SESSIONS LIST ============ */}
+          <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduce ? 0 : 0.5, delay: 0.1, ease: EASE }}
-            className="relative overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+            transition={{ duration: reduce ? 0 : 0.5, delay: 0.08, ease: EASE }}
+            className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
           >
-            {/* Calendar header */}
-            <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border-soft)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h3 className="text-[17px] font-semibold tracking-tight">
-                  {weekStart.toLocaleDateString("vi-VN", { month: "long" })}{" "}
-                  <span className="text-on-surface-variant font-medium">
-                    {weekStart.getFullYear()}
-                  </span>
-                </h3>
-                <p className="text-[12px] text-on-surface-variant mt-0.5">
-                  {sessions.length} buổi trong kỳ này
-                </p>
-              </div>
-
-              {/* View toggle */}
-              <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px]">
-                {VIEW_OPTIONS.map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setView(v)}
-                    className={cn(
-                      "relative px-3.5 h-8 text-[12.5px] font-medium rounded-[7px] transition-colors",
-                      view === v
-                        ? "text-on-surface"
-                        : "text-on-surface-variant hover:text-on-surface",
-                    )}
-                  >
-                    {view === v && (
-                      <motion.span
-                        layoutId="viewPill"
-                        className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06),0_2px_6px_rgba(15,15,30,0.04)]"
-                        transition={{
-                          type: "spring",
-                          duration: reduce ? 0 : 0.4,
-                          bounce: 0.2,
-                        }}
-                      />
-                    )}
-                    <span className="relative">{v}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Day headers (desktop) */}
-            <div className="hidden sm:grid grid-cols-7 px-2 pt-3 pb-2 border-b border-[var(--color-border-soft)] sticky top-0 bg-surface-container-lowest/95 backdrop-blur-sm z-10">
-              {weekDays.map((d, i) => {
-                const isToday = d.toDateString() === NOW.toDateString();
+            {/* Tabs */}
+            <div className="px-4 pt-4 pb-3 border-b border-[var(--color-border-soft)] flex items-center gap-1 overflow-x-auto">
+              {TABS.map((tab) => {
+                const count =
+                  tab.id === "all"
+                    ? sessions.length
+                    : filterSessions(sessions, tab.id).length;
                 return (
                   <button
-                    key={i}
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "flex flex-col items-center py-2 rounded-[10px] transition-colors group",
-                      isToday
-                        ? "bg-gradient-to-br from-primary/[0.08] to-primary/[0.02]"
-                        : "hover:bg-surface-container-low/60",
+                      "relative shrink-0 px-3.5 h-8 text-[12.5px] font-medium rounded-[8px] transition-colors whitespace-nowrap",
+                      activeTab === tab.id
+                        ? "text-on-surface"
+                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-[10.5px] uppercase tracking-wider font-semibold",
-                        isToday ? "text-primary" : "text-on-surface-variant",
+                    {activeTab === tab.id && (
+                      <motion.span
+                        layoutId="tabPill"
+                        className="absolute inset-0 bg-surface-container-low rounded-[8px]"
+                        transition={{ type: "spring", duration: reduce ? 0 : 0.35, bounce: 0.2 }}
+                      />
+                    )}
+                    <span className="relative">
+                      {tab.label}
+                      {count > 0 && (
+                        <span className={cn(
+                          "ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold",
+                          activeTab === tab.id
+                            ? "bg-primary text-on-primary"
+                            : "bg-surface-container-high text-on-surface-variant",
+                        )}>
+                          {count}
+                        </span>
                       )}
-                    >
-                      {WEEKDAYS[i]}
-                    </span>
-                    <span
-                      className={cn(
-                        "mt-1 w-8 h-8 rounded-full flex items-center justify-center text-[14px] font-semibold transition-colors",
-                        isToday
-                          ? "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_4px_10px_-2px_rgba(53,37,205,0.4)]"
-                          : "text-on-surface group-hover:bg-surface-container-low",
-                      )}
-                    >
-                      {d.getDate()}
                     </span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Week grid (desktop) */}
-            <div className="hidden sm:grid grid-cols-7 min-h-[420px] gap-1 p-2">
-              {dayBuckets.map((items, i) => {
-                const d = weekDays[i];
-                const isToday = d.toDateString() === NOW.toDateString();
-                const isPast = d < new Date(NOW.toDateString());
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "relative rounded-[12px] p-1.5 space-y-1.5 transition-colors",
-                      isToday
-                        ? "bg-gradient-to-b from-primary/[0.04] to-transparent"
-                        : "hover:bg-surface-container-low/40",
-                      isPast && !isToday && "opacity-70",
-                    )}
-                  >
-                    {items.length === 0 ? (
-                      <EmptyDayHint isToday={isToday} />
-                    ) : (
-                      items.map((s, idx) => (
-                        <SessionBlock
+            {/* Sessions list */}
+            <div className="p-4">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {filteredSessions.length === 0 ? (
+                    <EmptyTabState tab={activeTab} />
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredSessions.map((s, i) => (
+                        <SessionCard
                           key={s.id}
                           session={s}
                           coach={coachById.get(s.coachId)}
-                          delay={i * 0.04 + idx * 0.04}
+                          delay={i * 0.04}
                           reduce={reduce ?? false}
+                          onCancel={cancel}
+                          cancelling={cancelling === s.id}
                         />
-                      ))
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Mobile horizontal scroll days */}
-            <div className="sm:hidden p-3 space-y-3">
-              {weekDays.map((d, i) => {
-                const items = dayBuckets[i];
-                const isToday = d.toDateString() === NOW.toDateString();
-                return (
-                  <div
-                    key={i}
-                    className="rounded-[14px] border border-[var(--color-border-soft)] overflow-hidden"
-                  >
-                    <div
-                      className={cn(
-                        "px-3 py-2 flex items-center justify-between",
-                        isToday
-                          ? "bg-gradient-to-r from-primary/[0.08] to-transparent"
-                          : "bg-surface-container-low/50",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold",
-                            isToday
-                              ? "bg-primary text-on-primary"
-                              : "bg-surface-container-lowest text-on-surface",
-                          )}
-                        >
-                          {d.getDate()}
-                        </span>
-                        <span className="text-[13px] font-semibold">
-                          {WEEKDAYS[i]},{" "}
-                          <span className="text-on-surface-variant font-normal">
-                            {d.toLocaleDateString("en-US", { month: "short" })}
-                          </span>
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-on-surface-variant">
-                        {items.length} session{items.length === 1 ? "" : "s"}
-                      </span>
+                      ))}
                     </div>
-                    <div className="p-2 space-y-2">
-                      {items.length === 0 ? (
-                        <p className="text-[12px] text-on-surface-variant text-center py-3">
-                          Rest day — recover well 🌱
-                        </p>
-                      ) : (
-                        items.map((s) => (
-                          <SessionBlock
-                            key={s.id}
-                            session={s}
-                            coach={coachById.get(s.coachId)}
-                            delay={0}
-                            reduce={reduce ?? false}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
-          </motion.section>
+          </motion.div>
 
           {/* ============ RIGHT: SIDEBAR ============ */}
-          <aside className="space-y-5 lg:order-last">
-            <AICoachCard reduce={reduce ?? false} missedCount={missed} />
-            <BookSessionPanel
-              learnerId={learnerId}
-              reduce={reduce ?? false}
-              onSessionBooked={refetch}
-            />
-            <UpcomingSessions
-              upcoming={upcoming}
-              coachById={coachById}
-              reduce={reduce ?? false}
-            />
-            <QuickActions reduce={reduce ?? false} />
+          <aside className="space-y-4">
+            <AIHintCard requested={requested} reduce={reduce ?? false} />
+            <WeekCalendar weekDays={weekDays} dayBuckets={dayBuckets} coachById={coachById} reduce={reduce ?? false} />
           </aside>
         </div>
       </div>
@@ -454,310 +387,227 @@ export default function LearnerSchedulePage() {
   );
 }
 
-// ============================================================================
-// Stat Tile
-// ============================================================================
+// ---- Empty state per tab --------------------------------------------------
 
-const STAT_ACCENTS = {
-  indigo: {
-    iconBg: "bg-gradient-to-br from-primary to-[#7d6dff]",
-    iconShadow: "shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]",
-    decor: "from-primary/15 to-primary/0",
-  },
-  emerald: {
-    iconBg: "bg-gradient-to-br from-[#10b981] to-[#34d399]",
-    iconShadow: "shadow-[0_4px_12px_-2px_rgba(16,185,129,0.35)]",
-    decor: "from-[#34d399]/15 to-[#34d399]/0",
-  },
-  rose: {
-    iconBg: "bg-gradient-to-br from-[#f43f5e] to-[#fb7185]",
-    iconShadow: "shadow-[0_4px_12px_-2px_rgba(244,63,94,0.3)]",
-    decor: "from-[#fb7185]/15 to-[#fb7185]/0",
-  },
-  violet: {
-    iconBg: "bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]",
-    iconShadow: "shadow-[0_4px_12px_-2px_rgba(139,92,246,0.35)]",
-    decor: "from-[#c084fc]/15 to-[#c084fc]/0",
-  },
-} as const;
-
-function StatTile({
-  icon: Icon,
-  label,
-  value,
-  accent,
-  delay,
-  reduce,
-}: {
-  icon: typeof CalendarCheck;
-  label: string;
-  value: string | number;
-  accent: keyof typeof STAT_ACCENTS;
-  delay: number;
-  reduce: boolean;
-}) {
-  const a = STAT_ACCENTS[accent];
+function EmptyTabState({ tab }: { tab: TabId }) {
+  const messages: Record<TabId, { title: string; body: string }> = {
+    all:       { title: "Chưa có buổi tập nào", body: "Mua gói tập và đặt lịch để bắt đầu." },
+    requested: { title: "Không có buổi chờ xác nhận", body: "Tất cả các buổi bạn đặt đã được xác nhận hoặc chưa đặt buổi nào." },
+    upcoming:  { title: "Không có buổi sắp tới", body: "Đặt lịch mới từ gói tập đang hoạt động." },
+    completed: { title: "Chưa hoàn thành buổi nào", body: "Các buổi đã hoàn thành sẽ xuất hiện ở đây." },
+    cancelled: { title: "Không có buổi đã huỷ", body: "Tốt lắm!" },
+  };
+  const m = messages[tab];
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.45, delay, ease: EASE }}
-      whileHover={reduce ? {} : { y: -2 }}
-      className="group relative overflow-hidden rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)] hover:shadow-[0_8px_24px_-12px_rgba(15,15,30,0.12)] transition-shadow"
-    >
-      <div
-        className={cn(
-          "absolute -top-10 -right-10 w-24 h-24 rounded-full bg-gradient-to-br blur-2xl opacity-60 group-hover:opacity-100 transition-opacity",
-          a.decor,
-        )}
-      />
-      <div className="relative flex items-center gap-3 sm:gap-4">
-        <div
-          className={cn(
-            "w-11 h-11 sm:w-12 sm:h-12 rounded-[14px] flex items-center justify-center text-white shrink-0 transition-transform group-hover:scale-105",
-            a.iconBg,
-            a.iconShadow,
-          )}
-        >
-          <Icon size={18} strokeWidth={2.25} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[26px] sm:text-[28px] leading-none font-bold tracking-tight tabular-nums">
-            {value}
-          </p>
-          <p className="text-[11.5px] uppercase tracking-wider font-medium text-on-surface-variant mt-1">
-            {label}
-          </p>
-        </div>
+    <div className="flex flex-col items-center gap-3 py-10 text-center">
+      <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
+        <CalendarCheck size={16} className="text-on-surface-variant" />
       </div>
-    </motion.div>
+      <div>
+        <p className="text-[13.5px] font-medium text-on-surface">{m.title}</p>
+        <p className="text-[12.5px] text-on-surface-variant mt-0.5 max-w-[220px]">{m.body}</p>
+      </div>
+      {(tab === "all" || tab === "upcoming") && (
+        <Link
+          href="/learner/bookings"
+          className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-[9px] bg-primary/10 text-primary text-[12.5px] font-semibold hover:bg-primary/15 transition-colors"
+        >
+          Đặt buổi tập
+          <ArrowRight size={13} />
+        </Link>
+      )}
+    </div>
   );
 }
 
-// ============================================================================
-// Session block (calendar cell)
-// ============================================================================
+// ---- Session card ---------------------------------------------------------
 
-function sessionTypeAccent(type: Session["type"]) {
-  if (type === "AI-Guided") {
-    return {
-      bar: "bg-gradient-to-b from-primary to-[#7d6dff]",
-      pill: "bg-primary/10 text-primary",
-      bg: "bg-gradient-to-br from-primary/[0.06] to-primary/[0.02]",
-      border: "border-primary/15",
-      hover: "hover:border-primary/30",
-    };
-  }
-  if (type === "Group") {
-    return {
-      bar: "bg-gradient-to-b from-[#8b5cf6] to-[#c084fc]",
-      pill: "bg-[#8b5cf6]/10 text-[#7c3aed]",
-      bg: "bg-surface-container-lowest",
-      border: "border-[var(--color-border-soft)]",
-      hover: "hover:border-[#8b5cf6]/30",
-    };
-  }
-  return {
-    bar: "bg-gradient-to-b from-[#10b981] to-[#34d399]",
-    pill: "bg-success-container text-[#1f7a4d]",
-    bg: "bg-surface-container-lowest",
-    border: "border-[var(--color-border-soft)]",
-    hover: "hover:border-[#10b981]/30",
-  };
-}
-
-function SessionBlock({
+function SessionCard({
   session,
   coach,
   delay,
   reduce,
+  onCancel,
+  cancelling,
 }: {
   session: Session;
   coach?: Coach;
   delay: number;
   reduce: boolean;
+  onCancel: (id: string) => void;
+  cancelling: boolean;
 }) {
-  const a = sessionTypeAccent(session.type);
-  const time = new Date(session.start).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const isOnline = session.location?.toLowerCase() === "online";
+  const { label, chip } = statusDisplay(session.status);
+  const start = new Date(session.start);
+  const canCancel = session.status === "pending_confirmation" || session.status === "scheduled";
+  const isOnline = session.meetingUrl != null || session.location?.toLowerCase() === "online";
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: reduce ? 0 : 0.35, delay, ease: EASE }}
-      whileHover={reduce ? {} : { y: -2 }}
-      className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[12px] border p-2.5 transition-all",
-        a.bg,
-        a.border,
-        a.hover,
-        "shadow-[0_1px_2px_rgba(15,15,30,0.04)] hover:shadow-[0_6px_18px_-6px_rgba(15,15,30,0.18)]",
-      )}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.35, delay: reduce ? 0 : delay, ease: EASE }}
+      className="group rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 hover:border-primary/20 hover:shadow-[0_4px_16px_-6px_rgba(15,15,30,0.12)] transition-all"
     >
-      {/* Left color bar */}
-      <span
-        className={cn("absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full", a.bar)}
-      />
-
-      <div className="pl-1.5">
-        <div className="flex items-center justify-between gap-1 mb-1">
-          <span className="text-[10.5px] font-semibold text-on-surface tabular-nums">
-            {time}
-          </span>
-          <span
-            className={cn(
-              "px-1.5 py-0.5 rounded-full text-[9.5px] font-semibold uppercase tracking-wider",
-              a.pill,
-            )}
-          >
-            {session.type === "AI-Guided"
-              ? "AI"
-              : session.type === "Group"
-                ? "Nhóm"
-                : "1:1"}
-          </span>
+      <div className="flex items-start gap-3">
+        {/* Coach avatar */}
+        <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden text-[11px] flex items-center justify-center text-primary font-semibold shrink-0">
+          {coach?.avatarUrl ? (
+            <img src={coach.avatarUrl} alt={coach.name} className="w-full h-full object-cover" />
+          ) : (
+            initials(coach?.name ?? "HLV")
+          )}
         </div>
-        <p className="text-[12px] font-semibold leading-tight line-clamp-2 text-on-surface">
-          {session.title}
-        </p>
-        <div className="flex items-center gap-1.5 mt-1.5">
-          <div className="w-4 h-4 rounded-full bg-surface-container-high overflow-hidden text-[8px] flex items-center justify-center text-primary font-semibold">
-            {coach?.avatarUrl ? (
-              <img
-                src={coach.avatarUrl}
-                alt={coach.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              initials(coach?.name ?? "?")
-            )}
+
+        <div className="flex-1 min-w-0 space-y-1.5">
+          {/* Title + status */}
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div>
+              <p className="text-[13.5px] font-semibold text-on-surface leading-tight">
+                {session.title}
+              </p>
+              <p className="text-[12px] text-on-surface-variant">
+                với {coach?.name ?? "Huấn luyện viên"}
+              </p>
+            </div>
+            <span className={cn("inline-flex items-center border px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0", chip)}>
+              {label}
+            </span>
           </div>
-          <p className="text-[10.5px] text-on-surface-variant truncate flex-1">
-            {coach?.name?.split(" ")[0]}
-          </p>
-          {isOnline && (
-            <Video size={9} className="text-on-surface-variant shrink-0" />
+
+          {/* Time */}
+          <div className="flex items-center gap-1.5 text-[12px] text-on-surface-variant">
+            <Clock size={12} className="shrink-0" />
+            <span className="font-medium text-on-surface">
+              {start.toLocaleDateString("vi-VN", { weekday: "short", day: "numeric", month: "short" })}
+            </span>
+            <span>
+              {start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <span className="tabular-nums">{session.durationMinutes} phút</span>
+          </div>
+
+          {/* Location */}
+          <div className="flex items-center gap-1.5 text-[12px] text-on-surface-variant">
+            {isOnline ? (
+              <>
+                <Video size={12} className="text-primary shrink-0" />
+                <span>Trực tuyến</span>
+                {session.meetingUrl && (
+                  <a
+                    href={session.meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline truncate max-w-[180px]"
+                  >
+                    Tham gia
+                  </a>
+                )}
+              </>
+            ) : session.location ? (
+              <>
+                <MapPin size={12} className="shrink-0" />
+                <span className="truncate">{session.location}</span>
+              </>
+            ) : null}
+          </div>
+
+          {/* Notes */}
+          {session.learnerNote && (
+            <p className="flex items-start gap-1.5 text-[12px] text-on-surface-variant">
+              <MessageSquare size={12} className="mt-0.5 shrink-0" />
+              <span className="italic truncate">{session.learnerNote}</span>
+            </p>
+          )}
+          {session.coachNote && (
+            <p className="flex items-start gap-1.5 text-[12px] text-primary/80">
+              <Sparkles size={12} className="mt-0.5 shrink-0" />
+              <span className="italic truncate">{session.coachNote}</span>
+            </p>
           )}
         </div>
       </div>
+
+      {/* Actions */}
+      {canCancel && (
+        <div className="mt-3 pt-3 border-t border-[var(--color-border-soft)] flex justify-end">
+          <button
+            onClick={() => onCancel(session.id)}
+            disabled={cancelling}
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-[8px] border border-red-200 bg-red-50 text-red-700 text-[12px] font-semibold hover:bg-red-100 disabled:opacity-60 transition-colors"
+          >
+            {cancelling ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+            {cancelling ? "Đang huỷ…" : "Huỷ buổi tập"}
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-function EmptyDayHint({ isToday }: { isToday: boolean }) {
-  return (
-    <button className="group w-full h-full min-h-[80px] rounded-[10px] border border-dashed border-[var(--color-border-soft)] hover:border-primary/30 hover:bg-primary/[0.02] flex flex-col items-center justify-center transition-colors">
-      <Sprout
-        size={14}
-        className="text-on-surface-variant/60 group-hover:text-primary/60 transition-colors"
-      />
-      <span className="text-[10px] text-on-surface-variant/70 group-hover:text-primary/70 mt-1 transition-colors">
-        {isToday ? "Thêm hôm nay" : "Trống"}
-      </span>
-    </button>
-  );
-}
+// ---- AI hint card ---------------------------------------------------------
 
-// ============================================================================
-// AI Coach card (sidebar)
-// ============================================================================
-
-function AICoachCard({
-  reduce,
-  missedCount,
-}: {
-  reduce: boolean;
-  missedCount: number;
-}) {
+function AIHintCard({ requested, reduce }: { requested: number; reduce: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.15, ease: EASE }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.14, ease: EASE }}
       className="relative overflow-hidden rounded-[20px] border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-surface-container-lowest to-[#7d6dff]/[0.06] p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_10px_28px_-16px_rgba(53,37,205,0.25)]"
     >
-      <div className="absolute -top-14 -right-14 w-44 h-44 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full bg-gradient-to-br from-[#7d6dff]/15 to-transparent blur-3xl pointer-events-none" />
-
+      <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl pointer-events-none" />
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-            Sportico AI
-          </span>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            Live
+          <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary">Sportico AI</span>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Hoạt động
           </span>
         </div>
 
         <div className="flex items-start gap-3 mb-3">
           <div className="relative shrink-0">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-[#7d6dff] blur-lg opacity-50" />
-            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] flex items-center justify-center shadow-[0_6px_16px_-3px_rgba(53,37,205,0.5)]">
-              <Sparkles size={18} className="text-on-primary" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-[#7d6dff] blur-lg opacity-40" />
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center">
+              <Sparkles size={16} className="text-white" />
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[14.5px] leading-snug font-semibold text-on-surface">
-              {missedCount > 0
-                ? `Bạn đã bỏ lỡ ${missedCount} buổi tuần này.`
-                : "Bạn đang đúng tiến độ tuần này."}
+            <p className="text-[14px] font-semibold text-on-surface leading-snug">
+              {requested > 0
+                ? `${requested} buổi chờ HLV xác nhận.`
+                : "Lịch tập tuần này trống."}
             </p>
-            <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-1">
-              Gợi ý:{" "}
-              <span className="text-primary font-medium">
-                15 phút Recovery Flow
-              </span>{" "}
-              để duy trì chuỗi ngày mà không bị quá tải.
+            <p className="text-[12.5px] text-on-surface-variant mt-1 leading-relaxed">
+              {requested > 0
+                ? "HLV sẽ xác nhận sớm. Bạn sẽ nhận thông báo khi có cập nhật."
+                : "Đặt buổi mới từ gói tập đang hoạt động để duy trì đà tập luyện."}
             </p>
           </div>
         </div>
 
         <Link
-          href="/learner/schedule"
-          className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+          href="/learner/bookings"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-[12px] bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          Bắt đầu ngay
-          <ArrowRight size={13} />
+          <Activity size={14} />
+          Đặt buổi tập mới
         </Link>
-
-        {/* Inline indicators */}
-        <div className="flex items-center justify-between mt-3.5 pt-3.5 border-t border-primary/10 text-[11px]">
-          <div className="flex items-center gap-1.5">
-            <Flame size={12} className="text-[#ff7a3d]" />
-            <span className="text-on-surface-variant">Streak</span>
-            <span className="font-semibold">8d</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Activity size={12} className="text-primary" />
-            <span className="text-on-surface-variant">Load</span>
-            <span className="font-semibold">Light</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Target size={12} className="text-[#10b981]" />
-            <span className="text-on-surface-variant">Goal</span>
-            <span className="font-semibold">4/5</span>
-          </div>
-        </div>
       </div>
     </motion.div>
   );
 }
 
-// ============================================================================
-// Upcoming sessions (sidebar)
-// ============================================================================
+// ---- Mini week calendar sidebar -------------------------------------------
 
-function UpcomingSessions({
-  upcoming,
+function WeekCalendar({
+  weekDays,
+  dayBuckets,
   coachById,
   reduce,
 }: {
-  upcoming: Session[];
+  weekDays: Date[];
+  dayBuckets: Session[][];
   coachById: Map<string, Coach>;
   reduce: boolean;
 }) {
@@ -766,599 +616,64 @@ function UpcomingSessions({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduce ? 0 : 0.5, delay: 0.22, ease: EASE }}
-      className="relative overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
-      <div className="px-5 pt-5 pb-2 flex items-center justify-between">
-        <h3 className="text-[16px] font-semibold tracking-tight">
-          Upcoming Sessions
-        </h3>
-        <Link
-          href="#"
-          className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
-        >
-          View all
-          <ChevronRight size={12} />
-        </Link>
+      <div className="px-5 pt-5 pb-3 border-b border-[var(--color-border-soft)]">
+        <h3 className="text-[15px] font-semibold tracking-tight">Tuần này</h3>
       </div>
-      <div className="px-3 pb-3 space-y-1.5">
-        {upcoming.length === 0 ? (
-          <div className="text-center py-8 px-4">
-            <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-surface-container-low flex items-center justify-center">
-              <CalendarPlus size={16} className="text-on-surface-variant" />
-            </div>
-            <p className="text-[13px] font-medium">No upcoming sessions</p>
-            <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-              Book one to fill your week.
-            </p>
-          </div>
-        ) : (
-          <AnimatePresence>
-            {upcoming.map((s, i) => (
-              <UpcomingCard
-                key={s.id}
-                session={s}
-                coach={coachById.get(s.coachId)}
-                delay={i * 0.06}
-                reduce={reduce}
-              />
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function UpcomingCard({
-  session,
-  coach,
-  delay,
-  reduce,
-}: {
-  session: Session;
-  coach?: Coach;
-  delay: number;
-  reduce: boolean;
-}) {
-  const a = sessionTypeAccent(session.type);
-  const date = new Date(session.start);
-  const isOnline = session.location?.toLowerCase() === "online";
-  const dayLabel = isSameDay(date, new Date(NOW))
-    ? "Hôm nay"
-    : isSameDay(date, addDays(new Date(NOW), 1))
-      ? "Ngày mai"
-      : date.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" });
-  const timeLabel = date.toLocaleTimeString("vi-VN", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{
-        duration: reduce ? 0 : 0.4,
-        delay: reduce ? 0 : delay,
-        ease: EASE,
-      }}
-      whileHover={reduce ? {} : { y: -2 }}
-      className="group relative rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.02] hover:to-transparent p-3 transition-all cursor-pointer shadow-[0_1px_2px_rgba(15,15,30,0.03)] hover:shadow-[0_6px_16px_-6px_rgba(15,15,30,0.12)]"
-    >
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-surface-container-high overflow-hidden flex items-center justify-center text-primary text-[12px] font-semibold">
-            {coach?.avatarUrl ? (
-              <img
-                src={coach.avatarUrl}
-                alt={coach.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              initials(coach?.name ?? "?")
-            )}
-          </div>
-          <span
-            className={cn(
-              "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-surface-container-lowest flex items-center justify-center",
-              session.type === "AI-Guided"
-                ? "bg-primary"
-                : session.type === "Group"
-                  ? "bg-[#8b5cf6]"
-                  : "bg-[#10b981]",
-            )}
-          >
-            {session.type === "AI-Guided" ? (
-              <Sparkles size={8} className="text-white" />
-            ) : session.type === "Group" ? (
-              <Users size={8} className="text-white" />
-            ) : (
-              <CheckCircle2 size={8} className="text-white" />
-            )}
-          </span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold leading-tight truncate">
-            {session.title}
-          </p>
-          <p className="text-[11.5px] text-on-surface-variant mt-0.5 truncate">
-            với {coach?.name?.split(" ")[0] ?? "HLV"}
-          </p>
-          <div className="flex items-center gap-3 mt-2 text-[11px] text-on-surface-variant">
-            <span className="inline-flex items-center gap-1">
-              <Clock size={10} />
-              {timeLabel}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span
-                className={cn(
-                  "px-1.5 py-0.5 rounded-full text-[9.5px] font-semibold",
-                  a.pill,
-                )}
-              >
-                {dayLabel}
-              </span>
-            </span>
-            {isOnline && (
-              <span className="inline-flex items-center gap-1">
-                <Video size={10} /> Trực tuyến
-              </span>
-            )}
-            {!isOnline && session.location && (
-              <span className="inline-flex items-center gap-1 truncate">
-                <MapPin size={10} />
-                <span className="truncate">{session.location}</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Action button — appears on hover */}
-      <div className="mt-2.5 flex items-center gap-2">
-        <button
-          className={cn(
-            "flex-1 h-8 rounded-lg text-[12px] font-semibold transition-all",
-            isOnline
-              ? "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)]"
-              : "bg-surface-container-low text-on-surface hover:bg-surface-container",
-          )}
-        >
-          {isOnline ? "Tham gia" : "Xem"}
-        </button>
-        <button className="h-8 px-3 rounded-lg text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors">
-          Đổi lịch
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// Quick actions (sidebar)
-// ============================================================================
-
-const QUICK_ACTIONS = [
-  {
-    icon: CalendarPlus,
-    label: "Đặt buổi mới",
-    desc: "Tìm HLV",
-    href: "/learner/coaches",
-    accent: "indigo" as const,
-  },
-  {
-    icon: Zap,
-    label: "AI Workout",
-    desc: "Bắt đầu ngay",
-    href: "#",
-    accent: "violet" as const,
-  },
-  {
-    icon: Activity,
-    label: "Tiến độ",
-    desc: "Xem thống kê",
-    href: "/learner/progress",
-    accent: "emerald" as const,
-  },
-  {
-    icon: Compass,
-    label: "HLV",
-    desc: "Xem tất cả",
-    href: "/learner/coaches",
-    accent: "rose" as const,
-  },
-];
-
-const QA_ACCENT = {
-  indigo: { bg: "from-primary to-[#7d6dff]", text: "text-primary" },
-  violet: { bg: "from-[#8b5cf6] to-[#c084fc]", text: "text-[#7c3aed]" },
-  emerald: { bg: "from-[#10b981] to-[#34d399]", text: "text-[#1f7a4d]" },
-  rose: { bg: "from-[#f43f5e] to-[#fb7185]", text: "text-[#be123c]" },
-} as const;
-
-function QuickActions({ reduce }: { reduce: boolean }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.3, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      <h3 className="text-[16px] font-semibold tracking-tight mb-3">
-        Quick Actions
-      </h3>
-      <div className="grid grid-cols-2 gap-2.5">
-        {QUICK_ACTIONS.map((q, i) => {
-          const Icon = q.icon;
-          const a = QA_ACCENT[q.accent];
+      <div className="px-3 py-3 space-y-1">
+        {weekDays.map((d, i) => {
+          const isToday = d.toDateString() === NOW.toDateString();
+          const sessions = dayBuckets[i] ?? [];
           return (
-            <motion.div
-              key={q.label}
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                duration: reduce ? 0 : 0.35,
-                delay: reduce ? 0 : 0.35 + i * 0.05,
-                ease: EASE,
-              }}
+            <div
+              key={i}
+              className={cn(
+                "flex items-center gap-3 px-2 py-2 rounded-[10px] transition-colors",
+                isToday && "bg-primary/[0.05]",
+              )}
             >
-              <Link
-                href={q.href}
-                className="group block rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent p-3 transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-6px_rgba(15,15,30,0.12)]"
-              >
-                <div
-                  className={cn(
-                    "w-9 h-9 rounded-[10px] bg-gradient-to-br flex items-center justify-center text-white shadow-[0_3px_10px_-2px_rgba(15,15,30,0.18)] mb-2 transition-transform group-hover:scale-105",
-                    a.bg,
-                  )}
-                >
-                  <Icon size={15} strokeWidth={2.25} />
-                </div>
-                <p className="text-[12.5px] font-semibold leading-tight">
-                  {q.label}
+              <div className="w-8 text-center shrink-0">
+                <p className={cn("text-[10px] uppercase tracking-wide font-semibold", isToday ? "text-primary" : "text-on-surface-variant")}>
+                  {WEEKDAYS[i]}
                 </p>
-                <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-                  {q.desc}
+                <p className={cn(
+                  "text-[15px] font-bold leading-none mt-0.5",
+                  isToday ? "text-primary" : "text-on-surface",
+                )}>
+                  {d.getDate()}
                 </p>
-              </Link>
-            </motion.div>
+              </div>
+              <div className="flex-1 min-w-0">
+                {sessions.length === 0 ? (
+                  <p className="text-[11.5px] text-on-surface-variant/60">Không có lịch</p>
+                ) : (
+                  sessions.slice(0, 2).map((s) => {
+                    const coach = coachById.get(s.coachId);
+                    const { chip } = statusDisplay(s.status);
+                    return (
+                      <div key={s.id} className="flex items-center gap-1.5 mb-0.5">
+                        <span className={cn("w-2 h-2 rounded-full shrink-0 border", chip)} />
+                        <span className="text-[11.5px] truncate text-on-surface">
+                          {new Date(s.start).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                          {" "}
+                          {coach?.name?.split(" ").pop() ?? "HLV"}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+                {sessions.length > 2 && (
+                  <p className="text-[10.5px] text-on-surface-variant">+{sessions.length - 2} buổi</p>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
-
-      {/* Search shortcut */}
-      <button className="mt-3 w-full flex items-center gap-2 h-9 px-3 rounded-[10px] bg-surface-container-low hover:bg-surface-container text-[12.5px] text-on-surface-variant transition-colors">
-        <Search size={13} />
-        <span>Search sessions, coaches…</span>
-        <kbd className="ml-auto text-[10px] px-1.5 py-0.5 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded font-mono">
-          ⌘K
-        </kbd>
-      </button>
     </motion.div>
   );
 }
 
-// ============================================================================
-// Book Session Panel (sidebar)
-// ============================================================================
-
-function BookSessionPanel({
-  reduce,
-  onSessionBooked,
-}: {
-  learnerId?: string;
-  reduce: boolean;
-  onSessionBooked?: () => void;
-}) {
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
-  const [bookingStates, setBookingStates] = useState<
-    Record<string, "idle" | "loading" | "success" | "error">
-  >({});
-
-  // Load all of the learner's bookings
-  const {
-    data: bookingsData,
-    loading: bookingsLoading,
-    error: bookingsError,
-    refetch: refetchBookings,
-  } = useApiResource(() => api.fetchMyBookings(), []);
-
-  const activeBookings = useMemo(
-    () => (bookingsData ?? []).filter((b) => b.status.toLowerCase() === "active"),
-    [bookingsData],
-  );
-
-  const selectedBooking = useMemo(
-    () => activeBookings.find((b) => b.id === selectedBookingId) ?? null,
-    [activeBookings, selectedBookingId],
-  );
-
-  // Load coach slots when a booking is selected
-  const slotsEnabled = !!selectedBooking;
-  const {
-    data: slotsData,
-    loading: slotsLoading,
-    error: slotsError,
-    refetch: refetchSlots,
-  } = useApiResource(
-    () =>
-      slotsEnabled
-        ? api.fetchCoachSlots(selectedBooking.coachId, {
-            startFrom: new Date().toISOString(),
-          })
-        : Promise.resolve([] as AvailabilitySlot[]),
-    [selectedBooking?.coachId, slotsEnabled],
-  );
-
-  const availableSlots = useMemo(
-    () => (slotsData ?? []).filter((s) => s.status === "available"),
-    [slotsData],
-  );
-
-  async function handleBook(slot: AvailabilitySlot) {
-    if (!selectedBooking) return;
-    setBookingStates((prev) => ({ ...prev, [slot.id]: "loading" }));
-    try {
-      await api.bookSession(selectedBooking.id, slot.id);
-      setBookingStates((prev) => ({ ...prev, [slot.id]: "success" }));
-      onSessionBooked?.();
-      // Refresh slots so the booked slot disappears
-      refetchSlots();
-    } catch {
-      setBookingStates((prev) => ({ ...prev, [slot.id]: "error" }));
-    }
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.19, ease: EASE }}
-      className="relative overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      {/* Header */}
-      <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-white shadow-[0_3px_8px_-2px_rgba(53,37,205,0.4)] shrink-0">
-          <CalendarPlus size={14} strokeWidth={2.25} />
-        </div>
-        <h3 className="text-[16px] font-semibold tracking-tight">
-          Đặt buổi tập
-        </h3>
-      </div>
-
-      <div className="px-4 pb-4 space-y-3">
-        {/* Bookings loading / error */}
-        {bookingsLoading && (
-          <div className="flex items-center gap-2 py-3 text-[12.5px] text-on-surface-variant">
-            <Loader2 size={14} className="animate-spin text-primary" />
-            Đang tải gói tập…
-          </div>
-        )}
-        {bookingsError && (
-          <div className="rounded-[10px] bg-error-container/30 border border-error/20 px-3 py-2.5 text-[12px] text-on-surface-variant">
-            <p className="font-medium text-error mb-1">Không tải được gói tập.</p>
-            <button
-              onClick={refetchBookings}
-              className="text-primary font-semibold hover:underline"
-            >
-              Thử lại
-            </button>
-          </div>
-        )}
-
-        {/* No active bookings */}
-        {!bookingsLoading && !bookingsError && activeBookings.length === 0 && (
-          <div className="text-center py-5 px-3">
-            <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-surface-container-low flex items-center justify-center">
-              <CalendarPlus size={15} className="text-on-surface-variant" />
-            </div>
-            <p className="text-[12.5px] font-medium text-on-surface">
-              Chưa có gói tập
-            </p>
-            <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-              Bạn chưa có gói tập đang hoạt động.
-            </p>
-            <Link
-              href="/learner/coaches"
-              className="mt-2.5 inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary/10 text-primary text-[12px] font-semibold hover:bg-primary/15 transition-colors"
-            >
-              Tìm HLV
-              <ArrowRight size={11} />
-            </Link>
-          </div>
-        )}
-
-        {/* Booking selector dropdown */}
-        {!bookingsLoading && !bookingsError && activeBookings.length > 0 && (
-          <div className="relative">
-            <select
-              value={selectedBookingId ?? ""}
-              onChange={(e) => {
-                setSelectedBookingId(e.target.value || null);
-                setBookingStates({});
-              }}
-              className="w-full h-9 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low pl-3 pr-8 text-[12.5px] text-on-surface appearance-none focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
-            >
-              <option value="">— Chọn gói tập —</option>
-              {activeBookings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.title} ({b.completedSessions}/{b.totalSessions} buổi)
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={13}
-              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant"
-            />
-          </div>
-        )}
-
-        {/* Slots section */}
-        {selectedBooking && (
-          <>
-            {slotsLoading && (
-              <div className="flex items-center gap-2 py-2 text-[12px] text-on-surface-variant">
-                <Loader2 size={13} className="animate-spin text-primary" />
-                Đang tải lịch khả dụng…
-              </div>
-            )}
-            {slotsError && (
-              <div className="rounded-[10px] bg-error-container/30 border border-error/20 px-3 py-2.5 text-[12px]">
-                <p className="font-medium text-error mb-1">
-                  Không tải được lịch HLV.
-                </p>
-                <button
-                  onClick={refetchSlots}
-                  className="text-primary font-semibold hover:underline"
-                >
-                  Thử lại
-                </button>
-              </div>
-            )}
-            {!slotsLoading && !slotsError && availableSlots.length === 0 && (
-              <div className="text-center py-4 px-2">
-                <Clock size={16} className="mx-auto mb-1.5 text-on-surface-variant/60" />
-                <p className="text-[12px] text-on-surface-variant">
-                  HLV chưa có lịch khả dụng.
-                </p>
-              </div>
-            )}
-            {!slotsLoading && !slotsError && availableSlots.length > 0 && (
-              <div
-                className="space-y-2 overflow-y-auto pr-0.5"
-                style={{ maxHeight: 300 }}
-              >
-                <p className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant px-0.5">
-                  {availableSlots.length} lịch trống
-                </p>
-                {availableSlots.map((slot) => (
-                  <SlotCard
-                    key={slot.id}
-                    slot={slot}
-                    state={bookingStates[slot.id] ?? "idle"}
-                    onBook={() => handleBook(slot)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function SlotCard({
-  slot,
-  state,
-  onBook,
-}: {
-  slot: AvailabilitySlot;
-  state: "idle" | "loading" | "success" | "error";
-  onBook: () => void;
-}) {
-  const start = new Date(slot.startTime);
-  const end = new Date(slot.endTime);
-  const dateLabel = start.toLocaleDateString("vi-VN", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const timeLabel = `${start.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })} – ${end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`;
-
-  const isBooked = state === "success";
-  const isLoading = state === "loading";
-  const isError = state === "error";
-
-  return (
-    <div
-      className={cn(
-        "group flex items-center gap-2.5 rounded-[12px] border p-2.5 transition-all",
-        isBooked
-          ? "border-[#10b981]/30 bg-[#10b981]/[0.05]"
-          : isError
-            ? "border-error/25 bg-error-container/20"
-            : "border-[var(--color-border-soft)] bg-surface-container-lowest hover:border-primary/20 hover:bg-primary/[0.02]",
-      )}
-    >
-      {/* Time/date column */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[11.5px] font-semibold text-on-surface tabular-nums leading-tight">
-          {timeLabel}
-        </p>
-        <p className="text-[10.5px] text-on-surface-variant mt-0.5">{dateLabel}</p>
-        <div className="flex items-center gap-1.5 mt-1">
-          {slot.isOnline ? (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9.5px] font-semibold">
-              <Video size={9} />
-              Trực tuyến
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant text-[9.5px] font-semibold">
-              <MapPin size={9} />
-              {slot.location ? slot.location : "Trực tiếp"}
-            </span>
-          )}
-          {isError && (
-            <span className="text-[9.5px] text-error font-medium">Thất bại</span>
-          )}
-        </div>
-      </div>
-
-      {/* Action button */}
-      <button
-        onClick={onBook}
-        disabled={isLoading || isBooked}
-        className={cn(
-          "shrink-0 h-8 px-3 rounded-[9px] text-[12px] font-semibold transition-all",
-          isBooked
-            ? "bg-[#10b981]/15 text-[#1f7a4d] cursor-default"
-            : isError
-              ? "bg-primary/10 text-primary hover:bg-primary/20"
-              : isLoading
-                ? "bg-primary/20 text-primary cursor-wait"
-                : "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_3px_8px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_12px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.97]",
-        )}
-      >
-        {isLoading ? (
-          <Loader2 size={13} className="animate-spin" />
-        ) : isBooked ? (
-          <span className="flex items-center gap-1">
-            <CheckCircle2 size={12} />
-            Đã đặt
-          </span>
-        ) : isError ? (
-          "Thử lại"
-        ) : (
-          "Đặt"
-        )}
-      </button>
-    </div>
-  );
-}
-
-// ============================================================================
-// Date helpers
-// ============================================================================
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function addDays(d: Date, n: number) {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-// Allow lucide-react Brain & TrendingUp imports without breaking tree-shake
-void Brain;
+// Silence unused imports
+void RefreshCw;

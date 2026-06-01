@@ -1717,7 +1717,7 @@ function SlotBlock({
   const durationMin = (end.getTime() - start.getTime()) / 60000;
   const height = Math.max(28, (durationMin / 60) * HOUR_HEIGHT - 2);
 
-  const style = SLOT_STATUS_STYLES[slot.status] ?? SLOT_STATUS_STYLES.available;
+  const style = SLOT_STATUS_STYLES[slot.status?.toLowerCase() ?? "available"] ?? SLOT_STATUS_STYLES.available;
   const timeLabel = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
   return (
@@ -2006,9 +2006,9 @@ function SlotDetailModal({
   const start = new Date(slot.startTime);
   const end   = new Date(slot.endTime);
   const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
-  const statusMeta = SLOT_STATUS_LABEL[slot.status] ?? SLOT_STATUS_LABEL.available;
+  const statusMeta = SLOT_STATUS_LABEL[slot.status?.toLowerCase() ?? "available"] ?? SLOT_STATUS_LABEL.available;
 
-  const canCancel = slot.status === "available";
+  const canCancel = slot.status?.toLowerCase() === "available";
 
   const formatDt = (d: Date) =>
     d.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" }) +
@@ -2112,13 +2112,13 @@ function SlotDetailModal({
           )}
 
           {/* Booked/Cancelled explanation */}
-          {slot.status === "booked" && (
+          {slot.status?.toLowerCase() === "booked" && (
             <div className="flex items-start gap-2 p-3 rounded-[12px] bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-700">
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
               Slot này đã có học viên đặt lịch — không thể hủy trực tiếp.
             </div>
           )}
-          {slot.status === "cancelled" && (
+          {slot.status?.toLowerCase() === "cancelled" && (
             <div className="flex items-start gap-2 p-3 rounded-[12px] bg-surface-container-low border border-[var(--color-border-soft)] text-[12px] text-on-surface-variant">
               <Ban size={14} className="mt-0.5 shrink-0" />
               Slot này đã bị hủy.

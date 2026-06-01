@@ -84,11 +84,15 @@ export interface Session {
   learnerId: string;
   bookingId?: string;
   start: string; // ISO datetime
+  endTime?: string; // ISO datetime
   durationMinutes: number;
   status: SessionStatus;
   type: "1-on-1" | "Group" | "AI-Guided";
   notes?: string;
   location?: string;
+  meetingUrl?: string;
+  learnerNote?: string;
+  coachNote?: string;
   price: number;
   aiPlan?: string; // optional AI suggestion preview
 }

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   XCircle,
@@ -15,7 +14,7 @@ import {
   Tag,
   RefreshCw,
 } from "lucide-react";
-import { backend } from "@/lib/backend/client";
+import { api } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,27 +38,6 @@ interface Props {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function parsePaymentParams(params: PaymentParams): {
-  isValid: boolean;
-  reason?: string;
-} {
-  const { code, cancel, status } = params;
-
-  if (!code && !status) {
-    return { isValid: false, reason: "missing_params" };
-  }
-  if (cancel === "true") {
-    return { isValid: false, reason: "cancelled" };
-  }
-  if (status !== "PAID") {
-    return { isValid: false, reason: "not_paid" };
-  }
-  if (code !== "00") {
-    return { isValid: false, reason: "bad_code" };
-  }
-
-  return { isValid: true };
-}
 
 // ---------------------------------------------------------------------------
 // Status config
@@ -157,7 +135,6 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
 // ---------------------------------------------------------------------------
 
 export function PaymentSuccessUI({ params }: Props) {
-  const router = useRouter();
   const [state, setState] = useState<PaymentState>("loading");
   const [failReason, setFailReason] = useState<string | undefined>();
   const [bookingId, setBookingId] = useState<string | undefined>();
@@ -166,43 +143,55 @@ export function PaymentSuccessUI({ params }: Props) {
   const reconcile = useCallback(
     async (isRetry = false) => {
       if (isRetry) setRetrying(true);
+      else setState("loading");
 
-      // 1. URL param sanity check
-      const { isValid, reason } = parsePaymentParams(params);
-      if (!isValid) {
-        setFailReason(reason);
+      // 1. Handle explicit cancel from PayOS redirect
+      if (params.cancel === "true") {
         setState("invalid");
+        setFailReason("cancelled");
         if (isRetry) setRetrying(false);
         return;
       }
 
-      if (!params.orderCode) {
+      // 2. Resolve orderCode: URL param first, then sessionStorage fallback
+      let resolvedOrderCode: string | number | null = params.orderCode ?? null;
+      if (!resolvedOrderCode) {
+        try {
+          const raw = sessionStorage.getItem("pendingPayosPayment");
+          if (raw) {
+            const pending = JSON.parse(raw) as { orderCode?: number };
+            if (pending.orderCode) resolvedOrderCode = pending.orderCode;
+          }
+        } catch {
+          // sessionStorage not available
+        }
+      }
+
+      if (!resolvedOrderCode) {
+        setState("invalid");
         setFailReason("missing_params");
-        setState("invalid");
         if (isRetry) setRetrying(false);
         return;
       }
 
-      // 2. Call backend reconcile — the real source of truth
+      // 3. Call backend reconcile — the real source of truth
       try {
-        const result = await backend.reconcilePayos(params.orderCode);
+        const result = await api.reconcilePayment(resolvedOrderCode);
+        // Clear pending payment record once reconcile succeeds
+        try { sessionStorage.removeItem("pendingPayosPayment"); } catch { /**/ }
 
-        if (result.activated === true) {
-          const activatedBookingId = result.bookingId ?? undefined;
-          setBookingId(activatedBookingId);
+        if (result.activated === true || result.bookingStatus?.toLowerCase() === "active") {
+          setBookingId(result.bookingId ?? undefined);
           setState("success");
-          // Auto-navigate to the activated booking's plan after a short delay.
-          setTimeout(() => {
-            router.push(
-              activatedBookingId
-                ? `/learner/plan?booking=${activatedBookingId}`
-                : "/learner/bookings",
-            );
-          }, 2500);
         } else {
-          // Payment was recorded by PayOS but webhook hasn't fired yet;
-          // show pending so learner can retry manually.
-          setState("pending");
+          const payOsStatus = (result.payOsStatus ?? "").toUpperCase();
+          if (["CANCELLED", "EXPIRED", "FAILED"].includes(payOsStatus)) {
+            setState("invalid");
+            setFailReason("cancelled");
+          } else {
+            // PENDING / PROCESSING — let learner retry manually
+            setState("pending");
+          }
         }
       } catch {
         setState("error");
@@ -210,7 +199,7 @@ export function PaymentSuccessUI({ params }: Props) {
         if (isRetry) setRetrying(false);
       }
     },
-    [params, router],
+    [params],
   );
 
   useEffect(() => {

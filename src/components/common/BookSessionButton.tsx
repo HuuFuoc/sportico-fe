@@ -49,10 +49,23 @@ export function BookSessionButton({
       }
       const result = await api.purchasePackage(pkgId);
       if ("checkoutUrl" in result) {
+        try {
+          sessionStorage.setItem(
+            "pendingPayosPayment",
+            JSON.stringify({
+              bookingId: result.bookingId,
+              paymentId: result.paymentId,
+              orderCode: result.orderCode,
+              createdAt: new Date().toISOString(),
+            }),
+          );
+        } catch {
+          // sessionStorage unavailable — reconcile falls back to URL param
+        }
         window.location.href = result.checkoutUrl;
         return; // keep the spinner while the browser navigates away
       }
-      router.push("/learner/schedule");
+      router.push("/learner/bookings");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Đặt lịch thất bại. Vui lòng thử lại.",

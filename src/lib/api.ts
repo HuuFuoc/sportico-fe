@@ -50,7 +50,18 @@ import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
 import * as map from "@/lib/backend/mappers";
 import { NOW } from "@/lib/mock/clock";
-import type { BookingResponse, WithdrawalReceiptResponse } from "@/lib/backend/dto";
+import type {
+  BookingResponse,
+  CreateDayRequest,
+  CreateExerciseRequest,
+  CreateTrainingPlanRequest,
+  CreateWeekRequest,
+  ReconcilePayOsResponse,
+  UpdateExerciseRequest,
+  UpdateTrainingPlanRequest,
+  WithdrawalReceiptResponse,
+} from "@/lib/backend/dto";
+export type { ReconcilePayOsResponse };
 export type { WithdrawalReceiptResponse };
 import { AVAILABLE_SPORTS } from "@/lib/constants";
 
@@ -163,7 +174,7 @@ function slotToUi(s: import("@/lib/backend/dto").AvailabilitySlotResponse): Avai
     coachId: s.coachId,
     startTime: s.startTime,
     endTime: s.endTime,
-    status: s.status ?? "available",
+    status: (s.status ?? "available").toLowerCase(),
     location: s.location ?? undefined,
     isOnline: s.isOnline,
     meetingUrl: s.meetingUrl ?? undefined,
@@ -263,20 +274,40 @@ export const api = {
 
   // ---- Bookings / purchase ----------------------------------------------
   // Buy a training package. Live mode starts a real PayOS checkout and returns
-  // the URL to redirect to; mock mode simulates an instant booking so the demo
-  // flow still completes.
+  // the full response (including orderCode) so the caller can save it to
+  // sessionStorage before redirecting. Mock mode returns { booked: true }.
   purchasePackage: (
     trainingPackageId: string,
-  ): Promise<{ checkoutUrl: string } | { booked: true }> =>
-    liveAuthed<{ checkoutUrl: string } | { booked: true }>(
+  ): Promise<
+    | { checkoutUrl: string; bookingId: string; paymentId: string; orderCode: number; status?: string | null; expiredAt?: string | null }
+    | { booked: true }
+  > =>
+    liveAuthed<
+      | { checkoutUrl: string; bookingId: string; paymentId: string; orderCode: number; status?: string | null; expiredAt?: string | null }
+      | { booked: true }
+    >(
       async () => {
         const r = await backend.purchasePayos(trainingPackageId);
         if (!r.checkoutUrl) {
           throw new Error("Không nhận được liên kết thanh toán từ PayOS.");
         }
-        return { checkoutUrl: r.checkoutUrl };
+        return {
+          checkoutUrl: r.checkoutUrl,
+          bookingId: r.bookingId,
+          paymentId: r.paymentId,
+          orderCode: r.orderCode,
+          status: r.status,
+          expiredAt: r.expiredAt,
+        };
       },
-      () => ({ booked: true }),
+      () => ({ booked: true as const }),
+    ),
+
+  /** Reconcile a PayOS payment by orderCode. Call this on /payment/success. */
+  reconcilePayment: (orderCode: string | number): Promise<ReconcilePayOsResponse> =>
+    liveAuthed(
+      () => backend.reconcilePayos(orderCode),
+      () => ({ activated: true, bookingStatus: "active" }),
     ),
 
   // ---- Sessions ----------------------------------------------------------
@@ -292,6 +323,53 @@ export const api = {
     liveAuthed(liveCoachSessions, () => getSessionsForCoach(id)),
   fetchSessionsForLearner: (id: string): Promise<Session[]> =>
     liveAuthed(liveLearnerSessions, () => getSessionsForLearner(id)),
+
+  /** Direct call to /api/learners/me/training-sessions — richer than the bookings aggregate. */
+  fetchMyTrainingSessions: (p?: {
+    status?: string;
+    startFrom?: string;
+    startTo?: string;
+    pageSize?: number;
+  }): Promise<Session[]> =>
+    liveAuthed(async () => {
+      const page = await backend.myTrainingSessions({
+        status: p?.status,
+        startFrom: p?.startFrom,
+        startTo: p?.startTo,
+        pageSize: p?.pageSize ?? 200,
+      });
+      return (page.items ?? []).map((s) => map.sessionToSession(s));
+    }, () => getSessions()),
+
+  /** Direct call to /api/coaches/me/training-sessions — richer than the bookings aggregate. */
+  fetchMyCoachTrainingSessions: (p?: {
+    status?: string;
+    startFrom?: string;
+    startTo?: string;
+    pageSize?: number;
+  }): Promise<Session[]> =>
+    liveAuthed(async () => {
+      const page = await backend.coachTrainingSessions({
+        status: p?.status,
+        startFrom: p?.startFrom,
+        startTo: p?.startTo,
+        pageSize: p?.pageSize ?? 200,
+      });
+      return (page.items ?? []).map((s) => map.sessionToSession(s));
+    }, () => getSessionsForCoach(getCurrentUserId() ?? "")),
+
+  /** Fetch all sessions for a specific booking. */
+  fetchBookingSessions: (bookingId: string, p?: {
+    status?: string;
+    pageSize?: number;
+  }): Promise<Session[]> =>
+    liveAuthed(async () => {
+      const page = await backend.bookingSessions(bookingId, {
+        status: p?.status,
+        pageSize: p?.pageSize ?? 100,
+      });
+      return (page.items ?? []).map((s) => map.sessionToSession(s));
+    }, () => []),
   fetchUpcoming: (filter?: {
     coachId?: string;
     learnerId?: string;
@@ -395,6 +473,43 @@ export const api = {
             : await backend.createBookingAssessment(bookingId, body),
         ),
       () => ({ ...body }),
+    ),
+
+  // ---- Training plan write (coach) --------------------------------------
+  createTrainingPlan: (bookingId: string, body: CreateTrainingPlanRequest): Promise<import("@/types").TrainingPlan> =>
+    liveAuthed(
+      async () => map.trainingPlanToUi(await backend.createTrainingPlan(bookingId, body)),
+      () => ({ id: `mock-plan-${Date.now()}`, totalWeeks: body.totalWeeks, startDate: body.startDate, endDate: body.endDate, isReadOnly: false, weeks: [] } as import("@/types").TrainingPlan),
+    ),
+  updateTrainingPlan: (id: string, body: UpdateTrainingPlanRequest): Promise<import("@/types").TrainingPlan> =>
+    liveAuthed(
+      async () => map.trainingPlanToUi(await backend.updateTrainingPlan(id, body)),
+      () => ({ id, totalWeeks: body.totalWeeks, startDate: body.startDate, endDate: body.endDate, isReadOnly: false, weeks: [] } as import("@/types").TrainingPlan),
+    ),
+  addPlanWeek: (planId: string, body: CreateWeekRequest): Promise<import("@/lib/backend/dto").TrainingPlanWeekResponse> =>
+    liveAuthed(
+      () => backend.addPlanWeek(planId, body),
+      () => ({ id: `mock-week-${Date.now()}`, trainingPlanId: planId, weekNumber: body.weekNumber, focus: body.focus ?? null, notes: body.notes ?? null, days: [] }),
+    ),
+  addPlanDay: (weekId: string, body: CreateDayRequest): Promise<import("@/lib/backend/dto").TrainingPlanDayResponse> =>
+    liveAuthed(
+      () => backend.addPlanDay(weekId, body),
+      () => ({ id: `mock-day-${Date.now()}`, trainingPlanWeekId: weekId, dayNumber: body.dayNumber, title: body.title ?? null, notes: body.notes ?? null, exercises: [] }),
+    ),
+  addExercise: (dayId: string, body: CreateExerciseRequest): Promise<import("@/lib/backend/dto").TrainingPlanExerciseResponse> =>
+    liveAuthed(
+      () => backend.addExercise(dayId, body),
+      () => ({ id: `mock-ex-${Date.now()}`, trainingPlanDayId: dayId, exerciseName: body.exerciseName, orderIndex: body.orderIndex, sets: body.sets ?? null, reps: body.reps ?? null, intensity: body.intensity ?? null, restSeconds: body.restSeconds ?? null, notes: body.notes ?? null }),
+    ),
+  updateExercise: (id: string, body: UpdateExerciseRequest): Promise<import("@/lib/backend/dto").TrainingPlanExerciseResponse> =>
+    liveAuthed(
+      () => backend.updateExercise(id, body),
+      () => ({ id, trainingPlanDayId: "", exerciseName: body.exerciseName, orderIndex: body.orderIndex, sets: body.sets ?? null, reps: body.reps ?? null, intensity: body.intensity ?? null, restSeconds: body.restSeconds ?? null, notes: body.notes ?? null }),
+    ),
+  deleteExercise: (id: string): Promise<void> =>
+    liveAuthed<void>(
+      () => backend.deleteExercise(id),
+      () => undefined,
     ),
 
   // ---- Messages ----------------------------------------------------------
