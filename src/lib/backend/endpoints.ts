@@ -69,6 +69,8 @@ export const backendEndpoints = {
   coachBookingById: (id: string) => `/api/bookings/coach/${encodeURIComponent(id)}`,
   purchaseManual: "/api/bookings/purchase/manual",
   purchasePayos: "/api/bookings/purchase/payos",
+  reconcilePayos: (orderCode: string | number) =>
+    `/api/payments/payos/${orderCode}/reconcile`,
 
   // ---- Sessions (per booking) -------------------------------------------
   bookingSessions: (bookingId: string) =>

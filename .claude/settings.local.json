@@ -110,7 +110,13 @@
       "mcp__chrome-devtools__emulate",
       "mcp__chrome-devtools__close_page",
       "Bash(Start-Process -NoNewWindow -FilePath \"pnpm\" -ArgumentList \"dev\",\"--port\",\"3000\" -WorkingDirectory \"D:\\\\FPT-Ky8\\\\EXE202\\\\sportico\")",
-      "Bash(findstr /s /i \"cộng đồng trước tiên\" src\\\\*.tsx src\\\\*.ts)"
+      "Bash(findstr /s /i \"cộng đồng trước tiên\" src\\\\*.tsx src\\\\*.ts)",
+      "Bash(grep -r \"OrderCode\\\\|orderCode\\\\|PaymentId\\\\|paymentId\" \"D:\\\\sportico-platform\" --include=\"*.cs\" -l 2>/dev/null | grep -i \"booking\\\\|response\\\\|dto\" | head -10)",
+      "Read(//d//**)",
+      "PowerShell(Get-ChildItem \"D:\\\\FPT-Ky8\\\\EXE202\\\\sportico-platform\\\\src\\\\SporticoApp.Application\\\\DTOs\" -Recurse | Where-Object { $_.Name -match \"[Bb]ooking\" } | Select-Object FullName)",
+      "Bash(curl -s \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o /tmp/swagger.json)",
+      "Bash(echo \"exit:$?\")",
+      "PowerShell($s = Get-Content \"$env:TEMP\\\\swagger.json\" -Raw | ConvertFrom-Json; $s.paths.PSObject.Properties.Name | Where-Object { $_ -match 'reconcile|payos|payment|booking' } | Sort-Object)"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

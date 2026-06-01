@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   XCircle,
@@ -12,13 +13,15 @@ import {
   Hash,
   Receipt,
   Tag,
+  RefreshCw,
 } from "lucide-react";
+import { backend } from "@/lib/backend/client";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type PaymentState = "loading" | "success" | "invalid" | "error";
+type PaymentState = "loading" | "success" | "pending" | "invalid" | "error";
 
 interface PaymentParams {
   code?: string;
@@ -58,17 +61,6 @@ function parsePaymentParams(params: PaymentParams): {
   return { isValid: true };
 }
 
-// TODO: Verify payment status with backend using orderCode before unlocking paid features.
-// Recommended endpoint: GET /api/bookings/payment-status?orderCode={orderCode}
-// Replace the stub below when the endpoint is available.
-async function verifyPaymentWithBackend(
-  orderCode: string,
-): Promise<{ verified: boolean }> {
-  void orderCode; // passed through when real endpoint is wired
-  // Stub — return unverified so the UI falls back to URL-param validation.
-  return { verified: false };
-}
-
 // ---------------------------------------------------------------------------
 // Status config
 // ---------------------------------------------------------------------------
@@ -106,6 +98,19 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
       badgeBg: "bg-emerald-50",
       badgeText: "text-emerald-700",
       badgeLabel: "PAID",
+    };
+  }
+
+  if (state === "pending") {
+    return {
+      icon: <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />,
+      iconBg: "bg-amber-50",
+      title: "Đang chờ xác nhận",
+      description:
+        "Thanh toán đã được ghi nhận nhưng gói tập chưa được kích hoạt. Nhấn nút đồng bộ để thử lại.",
+      badgeBg: "bg-amber-50",
+      badgeText: "text-amber-700",
+      badgeLabel: "PENDING",
     };
   }
 
@@ -152,44 +157,63 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
 // ---------------------------------------------------------------------------
 
 export function PaymentSuccessUI({ params }: Props) {
+  const router = useRouter();
   const [state, setState] = useState<PaymentState>("loading");
   const [failReason, setFailReason] = useState<string | undefined>();
+  const [bookingId, setBookingId] = useState<string | undefined>();
+  const [retrying, setRetrying] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  const reconcile = useCallback(
+    async (isRetry = false) => {
+      if (isRetry) setRetrying(true);
 
-    async function verify() {
-      // 1. Basic URL param validation
+      // 1. URL param sanity check
       const { isValid, reason } = parsePaymentParams(params);
-
       if (!isValid) {
-        if (!cancelled) {
-          setFailReason(reason);
-          setState("invalid");
-        }
+        setFailReason(reason);
+        setState("invalid");
+        if (isRetry) setRetrying(false);
         return;
       }
 
-      // 2. Backend verification (swap TODO stub for real call when ready)
-      try {
-        if (params.orderCode) {
-          await verifyPaymentWithBackend(params.orderCode);
-        }
-        // We proceed to show success even if verification is unimplemented —
-        // the real security check happens via PayOS webhook on the backend.
-        if (!cancelled) setState("success");
-      } catch {
-        // Fall back to showing success based on URL params while noting the
-        // verification could not complete. The backend handles actual auth.
-        if (!cancelled) setState("success");
+      if (!params.orderCode) {
+        setFailReason("missing_params");
+        setState("invalid");
+        if (isRetry) setRetrying(false);
+        return;
       }
-    }
 
-    void verify();
-    return () => {
-      cancelled = true;
-    };
-  }, [params]);
+      // 2. Call backend reconcile — the real source of truth
+      try {
+        const result = await backend.reconcilePayos(params.orderCode);
+
+        if (result.activated === true) {
+          setBookingId(result.bookingId ?? undefined);
+          setState("success");
+          // Auto-navigate to booking detail after a short delay
+          if (result.bookingId) {
+            setTimeout(() => {
+              router.push(`/learner/plan`);
+            }, 2500);
+          }
+        } else {
+          // Payment was recorded by PayOS but webhook hasn't fired yet;
+          // show pending so learner can retry manually.
+          setState("pending");
+        }
+      } catch {
+        setState("error");
+      } finally {
+        if (isRetry) setRetrying(false);
+      }
+    },
+    [params, router],
+  );
+
+  useEffect(() => {
+    void reconcile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const config = getStatusConfig(state, failReason);
 
@@ -230,7 +254,7 @@ export function PaymentSuccessUI({ params }: Props) {
             </div>
 
             {/* Transaction details — only show when state is settled */}
-            {state === "success" && (
+            {(state === "success" || state === "pending") && (
               <div className="border-t border-slate-100 px-8 py-5 space-y-3">
                 <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
                   Chi tiết giao dịch
@@ -254,7 +278,7 @@ export function PaymentSuccessUI({ params }: Props) {
                 {params.status && (
                   <DetailRow
                     icon={<Tag className="w-3.5 h-3.5" />}
-                    label="Trạng thái"
+                    label="Trạng thái PayOS"
                     value={params.status}
                   />
                 )}
@@ -266,12 +290,42 @@ export function PaymentSuccessUI({ params }: Props) {
               <div className="px-8 pb-8 pt-2 flex flex-col gap-3">
                 {state === "success" && (
                   <Link
-                    href="/learner/plan"
+                    href={bookingId ? `/learner/plan` : "/learner/plan"}
                     className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#3525cd] text-white rounded-lg text-sm font-medium hover:bg-[#2d20b8] transition-colors"
                   >
                     <ClipboardList className="w-4 h-4" />
                     Xem gói tập của tôi
                   </Link>
+                )}
+
+                {state === "pending" && (
+                  <button
+                    onClick={() => void reconcile(true)}
+                    disabled={retrying}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#3525cd] text-white rounded-lg text-sm font-medium hover:bg-[#2d20b8] transition-colors disabled:opacity-60"
+                  >
+                    {retrying ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {retrying ? "Đang đồng bộ…" : "Đồng bộ lại trạng thái"}
+                  </button>
+                )}
+
+                {state === "error" && (
+                  <button
+                    onClick={() => void reconcile(true)}
+                    disabled={retrying}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#3525cd] text-white rounded-lg text-sm font-medium hover:bg-[#2d20b8] transition-colors disabled:opacity-60"
+                  >
+                    {retrying ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {retrying ? "Đang thử lại…" : "Thử lại xác nhận"}
+                  </button>
                 )}
 
                 <Link
@@ -282,7 +336,7 @@ export function PaymentSuccessUI({ params }: Props) {
                   Về trang chủ
                 </Link>
 
-                {(state === "invalid" || state === "error") && (
+                {(state === "invalid") && (
                   <Link
                     href="/learner/coaches"
                     className="text-center text-sm text-slate-500 hover:text-slate-700 transition-colors py-1"
@@ -297,8 +351,14 @@ export function PaymentSuccessUI({ params }: Props) {
           {/* Note */}
           {state === "success" && (
             <p className="text-center text-xs text-slate-400 mt-5 leading-relaxed px-4">
-              Gói tập của bạn đã được kích hoạt. Nếu gặp bất kỳ vấn đề nào,
-              vui lòng liên hệ đội hỗ trợ với mã đơn hàng ở trên.
+              Gói tập của bạn đã được kích hoạt. Bạn sẽ được chuyển hướng tự động.
+              Nếu gặp bất kỳ vấn đề nào, vui lòng liên hệ hỗ trợ với mã đơn hàng ở trên.
+            </p>
+          )}
+
+          {state === "pending" && (
+            <p className="text-center text-xs text-slate-400 mt-5 leading-relaxed px-4">
+              Nếu vấn đề tiếp diễn sau vài phút, vui lòng liên hệ hỗ trợ với mã đơn hàng ở trên.
             </p>
           )}
         </div>

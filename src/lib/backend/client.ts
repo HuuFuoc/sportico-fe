@@ -35,6 +35,7 @@ import type {
   PublicCoachDetailResponse,
   PublicCoachListItemResponse,
   PurchasePayOsResponse,
+  ReconcilePayOsResponse,
   Result,
   TrainingPackageResponse,
   TrainingPlanDayResponse,
@@ -243,6 +244,11 @@ export const backend = {
   async purchasePayos(trainingPackageId: string) {
     return unwrap(
       await POST<PurchasePayOsResponse>(ep.purchasePayos, { trainingPackageId }),
+    );
+  },
+  async reconcilePayos(orderCode: string | number) {
+    return unwrap(
+      await POST<ReconcilePayOsResponse>(ep.reconcilePayos(orderCode), {}),
     );
   },
 

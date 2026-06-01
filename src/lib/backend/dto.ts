@@ -161,6 +161,17 @@ export interface PurchasePayOsResponse {
   expiredAt?: string | null;
 }
 
+export interface ReconcilePayOsResponse {
+  activated: boolean;
+  bookingId?: string | null;
+  paymentId?: string | null;
+  orderCode?: number | null;
+  paymentStatus?: string | null;
+  bookingStatus?: string | null;
+  payOsStatus?: string | null;
+  message?: string | null;
+}
+
 export interface TrainingSessionResponse {
   id: string;
   bookingId: string;
