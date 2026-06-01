@@ -188,14 +188,17 @@ export function PaymentSuccessUI({ params }: Props) {
         const result = await backend.reconcilePayos(params.orderCode);
 
         if (result.activated === true) {
-          setBookingId(result.bookingId ?? undefined);
+          const activatedBookingId = result.bookingId ?? undefined;
+          setBookingId(activatedBookingId);
           setState("success");
-          // Auto-navigate to booking detail after a short delay
-          if (result.bookingId) {
-            setTimeout(() => {
-              router.push(`/learner/plan`);
-            }, 2500);
-          }
+          // Auto-navigate to the activated booking's plan after a short delay.
+          setTimeout(() => {
+            router.push(
+              activatedBookingId
+                ? `/learner/plan?booking=${activatedBookingId}`
+                : "/learner/bookings",
+            );
+          }, 2500);
         } else {
           // Payment was recorded by PayOS but webhook hasn't fired yet;
           // show pending so learner can retry manually.
@@ -290,7 +293,11 @@ export function PaymentSuccessUI({ params }: Props) {
               <div className="px-8 pb-8 pt-2 flex flex-col gap-3">
                 {state === "success" && (
                   <Link
-                    href={bookingId ? `/learner/plan` : "/learner/plan"}
+                    href={
+                      bookingId
+                        ? `/learner/plan?booking=${bookingId}`
+                        : "/learner/bookings"
+                    }
                     className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#3525cd] text-white rounded-lg text-sm font-medium hover:bg-[#2d20b8] transition-colors"
                   >
                     <ClipboardList className="w-4 h-4" />

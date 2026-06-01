@@ -247,8 +247,10 @@ export const backend = {
     );
   },
   async reconcilePayos(orderCode: string | number) {
+    // The `{orderCode}/reconcile` endpoint takes no request body (orderCode is
+    // a path param) — send none so we match the Swagger contract exactly.
     return unwrap(
-      await POST<ReconcilePayOsResponse>(ep.reconcilePayos(orderCode), {}),
+      await POST<ReconcilePayOsResponse>(ep.reconcilePayos(orderCode)),
     );
   },
 
