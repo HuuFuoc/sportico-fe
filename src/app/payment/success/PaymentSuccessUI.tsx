@@ -38,6 +38,28 @@ interface Props {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// The Azure backend can cold-start on the first request after it has been idle,
+// so the very first reconcile often fails (timeout / 5xx) while it wakes up — a
+// manual retry a few seconds later then succeeds. To make that invisible, the
+// initial flow retries automatically with backoff before surfacing an error.
+const MAX_AUTO_ATTEMPTS = 4;
+/** Hard cap per attempt so a hung request can never freeze the spinner forever. */
+const ATTEMPT_TIMEOUT_MS = 15_000;
+/** Delay BEFORE attempt i (gives the backend time to finish booting). */
+const RETRY_BACKOFF_MS = [0, 2_000, 4_000, 6_000];
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** One reconcile attempt, aborted if it exceeds {@link ATTEMPT_TIMEOUT_MS}. */
+async function reconcileOnce(orderCode: string | number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
+  try {
+    return await api.reconcilePayment(orderCode, controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Status config
@@ -139,11 +161,16 @@ export function PaymentSuccessUI({ params }: Props) {
   const [failReason, setFailReason] = useState<string | undefined>();
   const [bookingId, setBookingId] = useState<string | undefined>();
   const [retrying, setRetrying] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   const reconcile = useCallback(
     async (isRetry = false) => {
-      if (isRetry) setRetrying(true);
-      else setState("loading");
+      if (isRetry) {
+        setRetrying(true);
+      } else {
+        setState("loading");
+        setAttempt(0);
+      }
 
       // 1. Handle explicit cancel from PayOS redirect
       if (params.cancel === "true") {
@@ -174,30 +201,44 @@ export function PaymentSuccessUI({ params }: Props) {
         return;
       }
 
-      // 3. Call backend reconcile — the real source of truth
-      try {
-        const result = await api.reconcilePayment(resolvedOrderCode);
-        // Clear pending payment record once reconcile succeeds
-        try { sessionStorage.removeItem("pendingPayosPayment"); } catch { /**/ }
-
-        if (result.activated === true || result.bookingStatus?.toLowerCase() === "active") {
-          setBookingId(result.bookingId ?? undefined);
-          setState("success");
-        } else {
-          const payOsStatus = (result.payOsStatus ?? "").toUpperCase();
-          if (["CANCELLED", "EXPIRED", "FAILED"].includes(payOsStatus)) {
-            setState("invalid");
-            setFailReason("cancelled");
-          } else {
-            // PENDING / PROCESSING — let learner retry manually
-            setState("pending");
-          }
+      // 3. Call backend reconcile — the real source of truth. On the initial
+      //    flow we auto-retry with backoff so a cold-starting backend recovers
+      //    transparently (the spinner stays up). A manual retry is a single shot.
+      const maxAttempts = isRetry ? 1 : MAX_AUTO_ATTEMPTS;
+      for (let i = 0; i < maxAttempts; i++) {
+        if (i > 0) {
+          setAttempt(i);
+          await delay(RETRY_BACKOFF_MS[i] ?? 6_000);
         }
-      } catch {
-        setState("error");
-      } finally {
-        if (isRetry) setRetrying(false);
+
+        try {
+          const result = await reconcileOnce(resolvedOrderCode);
+          // Clear pending payment record once reconcile succeeds
+          try { sessionStorage.removeItem("pendingPayosPayment"); } catch { /**/ }
+
+          if (result.activated === true || result.bookingStatus?.toLowerCase() === "active") {
+            setBookingId(result.bookingId ?? undefined);
+            setState("success");
+          } else {
+            const payOsStatus = (result.payOsStatus ?? "").toUpperCase();
+            if (["CANCELLED", "EXPIRED", "FAILED"].includes(payOsStatus)) {
+              setState("invalid");
+              setFailReason("cancelled");
+            } else {
+              // PENDING / PROCESSING — let learner retry manually
+              setState("pending");
+            }
+          }
+          if (isRetry) setRetrying(false);
+          return; // settled — stop retrying
+        } catch {
+          // Transient failure (timeout / network / 5xx). Keep the spinner up and
+          // retry if attempts remain; only surface the error on the last attempt.
+          if (i === maxAttempts - 1) setState("error");
+        }
       }
+
+      if (isRetry) setRetrying(false);
     },
     [params],
   );
@@ -236,6 +277,12 @@ export function PaymentSuccessUI({ params }: Props) {
               <p className="text-sm text-slate-500 leading-relaxed">
                 {config.description}
               </p>
+
+              {state === "loading" && attempt > 0 && (
+                <p className="mt-2 text-xs text-slate-400 tabular-nums">
+                  Hệ thống đang khởi động, đang thử lại… ({attempt + 1}/{MAX_AUTO_ATTEMPTS})
+                </p>
+              )}
 
               {/* Status badge */}
               <span

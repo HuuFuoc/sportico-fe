@@ -587,11 +587,14 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
     data: sessionsData,
     loading: sessionsLoading,
     refetch: refetchSessions,
-  } = useApiResource(() => api.fetchSessions(), []);
+    // Direct GET /api/bookings/{bookingId}/sessions — fetches only this
+    // booking's sessions instead of loading every coach session and filtering
+    // client-side.
+  } = useApiResource(() => api.fetchBookingSessions(bookingId), [bookingId]);
 
   const bookingSessions = useMemo(
-    () => (sessionsData ?? []).filter((s) => s.bookingId === bookingId),
-    [sessionsData, bookingId],
+    () => sessionsData ?? [],
+    [sessionsData],
   );
 
   const [activeTab, setActiveTab] = useState<"plan" | "sessions" | "assessment">("plan");

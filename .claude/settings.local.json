@@ -124,7 +124,22 @@
       "Bash(rm -f .diag-1x1.png .dev-upload-test.log)",
       "Bash(cd \"d:/FPT-Ky8/EXE202/sportico\" && ls \"C:/Users/DELL/.claude/projects/d--FPT-Ky8-EXE202-sportico/memory/\" 2>/dev/null && echo \"---\" && cat \"C:/Users/DELL/.claude/projects/d--FPT-Ky8-EXE202-sportico/memory/MEMORY.md\" 2>/dev/null | head -30)",
       "Read(//c/Users/DELL/.claude/projects/d--FPT-Ky8-EXE202-sportico/**)",
-      "Bash(echo \"EXIT $?\")"
+      "Bash(echo \"EXIT $?\")",
+      "Bash(curl -s \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o swagger.tmp.json)",
+      "Bash(echo \"---TSC EXIT: $?---\")",
+      "Bash(echo \"---ESLINT EXIT: $?---\")",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net__TRACKED_VAR__)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X PUT https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/api/training-sessions/00000000-0000-0000-0000-000000000000/confirm)",
+      "Bash(curl -s -X POST https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/api/Auth/register -H 'Content-Type: application/json' -d '{\"email\":\"__TRACKED_VAR__\",\"password\":\"Test@12345\",\"fullName\":\"QA Tester\"}')",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__get_network_request",
+      "Bash(echo \"---ESLINT api.ts EXIT: $?---\")",
+      "Bash(pnpm start *)",
+      "Bash(curl -s -X POST https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/api/bookings/purchase/manual -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"trainingPackageId\":\"__TRACKED_VAR__\"}')",
+      "Bash(node -e 'let d=\"\";process.stdin.on\\(\"data\",c=>d+=c\\).on\\(\"end\",\\(\\)=>{const j=JSON.parse\\(d\\);if\\(!j.isSuccess\\){console.log\\(\"FAIL:\",JSON.stringify\\(j.error\\)\\);return;}const b=j.data;console.log\\(\"  OK bookingId:\",b.id,\"| status:\",b.status,\"| sessions:\",b.totalSessions\\);require\\(\"fs\"\\).writeFileSync\\(\"/tmp/bid\",b.id\\)}\\)')",
+      "Bash(node qa-flow.mjs)",
+      "Bash(node qa-flow2.mjs)",
+      "Bash(echo \"---ESLINT mappers EXIT: $?---\")"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

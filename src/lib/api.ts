@@ -303,10 +303,15 @@ export const api = {
       () => ({ booked: true as const }),
     ),
 
-  /** Reconcile a PayOS payment by orderCode. Call this on /payment/success. */
-  reconcilePayment: (orderCode: string | number): Promise<ReconcilePayOsResponse> =>
+  /** Reconcile a PayOS payment by orderCode. Call this on /payment/success.
+   *  Accepts an optional AbortSignal so the caller can enforce a per-attempt
+   *  timeout (the Azure backend can be slow to respond on a cold start). */
+  reconcilePayment: (
+    orderCode: string | number,
+    signal?: AbortSignal,
+  ): Promise<ReconcilePayOsResponse> =>
     liveAuthed(
-      () => backend.reconcilePayos(orderCode),
+      () => backend.reconcilePayos(orderCode, { signal }),
       () => ({ activated: true, bookingStatus: "active" }),
     ),
 
@@ -336,7 +341,7 @@ export const api = {
         status: p?.status,
         startFrom: p?.startFrom,
         startTo: p?.startTo,
-        pageSize: p?.pageSize ?? 200,
+        pageSize: p?.pageSize ?? 100, // backend caps PageSize at 100 (400 otherwise)
       });
       return (page.items ?? []).map((s) => map.sessionToSession(s));
     }, () => getSessions()),
@@ -353,7 +358,7 @@ export const api = {
         status: p?.status,
         startFrom: p?.startFrom,
         startTo: p?.startTo,
-        pageSize: p?.pageSize ?? 200,
+        pageSize: p?.pageSize ?? 100, // backend caps PageSize at 100 (400 otherwise)
       });
       return (page.items ?? []).map((s) => map.sessionToSession(s));
     }, () => getSessionsForCoach(getCurrentUserId() ?? "")),

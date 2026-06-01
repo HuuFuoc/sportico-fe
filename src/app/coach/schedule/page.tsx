@@ -93,7 +93,11 @@ export default function CoachSchedulePage() {
     loading,
     error,
     refetch,
-  } = useApiResource(() => api.fetchSessionsForCoach(coachId), [coachId]);
+    // Direct GET /api/coaches/me/training-sessions — the coach's sessions across
+    // every learner/booking in a single call (richer + cheaper than the
+    // per-booking aggregate). `coachId` stays in the deps so the list refetches
+    // once the JWT identity resolves on the client.
+  } = useApiResource(() => api.fetchMyCoachTrainingSessions(), [coachId]);
   const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
 
   const [showCreateSlot, setShowCreateSlot] = useState(false);

@@ -8,7 +8,7 @@
 // invoked when the backend base URL is configured (live mode).
 // ============================================================================
 
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, type ApiFetchOptions } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
   AvailabilitySlotResponse,
@@ -145,10 +145,11 @@ const PUT = <T>(path: string, body?: unknown) =>
     method: "PUT",
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-const POST = <T>(path: string, body?: unknown) =>
+const POST = <T>(path: string, body?: unknown, opts?: ApiFetchOptions) =>
   apiFetch<Result<T>>(path, {
     method: "POST",
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    ...opts,
   });
 
 // ---- client ----------------------------------------------------------------
@@ -246,11 +247,12 @@ export const backend = {
       await POST<PurchasePayOsResponse>(ep.purchasePayos, { trainingPackageId }),
     );
   },
-  async reconcilePayos(orderCode: string | number) {
+  async reconcilePayos(orderCode: string | number, opts?: ApiFetchOptions) {
     // The `{orderCode}/reconcile` endpoint takes no request body (orderCode is
     // a path param) — send none so we match the Swagger contract exactly.
+    // `opts` lets the caller pass an AbortSignal so a hung reconcile can time out.
     return unwrap(
-      await POST<ReconcilePayOsResponse>(ep.reconcilePayos(orderCode)),
+      await POST<ReconcilePayOsResponse>(ep.reconcilePayos(orderCode), undefined, opts),
     );
   },
 

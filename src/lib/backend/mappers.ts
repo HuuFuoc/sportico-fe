@@ -295,6 +295,12 @@ export function postToUi(p: PostResponse): CoachPost {
 }
 
 // ---- Training session (+ booking context) → Session ------------------------
+// Backend status vocabulary (confirmed against the live API):
+//   "requested"  → new session, awaiting coach confirmation
+//   "scheduled"  → coach confirmed
+//   "completed"  → session done
+//   "cancelled"  → cancelled by coach or learner
+// We also tolerate a few legacy/alias spellings defensively.
 function toSessionStatus(raw?: string | null): SessionStatus {
   switch ((raw ?? "").toLowerCase()) {
     case "completed":
@@ -305,10 +311,14 @@ function toSessionStatus(raw?: string | null): SessionStatus {
     case "inprogress":
     case "in_progress":
       return "in_progress";
+    case "requested":
     case "pending":
     case "pendingconfirmation":
     case "pending_confirmation":
       return "pending_confirmation";
+    case "scheduled":
+    case "confirmed":
+      return "scheduled";
     default:
       return "scheduled";
   }
