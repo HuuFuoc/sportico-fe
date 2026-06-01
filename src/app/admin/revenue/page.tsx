@@ -61,7 +61,7 @@ import { api } from "@/lib/api";
 import type { WithdrawalReceiptResponse } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type { Coach, EarningPoint, Payout } from "@/types";
+import type { Coach, Payout } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -70,7 +70,6 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 // ============================================================================
 
 const PLATFORM_FEE_PCT = 0.15;
-const SCALE = 18.4; // marketplace-wide scale-up
 
 type CashflowPoint = {
   month: string;
@@ -81,16 +80,26 @@ type CashflowPoint = {
   anomaly: string | null;
 };
 
-// Derive marketplace-wide cashflow from the (fetched) coach earnings series.
-function buildCashflow(earnings: EarningPoint[]): CashflowPoint[] {
-  return earnings.map((e, i) => {
-    const revenue = Math.round(e.gross * SCALE);
+// The backend exposes no admin-wide revenue/earnings endpoint — only the
+// coach-scoped /api/coaches/me/wallet/transactions, which an admin token cannot
+// read (it 403s). So this marketplace cashflow chart is illustrative: a
+// deterministic 12-month series, not live data. The live, admin-accessible data
+// on this page is the payout queue (pending withdrawals) below.
+const CASHFLOW_MONTHS = [
+  "T7", "T8", "T9", "T10", "T11", "T12",
+  "T1", "T2", "T3", "T4", "T5", "T6",
+];
+
+function buildCashflow(): CashflowPoint[] {
+  const base = 460_000;
+  return CASHFLOW_MONTHS.map((month, i) => {
+    const revenue = Math.round(base + i * 24_000 + Math.sin(i * 1.1) * 42_000);
     const payouts = Math.round(revenue * (1 - PLATFORM_FEE_PCT));
     const fees = revenue - payouts;
     // Plant 2 anomalies
     const anomaly = i === 6 ? "spike" : i === 9 ? "dip" : null;
     return {
-      month: e.month,
+      month,
       revenue,
       payouts,
       fees,
@@ -151,22 +160,23 @@ const RANGE_OPTIONS = ["24h", "7d", "30d", "90d", "12m"] as const;
 type Range = (typeof RANGE_OPTIONS)[number];
 
 export default function AdminRevenuePage() {
+  // NOTE: do NOT fetch coach-scoped earnings here — `/api/coaches/me/wallet/...`
+  // 403s for an admin token and would error the whole page. Only the
+  // admin-accessible payout queue + public coach directory are fetched live.
   const { data, loading, error, refetch } = useApiResource(
     () =>
       Promise.all([
-        api.fetchEarnings(),
         api.fetchPendingWithdrawals(),
         api.fetchCoaches(),
       ]),
     [],
   );
-  const earnings = useMemo(() => data?.[0] ?? [], [data]);
-  const rawPayouts = useMemo(() => data?.[1] ?? [], [data]);
+  const rawPayouts = useMemo(() => data?.[0] ?? [], [data]);
   const coachById = useMemo(
-    () => new Map((data?.[2] ?? []).map((c) => [c.id, c])),
+    () => new Map((data?.[1] ?? []).map((c) => [c.id, c])),
     [data],
   );
-  const cashflow = useMemo(() => buildCashflow(earnings), [earnings]);
+  const cashflow = useMemo(() => buildCashflow(), []);
 
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("30d");
@@ -293,7 +303,7 @@ export default function AdminRevenuePage() {
     );
   }
 
-  if (error || earnings.length === 0) {
+  if (error) {
     return (
       <AppShell role="admin" title="Revenue & Payouts">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />

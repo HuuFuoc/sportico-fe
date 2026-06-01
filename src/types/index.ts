@@ -351,4 +351,15 @@ export interface VerificationRequest {
   status: "pending" | "approved" | "rejected";
   documents: { id: string; name: string; type: string }[];
   notes?: string;
+  /** Which moderation queue this item came from. */
+  kind?: "training-package" | "post" | "payout-account";
+  /** Real submission fields from the backend (present per kind). */
+  title?: string;
+  price?: number; // VND
+  sessionCount?: number;
+  durationDays?: number;
+  level?: string;
+  goalType?: string;
+  isOnline?: boolean;
+  location?: string;
 }

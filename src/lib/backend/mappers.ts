@@ -495,6 +495,11 @@ export function postToVerification(p: PostResponse): VerificationRequest {
     status: "pending",
     documents: [{ id: p.id, name: p.title ?? "Bài đăng", type: "post" }],
     notes: p.description ?? undefined,
+    kind: "post",
+    title: p.title ?? undefined,
+    price: p.price,
+    isOnline: p.isOnline,
+    location: p.location ?? undefined,
   };
 }
 
@@ -513,6 +518,15 @@ export function trainingPackageToVerification(
       { id: p.id, name: p.title ?? "Gói huấn luyện", type: "training-package" },
     ],
     notes: p.description ?? undefined,
+    kind: "training-package",
+    title: p.title ?? undefined,
+    price: p.price,
+    sessionCount: p.sessionCount,
+    durationDays: p.durationDays,
+    level: p.level ?? undefined,
+    goalType: p.goalType ?? undefined,
+    isOnline: p.isOnline,
+    location: p.location ?? undefined,
   };
 }
 
@@ -535,5 +549,7 @@ export function payoutAccountToVerification(
       },
     ],
     notes: a.bankAccountHolder ?? undefined,
+    kind: "payout-account",
+    title: `${a.bankName ?? "Ngân hàng"} • ${a.bankAccountNumber ?? ""}`,
   };
 }
