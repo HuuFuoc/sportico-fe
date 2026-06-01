@@ -116,7 +116,15 @@
       "PowerShell(Get-ChildItem \"D:\\\\FPT-Ky8\\\\EXE202\\\\sportico-platform\\\\src\\\\SporticoApp.Application\\\\DTOs\" -Recurse | Where-Object { $_.Name -match \"[Bb]ooking\" } | Select-Object FullName)",
       "Bash(curl -s \"https://sportico-api-khoi-g3bpg4a3dnhehng8.japaneast-01.azurewebsites.net/swagger/v1/swagger.json\" -o /tmp/swagger.json)",
       "Bash(echo \"exit:$?\")",
-      "PowerShell($s = Get-Content \"$env:TEMP\\\\swagger.json\" -Raw | ConvertFrom-Json; $s.paths.PSObject.Properties.Name | Where-Object { $_ -match 'reconcile|payos|payment|booking' } | Sort-Object)"
+      "PowerShell($s = Get-Content \"$env:TEMP\\\\swagger.json\" -Raw | ConvertFrom-Json; $s.paths.PSObject.Properties.Name | Where-Object { $_ -match 'reconcile|payos|payment|booking' } | Sort-Object)",
+      "Bash(node -e \"const c=Buffer.from\\('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63f8cfc0f01f0005000101a5f645d40000000049454e44ae426082','hex'\\); require\\('fs'\\).writeFileSync\\('.diag-1x1.png', c\\); console.log\\('wrote', c.length, 'bytes'\\);\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/upload -F \"file=@.diag-1x1.png;type=image/png\" -F \"folder=avatars\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://sportico-images-310485116823-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com/uploads/avatars/1780296091216-a2e66f7c-58c3-4709-a3f1-d27f67a9f0d5.png\")",
+      "Bash(taskkill /PID 13508 /F)",
+      "Bash(rm -f .diag-1x1.png .dev-upload-test.log)",
+      "Bash(cd \"d:/FPT-Ky8/EXE202/sportico\" && ls \"C:/Users/DELL/.claude/projects/d--FPT-Ky8-EXE202-sportico/memory/\" 2>/dev/null && echo \"---\" && cat \"C:/Users/DELL/.claude/projects/d--FPT-Ky8-EXE202-sportico/memory/MEMORY.md\" 2>/dev/null | head -30)",
+      "Read(//c/Users/DELL/.claude/projects/d--FPT-Ky8-EXE202-sportico/**)",
+      "Bash(echo \"EXIT $?\")"
     ],
     "additionalDirectories": [
       "d:\\FPT-Ky8\\EXE202\\sportico",

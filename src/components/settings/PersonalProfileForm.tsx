@@ -20,9 +20,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Info, Loader2, SkipForward, User } from "lucide-react";
+import { CheckCircle2, Info, Loader2, SkipForward } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/useAuthStore";
+import { ImageUpload } from "@/components/common/ImageUpload";
 import { cn } from "@/lib/utils";
 
 // ── Types / props ─────────────────────────────────────────────────────────────
@@ -217,37 +218,23 @@ export function PersonalProfileForm({
 
       {/* ── Form ───────────────────────────────────────────────────────── */}
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
-        {/* Avatar preview + URL field */}
-        <div className="flex items-start gap-4">
-          <div className="shrink-0">
-            {avatarPreview ? (
-              <img
-                src={avatarPreview}
-                alt="Ảnh đại diện"
-                className="h-16 w-16 rounded-full object-cover ring-2 ring-[var(--color-border-soft)]"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <User size={28} />
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <FieldLabel label="URL ảnh đại diện">
-              <FormInput
-                type="url"
-                value={form.avatarUrl}
-                onChange={set("avatarUrl")}
-                placeholder="https://example.com/avatar.jpg"
-                autoComplete="photo"
-              />
-              <p className="mt-1 text-[11.5px] text-on-surface-variant">
-                Dán đường dẫn ảnh (JPG / PNG / WebP).
-              </p>
-            </FieldLabel>
+        {/* Avatar — upload from device to S3, store the returned URL */}
+        <div className="flex items-start gap-5">
+          <ImageUpload
+            variant="avatar"
+            value={avatarPreview || undefined}
+            folder="avatars"
+            onChange={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
+            onError={(text) => setToast({ type: "error", text })}
+          />
+          <div className="flex-1 min-w-0 pt-1">
+            <p className="text-[13px] font-semibold text-on-surface">
+              Ảnh đại diện
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-on-surface-variant">
+              Tải ảnh từ máy của bạn (JPG, PNG, WebP, GIF — tối đa 8MB). Ảnh sẽ
+              được lưu trữ an toàn và hiển thị trên hồ sơ của bạn.
+            </p>
           </div>
         </div>
 

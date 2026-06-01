@@ -22,6 +22,7 @@ import { useAuthStore } from "@/lib/store/useAuthStore";
 import { messageForApiError } from "@/lib/errors-vi";
 import { cn } from "@/lib/utils";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { ImageUpload } from "@/components/common/ImageUpload";
 import type { UpdateCoachProfileRequest } from "@/lib/types/coach";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -309,11 +310,14 @@ export default function CoachProfilePage() {
                 placeholder="VD: 8"
               />
             </Field>
-            <Field label="Ảnh bìa" hint="Đường dẫn ảnh (http/https).">
-              <Input
+            <Field label="Ảnh bìa" hint="Tải ảnh từ máy của bạn.">
+              <ImageUpload
+                variant="cover"
                 value={form.coverImageUrl}
-                onChange={(e) => set("coverImageUrl", e.target.value)}
-                placeholder="https://…"
+                folder="coaches/covers"
+                allowRemove
+                placeholder="Kéo thả ảnh bìa hoặc bấm để chọn"
+                onChange={(url) => set("coverImageUrl", url)}
               />
             </Field>
             <Field label="Giới thiệu">

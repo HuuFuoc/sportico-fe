@@ -32,6 +32,7 @@ import {
 } from "@/lib/constants/coach-media";
 import { messageForApiError } from "@/lib/errors-vi";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { ImageUpload } from "@/components/common/ImageUpload";
 import { cn } from "@/lib/utils";
 import type {
   CoachProfileMediaResponse,
@@ -722,12 +723,15 @@ function MediaFormModal({
           </div>
         </FieldLabel>
 
-        <FieldLabel label="Đường dẫn media" required>
-          <input
+        <FieldLabel label="Ảnh media" required>
+          <ImageUpload
+            variant="wide"
             value={mediaUrl}
-            onChange={(e) => setMediaUrl(e.target.value)}
-            placeholder="https://…"
-            className="h-11 w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 text-[14px] outline-none focus:border-primary"
+            folder="coaches/media"
+            allowRemove
+            placeholder="Kéo thả ảnh hoặc bấm để chọn"
+            onChange={(url) => setMediaUrl(url)}
+            onError={(msg) => setErr(msg)}
           />
         </FieldLabel>
 
