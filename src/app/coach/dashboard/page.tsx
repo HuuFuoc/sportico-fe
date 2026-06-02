@@ -98,12 +98,16 @@ export default function CoachDashboardPage() {
         api.fetchCoach(coachId),
         api.fetchUpcoming({ coachId }),
         api.fetchLearners(),
+        api.fetchCoachDashboard(), // real aggregate metrics (null in mock mode)
       ]),
     [coachId],
   );
   const coach = data?.[0];
   const upcomingAll = useMemo(() => data?.[1] ?? [], [data]);
   const learners = useMemo(() => data?.[2] ?? [], [data]);
+  /** Real dashboard metrics — non-null in live mode, null in mock/demo mode. */
+  const dashStats = data?.[3] ?? null;
+
   const learnerById = useMemo(
     () => new Map(learners.map((l) => [l.id, l])),
     [learners],
@@ -120,7 +124,8 @@ export default function CoachDashboardPage() {
   );
   const recentLearners = useMemo(() => learners.slice(0, 5), [learners]);
 
-  const followUpCount = 3;
+  // In live mode use dashboard pending-withdrawal count; in mock mode keep 3
+  const followUpCount = dashStats?.pendingWithdrawalRequests ?? 3;
   const hour = new Date(NOW).getHours();
   const greeting =
     hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
@@ -133,7 +138,7 @@ export default function CoachDashboardPage() {
     );
   }
 
-  if (error || !coach) {
+  if (error) {
     return (
       <AppShell role="coach" title="Dashboard">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
@@ -146,7 +151,7 @@ export default function CoachDashboardPage() {
       <div className="max-w-[1340px] mx-auto space-y-6">
         {/* ============ HERO ============ */}
         <Hero
-          coachName={coach.name.split(" ")[0]}
+          coachName={coach?.name.split(" ")[0] ?? "HLV"}
           greeting={greeting}
           todayCount={todaySessions.length}
           followUpCount={followUpCount}
@@ -157,10 +162,9 @@ export default function CoachDashboardPage() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             icon={Users}
-            label="Học viên đang hoạt động"
-            value={coach.activeLearners}
-            trend="+12%"
-            trendLabel="so tháng trước"
+            label="Gói đang học"
+            value={dashStats?.activeBookings ?? coach?.activeLearners ?? 0}
+            trend={dashStats ? `${dashStats.completedBookings} hoàn thành` : undefined}
             accent="indigo"
             spark={seedSpark(1, 18, 4)}
             delay={0.05}
@@ -168,10 +172,9 @@ export default function CoachDashboardPage() {
           />
           <StatCard
             icon={CalendarPlus}
-            label="Buổi tập tuần này"
-            value={upcoming.length}
-            trend="Ổn định"
-            trendLabel="đúng tiến độ"
+            label="Buổi tập sắp tới"
+            value={dashStats?.upcomingSessions ?? upcoming.length}
+            trend={dashStats ? `${dashStats.requestedSessions} chờ xác nhận` : "Ổn định"}
             accent="violet"
             spark={seedSpark(2, 5, 3)}
             delay={0.1}
@@ -179,9 +182,9 @@ export default function CoachDashboardPage() {
           />
           <StatCard
             icon={Star}
-            label="Đánh giá TB"
-            value={coach.rating.toFixed(1)}
-            trend={`${coach.reviewCount} đánh giá`}
+            label="Tỷ lệ hoàn thành"
+            value={dashStats ? `${Math.round(dashStats.sessionCompletionRate * 100)}%` : (coach?.rating.toFixed(1) ?? "—")}
+            trend={dashStats ? `${dashStats.completedSessions} buổi xong` : `${coach?.reviewCount ?? 0} đánh giá`}
             accent="amber"
             spark={seedSpark(3, 4.7, 0.2)}
             delay={0.15}
@@ -189,10 +192,9 @@ export default function CoachDashboardPage() {
           />
           <StatCard
             icon={DollarSign}
-            label="Thu nhập tháng"
-            value={formatCurrency(coach.totalEarningsThisMonth ?? 0)}
-            trend="+8%"
-            trendLabel="so tháng trước"
+            label="Ví khả dụng"
+            value={dashStats ? formatCurrency(dashStats.availableBalance) : formatCurrency(coach?.totalEarningsThisMonth ?? 0)}
+            trend={dashStats ? `${formatCurrency(dashStats.pendingBalance)} đang chờ` : undefined}
             accent="emerald"
             spark={seedSpark(4, 3200, 400)}
             delay={0.2}
@@ -208,8 +210,8 @@ export default function CoachDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnalyticsCard
                 title="Buổi tập"
-                subtitle="Tuần này"
-                badge={`${WEEK_BARS.reduce((a, b) => a + b.sessions, 0)} tổng`}
+                subtitle={dashStats ? `${dashStats.completedSessions} hoàn thành / ${dashStats.cancelledSessions} huỷ` : "Tuần này"}
+                badge={dashStats ? `${dashStats.completedSessions + dashStats.upcomingSessions} tổng` : `${WEEK_BARS.reduce((a, b) => a + b.sessions, 0)} tổng (demo)`}
                 delay={0.25}
                 reduce={reduce ?? false}
               >
@@ -218,9 +220,9 @@ export default function CoachDashboardPage() {
 
               <AnalyticsCard
                 title="Thu nhập"
-                subtitle="Xu hướng 7 tháng"
-                badge="+18% so năm ngoái"
-                badgeTone="success"
+                subtitle={dashStats ? `Tổng: ${formatCurrency(dashStats.totalEarned)}` : "Xu hướng 7 tháng"}
+                badge={dashStats ? `Đã rút: ${formatCurrency(dashStats.totalWithdrawn)}` : "+18% so năm ngoái (demo)"}
+                badgeTone={dashStats ? undefined : "success"}
                 delay={0.3}
                 reduce={reduce ?? false}
               >
@@ -228,8 +230,9 @@ export default function CoachDashboardPage() {
               </AnalyticsCard>
 
               <AnalyticsCard
-                title="Tương tác"
-                subtitle="Trạng thái học viên"
+                title="Gói tập"
+                subtitle={dashStats ? "Phân tích gói tập" : "Trạng thái học viên"}
+                badge={dashStats ? `${dashStats.activeBookings} đang hoạt động` : "Demo"}
                 delay={0.35}
                 reduce={reduce ?? false}
                 className="md:col-span-2 xl:col-span-1"

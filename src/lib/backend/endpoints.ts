@@ -36,6 +36,8 @@ export const backendEndpoints = {
   coachWithdrawals: "/api/coaches/me/withdrawal-requests",
   coachWithdrawalReceipt: (id: string) =>
     `/api/coaches/me/withdrawal-requests/${encodeURIComponent(id)}/receipt`,
+  /** Aggregate dashboard for the authenticated coach. Optional FromDate/ToDate query. */
+  coachDashboard: "/api/coaches/me/dashboard",
 
   // ---- Availability slots -----------------------------------------------
   /** Coach manages their own slots */
@@ -129,6 +131,15 @@ export const backendEndpoints = {
 
   // ---- Posts -------------------------------------------------------------
   myPosts: "/api/posts/me",
+
+  // ---- Admin dashboard ---------------------------------------------------
+  /** Aggregate platform dashboard for admins. Optional FromDate/ToDate query. */
+  adminDashboard: "/api/admin/dashboard",
+  /** All admin withdrawal requests (any status). */
+  adminAllWithdrawals: "/api/admin/withdrawal-requests",
+  /** Single withdrawal request detail. */
+  adminWithdrawalById: (id: string) =>
+    `/api/admin/withdrawal-requests/${encodeURIComponent(id)}`,
 
   // ---- Admin moderation queues ------------------------------------------
   adminPendingPosts: "/api/admin/posts/pending",

@@ -1183,6 +1183,11 @@ const STATUS_META: Record<
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     dot: "bg-[#f59e0b]",
   },
+  approved: {
+    label: "Đã duyệt",
+    pill: "bg-blue-50 text-blue-700 border-blue-200",
+    dot: "bg-blue-500",
+  },
   processing: {
     label: "Đang xử lý",
     pill: "bg-primary/10 text-primary border-primary/20",
@@ -1190,6 +1195,11 @@ const STATUS_META: Record<
   },
   failed: {
     label: "Thất bại",
+    pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
+    dot: "bg-[#ef4444]",
+  },
+  rejected: {
+    label: "Đã từ chối",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     dot: "bg-[#ef4444]",
   },

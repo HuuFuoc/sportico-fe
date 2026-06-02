@@ -253,7 +253,7 @@ export interface Payout {
   coachId: string;
   amount: number;
   currency: string;
-  status: "paid" | "pending" | "processing" | "failed";
+  status: "paid" | "pending" | "approved" | "processing" | "failed" | "rejected";
   date: string; // ISO
   method: string;
 }

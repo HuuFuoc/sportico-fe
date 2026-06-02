@@ -812,16 +812,17 @@ function PendingConfirmations({
   const [declining, setDeclining] = useState<string | null>(null);
 
   const handleConfirm = useCallback(async (id: string) => {
-    if (isMockMode()) return;
+    if (isMockMode() || confirming) return;
     setConfirming(id);
     try { await api.confirmSession(id); onRefetch(); } finally { setConfirming(null); }
-  }, [onRefetch]);
+  }, [confirming, onRefetch]);
 
   const handleDecline = useCallback(async (id: string) => {
-    if (isMockMode()) return;
+    if (isMockMode() || declining) return;
+    if (!window.confirm("Từ chối yêu cầu buổi tập này?")) return;
     setDeclining(id);
     try { await api.cancelSession(id, "Huấn luyện viên từ chối"); onRefetch(); } finally { setDeclining(null); }
-  }, [onRefetch]);
+  }, [declining, onRefetch]);
 
   return (
     <motion.section
@@ -992,13 +993,18 @@ function SessionBlock({
     e.stopPropagation();
     if (!window.confirm("Bạn chắc chắn muốn hủy buổi này?")) return;
     if (isMockMode()) return;
+    if (cancelling) return; // prevent double-click
     setCancelling(true);
     try { await api.cancelSession(session.id); onRefetch(); } finally { setCancelling(false); }
   }
 
   async function handleComplete(e: React.MouseEvent) {
     e.stopPropagation();
+    if (!window.confirm(
+      "Hoàn thành buổi học sẽ ghi nhận doanh thu vào ví của bạn.\nBạn có chắc chắn buổi học đã diễn ra?"
+    )) return;
     if (isMockMode()) return;
+    if (completing) return; // prevent double-click
     setCompleting(true);
     try { await api.completeSession(session.id); onRefetch(); } finally { setCompleting(false); }
   }

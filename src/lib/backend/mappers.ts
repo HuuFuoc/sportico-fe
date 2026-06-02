@@ -450,9 +450,11 @@ function toPayoutStatus(raw?: string | null): Payout["status"] {
     case "paid":
       return "paid";
     case "approved":
+      return "approved";
     case "processing":
       return "processing";
     case "rejected":
+      return "rejected";
     case "failed":
       return "failed";
     default:

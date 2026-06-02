@@ -599,3 +599,49 @@ export interface ProgressCheckInResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---- Dashboard responses ---------------------------------------------------
+
+/** Optional date-range filter for dashboard endpoints. */
+export interface DashboardFilterParams {
+  fromDate?: string; // ISO datetime
+  toDate?: string;   // ISO datetime
+}
+
+/** GET /api/coaches/me/dashboard */
+export interface CoachDashboardResponse {
+  coachId: string;
+  activeBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  requestedSessions: number;
+  upcomingSessions: number;
+  completedSessions: number;
+  cancelledSessions: number;
+  sessionCompletionRate: number;
+  totalEarned: number;
+  availableBalance: number;
+  pendingBalance: number;
+  totalWithdrawn: number;
+  pendingWithdrawalRequests: number;
+}
+
+/** GET /api/admin/dashboard */
+export interface AdminDashboardResponse {
+  totalUsers: number;
+  totalLearners: number;
+  totalCoaches: number;
+  publishedPackages: number;
+  totalBookings: number;
+  activeBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  grossRevenue: number;
+  platformFeeRevenue: number;
+  coachPayable: number;
+  totalWithdrawnPaid: number;
+  pendingWithdrawals: number;
+  processingWithdrawals: number;
+  paidWithdrawals: number;
+  failedWithdrawals: number;
+}

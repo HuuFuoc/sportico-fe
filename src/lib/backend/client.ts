@@ -11,11 +11,13 @@
 import { apiFetch, ApiError, type ApiFetchOptions } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
+  AdminDashboardResponse,
   AvailabilitySlotResponse,
   BookingResponse,
   ChangePasswordRequest,
   ChatMessageResponse,
   ChatRoomResponse,
+  CoachDashboardResponse,
   CoachPayoutAccountResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
@@ -27,6 +29,7 @@ import type {
   CreateTrainingPlanRequest,
   CreateWeekRequest,
   CurrentUserResponse,
+  DashboardFilterParams,
   LearnerAssessmentResponse,
   NotificationResponse,
   PagedResult,
@@ -418,6 +421,16 @@ export const backend = {
     );
   },
 
+  // ---- Dashboard (coach + admin) ----------------------------------------
+  async coachDashboard(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(await GET<CoachDashboardResponse>(ep.coachDashboard + query));
+  },
+  async adminDashboard(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(await GET<AdminDashboardResponse>(ep.adminDashboard + query));
+  },
+
   // ---- Posts (coach) -----------------------------------------------------
   async myPosts(p?: ListParams) {
     return unwrapPage(
@@ -601,6 +614,14 @@ export const backend = {
       await PUT<CoachPayoutAccountResponse>(ep.adminRejectPayoutAccount(id), {
         note,
       }),
+    );
+  },
+  async allWithdrawals(p?: ListParams & { status?: string }) {
+    const query = qs({ Status: p?.status, PageNumber: p?.pageNumber, PageSize: p?.pageSize });
+    return unwrapPage(
+      await GET<PagedResult<WithdrawalRequestResponse>>(
+        ep.adminAllWithdrawals + query,
+      ),
     );
   },
   async pendingWithdrawals(p?: ListParams) {

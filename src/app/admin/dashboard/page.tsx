@@ -62,11 +62,11 @@ type Range = (typeof RANGE_OPTIONS)[number];
 const TAB_OPTIONS = ["HLV", "Học viên"] as const;
 type Tab = (typeof TAB_OPTIONS)[number];
 
+// Fallback demo values used only in mock mode when real API returns null.
 const TOTAL_USERS = 24_592;
 const ACTIVE_COACHES = 1_204;
 const SESSIONS_TODAY = 452;
 const PLATFORM_REVENUE_MTD = 842_000;
-const AI_ACCURACY = 94.2;
 
 function seedSpark(seed: number, base: number, jitter: number, len = 8) {
   return Array.from({ length: len }, (_, i) => {
@@ -114,6 +114,7 @@ export default function AdminDashboardPage() {
         api.fetchVerifications(),
         api.fetchCoaches(),
         api.fetchLearners(),
+        api.fetchAdminDashboard(), // real aggregate metrics (null in mock mode)
       ]),
     [],
   );
@@ -121,6 +122,8 @@ export default function AdminDashboardPage() {
   const allVerifications = useMemo(() => data?.[1] ?? [], [data]);
   const allCoaches = useMemo(() => data?.[2] ?? [], [data]);
   const allLearners = useMemo(() => data?.[3] ?? [], [data]);
+  /** Real platform dashboard — non-null in live mode, null in mock/demo mode. */
+  const dashStats = data?.[4] ?? null;
 
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("Tháng");
@@ -151,7 +154,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (error || dau.length === 0) {
+  if (error) {
     return (
       <AppShell role="admin" title="Admin Dashboard">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
@@ -159,10 +162,15 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const todayDAU = dau[dau.length - 1].activeUsers;
+  const todayDAU = dau.length > 0 ? dau[dau.length - 1].activeUsers : 0;
   const dauTotal = dau.reduce((s, d) => s + d.activeUsers, 0);
   const recentCoaches = allCoaches.slice(0, 5);
   const recentLearners = allLearners.slice(0, 5);
+
+  // Real metrics from backend when available, fallback to hardcoded demo values
+  const displayTotalUsers = dashStats?.totalUsers ?? TOTAL_USERS;
+  const displayActiveCoaches = dashStats?.totalCoaches ?? ACTIVE_COACHES;
+  const displayGrossRevenue = dashStats?.grossRevenue ?? PLATFORM_REVENUE_MTD;
 
   return (
     <AppShell role="admin" title="Admin Dashboard">
@@ -248,10 +256,10 @@ export default function AdminDashboardPage() {
 
         {/* ============ HERO COMMAND CENTER ============ */}
         <HeroCommand
-          revenue={PLATFORM_REVENUE_MTD}
-          users={TOTAL_USERS}
-          sessions={SESSIONS_TODAY}
-          coaches={ACTIVE_COACHES}
+          revenue={displayGrossRevenue}
+          users={displayTotalUsers}
+          sessions={dashStats?.activeBookings ?? SESSIONS_TODAY}
+          coaches={displayActiveCoaches}
           reduce={reduce ?? false}
         />
 
@@ -260,10 +268,10 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={Users}
             label="Tổng người dùng"
-            value={formatNumber(TOTAL_USERS)}
-            trend="+12%"
-            trendDir="up"
-            trendLabel="tăng trưởng tháng"
+            value={formatNumber(displayTotalUsers)}
+            trend={dashStats ? `${formatNumber(dashStats.totalLearners)} HV · ${formatNumber(dashStats.totalCoaches)} HLV` : "+12%"}
+            trendDir={dashStats ? "neutral" : "up"}
+            trendLabel={dashStats ? "" : "tăng trưởng tháng"}
             accent="indigo"
             spark={seedSpark(1, 18000, 2000)}
             delay={0.05}
@@ -272,10 +280,10 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={ShieldCheck}
             label="HLV đang hoạt động"
-            value={formatNumber(ACTIVE_COACHES)}
-            trend="84 mới"
+            value={formatNumber(displayActiveCoaches)}
+            trend={dashStats ? `${formatNumber(dashStats.publishedPackages)} gói đang bán` : "84 mới"}
             trendDir="up"
-            trendLabel="tuần này"
+            trendLabel={dashStats ? "" : "tuần này"}
             accent="violet"
             spark={seedSpark(2, 1100, 60)}
             delay={0.1}
@@ -283,11 +291,11 @@ export default function AdminDashboardPage() {
           />
           <KpiCard
             icon={Activity}
-            label="Buổi tập hôm nay"
-            value={formatNumber(SESSIONS_TODAY)}
-            trend="Đỉnh 14h"
-            trendDir="neutral"
-            trendLabel="hiện tại"
+            label={dashStats ? "Gói tập hoạt động" : "Buổi tập hôm nay"}
+            value={dashStats ? formatNumber(dashStats.activeBookings) : formatNumber(SESSIONS_TODAY)}
+            trend={dashStats ? `${formatNumber(dashStats.completedBookings)} hoàn thành` : "Đỉnh 14h"}
+            trendDir={dashStats ? "up" : "neutral"}
+            trendLabel={dashStats ? "" : "hiện tại"}
             accent="emerald"
             spark={seedSpark(3, 380, 60)}
             delay={0.15}
@@ -295,23 +303,23 @@ export default function AdminDashboardPage() {
           />
           <KpiCard
             icon={DollarSign}
-            label="Doanh thu tháng"
-            value={formatCurrency(PLATFORM_REVENUE_MTD)}
-            trend="+18%"
+            label="Doanh thu nền tảng"
+            value={formatCurrency(displayGrossRevenue)}
+            trend={dashStats ? `Phí: ${formatCurrency(dashStats.platformFeeRevenue)}` : "+18%"}
             trendDir="up"
-            trendLabel="so tháng trước"
+            trendLabel={dashStats ? "" : "so tháng trước"}
             accent="amber"
             spark={seedSpark(4, 700000, 60000)}
             delay={0.2}
             reduce={reduce ?? false}
           />
           <KpiCard
-            icon={Brain}
-            label="Độ chính xác ghép AI"
-            value={`${AI_ACCURACY}%`}
-            trend="+1.1%"
-            trendDir="up"
-            trendLabel="tuần/tuần"
+            icon={CreditCard}
+            label="Rút tiền chờ"
+            value={dashStats ? formatNumber(dashStats.pendingWithdrawals) : "—"}
+            trend={dashStats ? `${formatNumber(dashStats.processingWithdrawals)} đang xử lý` : "Demo"}
+            trendDir="neutral"
+            trendLabel=""
             accent="rose"
             spark={seedSpark(5, 91, 2)}
             delay={0.25}

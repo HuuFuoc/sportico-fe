@@ -41,6 +41,28 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   TRAINING_PACKAGE_NOT_OWNED: "Bạn chỉ có thể quản lý gói tập của chính mình.",
   INVALID_TRAINING_PACKAGE_STATUS: "Trạng thái gói tập không cho phép cập nhật.",
   TRAINING_PACKAGE_NOT_PUBLISHED: "Gói tập chưa được xuất bản.",
+  // Booking / session scheduling
+  BOOKING_NOT_FOUND: "Không tìm thấy gói đặt lịch.",
+  BOOKING_NOT_ACTIVE: "Gói tập đã hết hạn hoặc chưa được kích hoạt.",
+  BOOKING_EXPIRED: "Gói tập đã hết hạn.",
+  SESSION_LIMIT_EXCEEDED: "Gói này đã dùng hết số buổi.",
+  SCHEDULE_CONFLICT: "Khung giờ này vừa được đặt. Vui lòng chọn khung giờ khác.",
+  ScheduleConflict: "Khung giờ này vừa được đặt. Vui lòng chọn khung giờ khác.",
+  SLOT_NOT_AVAILABLE: "Khung giờ này không còn trống. Vui lòng chọn khung giờ khác.",
+  SLOT_NOT_FOUND: "Không tìm thấy khung giờ.",
+  WRONG_COACH_SLOT: "Khung giờ này không thuộc huấn luyện viên trong gói của bạn.",
+  SESSION_NOT_FOUND: "Không tìm thấy buổi tập.",
+  SESSION_ALREADY_CONFIRMED: "Buổi tập này đã được xác nhận.",
+  SESSION_ALREADY_CANCELLED: "Buổi tập này đã bị huỷ.",
+  SESSION_ALREADY_COMPLETED: "Buổi tập này đã hoàn thành.",
+  SESSION_NOT_SCHEDULED: "Buổi tập chưa được xác nhận — không thể hoàn thành.",
+  // Payment / purchase
+  MANUAL_PURCHASE_DISABLED: "Thanh toán thử đã bị tắt. Vui lòng dùng PayOS.",
+  PAYMENT_NOT_FOUND: "Không tìm thấy giao dịch thanh toán.",
+  // Withdrawal
+  WITHDRAWAL_INSUFFICIENT_BALANCE: "Số dư ví không đủ để rút.",
+  WITHDRAWAL_AMOUNT_TOO_SMALL: "Số tiền rút tối thiểu chưa đạt.",
+  WITHDRAWAL_PENDING_EXISTS: "Bạn đang có yêu cầu rút tiền chờ xử lý.",
   // Common
   COMMON_VALIDATION_ERROR: "Thông tin chưa hợp lệ.",
   COMMON_INTERNAL_SERVER_ERROR: "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.",
@@ -51,18 +73,34 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
 /**
  * Resolve the best Vietnamese message for any error thrown by the coach flow.
  * Always returns a non-empty, user-presentable string.
+ *
+ * Handles both `ApiResultError` (older coach flow) and the newer `ApiError`
+ * from `api-client.ts` whose `body` carries the backend `Result<T>` envelope
+ * with an `error.code` field.
  */
 export function messageForApiError(err: unknown): string {
+  // 1. Newer ApiError from apiFetch — body is the full Result envelope.
+  if (
+    err instanceof Error &&
+    err.name === "ApiError" &&
+    typeof (err as { body?: unknown }).body === "object"
+  ) {
+    const body = (err as { body?: { code?: string; message?: string; details?: string[] } }).body;
+    if (body?.code && ERROR_MESSAGES_VI[body.code]) return ERROR_MESSAGES_VI[body.code];
+    if (body?.code === "COMMON_VALIDATION_ERROR" && body?.details?.length) return body.details[0];
+    if (body?.message && body.message.trim()) return body.message.trim();
+  }
+
   if (err instanceof ApiResultError) {
-    // 1. Known backend code.
+    // 2. Known backend code.
     if (err.code && ERROR_MESSAGES_VI[err.code]) {
       return ERROR_MESSAGES_VI[err.code];
     }
-    // 2. Validation details (show the first concrete rule message).
+    // 3. Validation details (show the first concrete rule message).
     if (err.code === "COMMON_VALIDATION_ERROR" && err.details?.length) {
       return err.details[0];
     }
-    // 3. Backend's own message, when meaningful.
+    // 4. Backend's own message, when meaningful.
     if (err.message && err.message.trim().length > 0) return err.message;
   }
   if (err instanceof Error && err.message) return err.message;
@@ -72,4 +110,20 @@ export function messageForApiError(err: unknown): string {
 /** All validation detail lines, if the error carries them (for inline display). */
 export function validationDetails(err: unknown): string[] {
   return err instanceof ApiResultError ? (err.details ?? []) : [];
+}
+
+/**
+ * Lightweight variant for session / booking components that catch plain `Error`
+ * thrown by `apiFetch`. The error message already contains the BE message from
+ * `unwrap()` — this function maps known patterns to friendlier copy.
+ */
+export function sessionErrorMessage(err: unknown, fallback = "Thao tác thất bại. Vui lòng thử lại."): string {
+  const raw = err instanceof Error ? err.message : String(err);
+
+  // Scan the raw message for known backend error code patterns.
+  for (const [code, msg] of Object.entries(ERROR_MESSAGES_VI)) {
+    if (raw.toLowerCase().includes(code.toLowerCase())) return msg;
+  }
+
+  return raw.trim() || fallback;
 }

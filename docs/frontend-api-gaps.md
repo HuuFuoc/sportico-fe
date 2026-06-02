@@ -3,7 +3,7 @@
 This document tracks backend endpoints that are either missing, unclear, or not yet confirmed as implemented.
 It is updated as the integration progresses.
 
-Last updated: 2026-05-31 (updated with wallet, schedule, sessions, training plan verification; learner identity and receipt gaps documented 2026-05-31)
+Last updated: 2026-06-02 (dashboard endpoints added and integrated; admin withdrawals expanded; session error codes mapped; purchase/manual documented as dev-only)
 
 ---
 
@@ -96,7 +96,29 @@ Result<PublicCoachDetailResponse>                // detail
 
 ---
 
-## ✅ Confirmed and Integrated
+## ✅ Newly Integrated (2026-06-02)
+
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/api/coaches/me/dashboard` | GET | Integrated — `api.fetchCoachDashboard(filter?)`. Used by coach dashboard page to replace hardcoded KPI metrics. |
+| `/api/admin/dashboard` | GET | Integrated — `api.fetchAdminDashboard(filter?)`. Used by admin dashboard page to replace 5 hardcoded constants. |
+| `/api/admin/withdrawal-requests` | GET | Integrated — `api.fetchAllWithdrawals(status?)`. Admin withdrawals page now shows all statuses. |
+| `/api/admin/withdrawal-requests/{id}/mark-paid` | PUT | Integrated — `api.markPaidWithdrawal(id)`. Admin withdrawals page action button. |
+| `/api/admin/withdrawal-requests/{id}/refresh-payout-status` | PUT | Integrated — `api.refreshPayoutStatus(id)`. Admin withdrawals page action button. |
+| `/api/admin/withdrawal-requests/{id}/retry-payout` | POST | Integrated — `api.retryPayout(id)`. Admin withdrawals page action button. |
+
+### Manual Purchase Policy (2026-06-02)
+
+`POST /api/bookings/purchase/manual` is **dev/test only** and is disabled by default in production.
+
+- `backend.purchaseManual()` exists in the client but is NOT called from any production UI.
+- `api.purchasePackage()` in live mode always uses `purchasePayos` (PayOS flow).
+- In mock mode, `purchasePackage` returns `{ booked: true }` to simulate instant booking.
+- If the backend returns `MANUAL_PURCHASE_DISABLED`, the `sessionErrorMessage()` helper maps it to: "Thanh toán thử đã bị tắt. Vui lòng dùng PayOS."
+
+---
+
+## ✅ Confirmed and Integrated (historical)
 
 | Endpoint | Method | Notes |
 |----------|--------|-------|
@@ -160,11 +182,9 @@ These endpoints were added to the frontend endpoint map (`src/lib/backend/endpoi
 
 | Endpoint | Method | Status |
 |----------|--------|--------|
-| `/api/coaches/me/availability-slots` | GET/POST | **UNCONFIRMED** — added to client |
-| `/api/coaches/me/availability-slots/{id}/cancel` | PUT | **UNCONFIRMED** |
-| `/api/coaches/{coachId}/availability-slots` | GET | **UNCONFIRMED** |
-
-**Impact:** Coach schedule page currently uses mock data for availability slot creation. When confirmed, wire `backend.createAvailabilitySlot()` and `backend.cancelAvailabilitySlot()` into the schedule page.
+| `/api/coaches/me/availability-slots` | GET/POST | **CONFIRMED** — integrated via `api.fetchMySlots()` / `api.createSlot()` |
+| `/api/coaches/me/availability-slots/{id}/cancel` | PUT | **CONFIRMED** — integrated via `api.cancelSlot()` |
+| `/api/coaches/{coachId}/availability-slots` | GET | **CONFIRMED** — integrated via `api.fetchCoachSlots()` |
 
 ---
 
@@ -172,14 +192,12 @@ These endpoints were added to the frontend endpoint map (`src/lib/backend/endpoi
 
 | Endpoint | Method | Status |
 |----------|--------|--------|
-| `/api/learners/me/training-sessions` | GET | **UNCONFIRMED** |
-| `/api/coaches/me/training-sessions` | GET | **UNCONFIRMED** |
-| `/api/training-sessions/{id}/confirm` | PUT | **UNCONFIRMED** |
-| `/api/training-sessions/{id}/cancel` | PUT | **UNCONFIRMED** |
-| `/api/training-sessions/{id}/complete` | PUT | **UNCONFIRMED** |
-| `/api/bookings/{id}/sessions` | POST | **UNCONFIRMED** — learner books a session |
-
-**Current fallback:** Coach learner detail page (`/coach/learners/[bookingId]`) renders sessions from mock data when in mock mode. Session actions (confirm/cancel/complete) are no-ops in mock mode.
+| `/api/learners/me/training-sessions` | GET | **CONFIRMED** — integrated via `api.fetchMyTrainingSessions()` |
+| `/api/coaches/me/training-sessions` | GET | **CONFIRMED** — integrated via `api.fetchMyCoachTrainingSessions()` |
+| `/api/training-sessions/{id}/confirm` | PUT | **CONFIRMED** — integrated via `api.confirmSession()` |
+| `/api/training-sessions/{id}/cancel` | PUT | **CONFIRMED** — integrated via `api.cancelSession()` |
+| `/api/training-sessions/{id}/complete` | PUT | **CONFIRMED** — integrated via `api.completeSession()`, with confirmation dialog |
+| `/api/bookings/{id}/sessions` | POST | **CONFIRMED** — integrated via `api.bookSession()` with BE error code mapping |
 
 ---
 
@@ -187,14 +205,12 @@ These endpoints were added to the frontend endpoint map (`src/lib/backend/endpoi
 
 | Endpoint | Method | Status |
 |----------|--------|--------|
-| `/api/bookings/{id}/training-plan` | POST | **UNCONFIRMED** — create new plan |
-| `/api/training-plans/{id}` | PUT | **UNCONFIRMED** — update plan header |
-| `/api/training-plans/{id}/weeks` | POST | **UNCONFIRMED** |
-| `/api/training-plan-weeks/{weekId}/days` | POST | **UNCONFIRMED** |
-| `/api/training-plan-days/{dayId}/exercises` | POST | **UNCONFIRMED** |
-| `/api/training-plan-exercises/{id}` | PUT/DELETE | **UNCONFIRMED** |
-
-**Current fallback:** Training plan builder in `/coach/learners/[bookingId]` uses mock state updates when `isMockMode()` is true.
+| `/api/bookings/{id}/training-plan` | POST | **CONFIRMED** — integrated via `backend.createTrainingPlan()` in coach learner detail |
+| `/api/training-plans/{id}` | PUT | **CONFIRMED** — integrated via `backend.updateTrainingPlan()` |
+| `/api/training-plans/{id}/weeks` | POST | **CONFIRMED** — integrated via `backend.addPlanWeek()` |
+| `/api/training-plan-weeks/{weekId}/days` | POST | **CONFIRMED** — integrated via `backend.addPlanDay()` |
+| `/api/training-plan-days/{dayId}/exercises` | POST | **CONFIRMED** — integrated via `backend.addExercise()` |
+| `/api/training-plan-exercises/{id}` | PUT/DELETE | **CONFIRMED** — integrated via `backend.updateExercise()` / `backend.deleteExercise()` |
 
 ---
 
@@ -202,9 +218,7 @@ These endpoints were added to the frontend endpoint map (`src/lib/backend/endpoi
 
 | Endpoint | Method | Status |
 |----------|--------|--------|
-| `/api/chat/rooms` | POST | **UNCONFIRMED** — `backend.createChatRoom(coachId)` added |
-
-**Note:** The current `api.findChatRoomWith()` only searches existing rooms. If `POST /api/chat/rooms` exists, `createChatRoom` can be wired into the coach detail page "Chat" button.
+| `/api/chat/rooms` | POST | **CONFIRMED** — integrated via `api.createOrGetChatRoom(coachId)` |
 
 ---
 

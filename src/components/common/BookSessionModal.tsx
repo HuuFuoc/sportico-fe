@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { sessionErrorMessage } from "@/lib/errors-vi";
 import type { AvailabilitySlot, Booking } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -118,11 +119,7 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
       refetchSlots();
       onBooked();
     } catch (err) {
-      setSubmitError(
-        err instanceof Error
-          ? err.message
-          : "Đặt lịch thất bại. Vui lòng thử lại.",
-      );
+      setSubmitError(sessionErrorMessage(err, "Đặt lịch thất bại. Vui lòng thử lại."));
     } finally {
       setSubmitting(false);
     }

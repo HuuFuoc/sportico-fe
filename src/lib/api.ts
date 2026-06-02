@@ -616,6 +616,33 @@ export const api = {
       },
     ),
 
+  // ---- Dashboard (coach + admin) ----------------------------------------
+  /**
+   * Coach aggregate dashboard. Returns null in mock mode or on error so pages
+   * can fall back to mock/skeleton data gracefully.
+   */
+  fetchCoachDashboard: (filter?: {
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<import("@/lib/backend/dto").CoachDashboardResponse | null> =>
+    liveAuthed(
+      () => backend.coachDashboard(filter).catch(() => null),
+      () => null,
+    ),
+
+  /**
+   * Admin aggregate dashboard. Returns null in mock mode or on error so the
+   * page can fall back to its existing mock constants gracefully.
+   */
+  fetchAdminDashboard: (filter?: {
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<import("@/lib/backend/dto").AdminDashboardResponse | null> =>
+    liveAuthed(
+      () => backend.adminDashboard(filter).catch(() => null),
+      () => null,
+    ),
+
   // ---- Earnings / payouts ------------------------------------------------
   fetchEarnings: (): Promise<EarningPoint[]> =>
     liveAuthed(async () => {
@@ -632,6 +659,12 @@ export const api = {
       const page = await backend.pendingWithdrawals({ pageSize: 100 });
       return (page.items ?? []).map(map.withdrawalToPayout);
     }, () => getPayouts().filter((p) => p.status !== "paid")),
+  /** All admin withdrawal requests, optionally filtered by status. */
+  fetchAllWithdrawals: (status?: string): Promise<Payout[]> =>
+    liveAuthed(async () => {
+      const page = await backend.allWithdrawals({ pageSize: 200, status });
+      return (page.items ?? []).map(map.withdrawalToPayout);
+    }, () => getPayouts()),
   approveWithdrawal: (id: string): Promise<void> =>
     liveAuthed<void>(async () => {
       await backend.approveWithdrawal(id);
