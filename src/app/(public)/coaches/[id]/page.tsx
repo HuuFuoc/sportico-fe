@@ -5,25 +5,32 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  AlertCircle,
   ArrowLeft,
   BadgeCheck,
   Check,
+  ChevronDown,
   ChevronRight,
   FileText,
+  Flag,
   Home,
   Image as ImageIcon,
   Info,
   Loader2,
   MapPin,
   MessageCircle,
+  MessageSquare,
   Move,
+  Pencil,
   RotateCcw,
   ShieldCheck,
   Sparkles,
   Star,
+  Trash2,
   Trophy,
   Video,
   Wifi,
+  X,
 } from "lucide-react";
 import { PublicNavbar } from "@/components/layout/PublicNavbar";
 import { Footer } from "@/components/layout/Footer";
@@ -31,6 +38,7 @@ import { TiltedCard } from "@/components/ui/TiltedCard";
 import { LoadingState, ErrorState } from "@/components/common/AsyncStates";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
+import { savePendingPayos } from "@/lib/payos-pending";
 import { backend } from "@/lib/backend/client";
 import { isMockMode, ApiError } from "@/lib/api-client";
 import { getAccessToken } from "@/lib/auth-token";
@@ -38,7 +46,9 @@ import { getCurrentRole } from "@/lib/auth-session";
 import { messageForApiError } from "@/lib/errors-vi";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/useAuthStore";
-import type { PublicCoachDetailResponse } from "@/lib/backend/dto";
+import type { CurrentUserResponse, PublicCoachDetailResponse } from "@/lib/backend/dto";
+import type { CreateReviewRequest, UpdateReviewRequest, CreateReviewReportRequest } from "@/lib/backend/dto";
+import type { Review, ReviewSummary } from "@/types";
 import { BookSessionModal } from "@/components/common/BookSessionModal";
 import { CalendarPlus } from "lucide-react";
 
@@ -290,21 +300,14 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       const result = await api.purchasePackage(packageId);
       if ("checkoutUrl" in result) {
         // Save payment identifiers so /payment/success can reconcile even if
-        // PayOS does not pass orderCode back in the redirect URL.
-        try {
-          sessionStorage.setItem(
-            "pendingPayosPayment",
-            JSON.stringify({
-              bookingId: result.bookingId,
-              paymentId: result.paymentId,
-              orderCode: result.orderCode,
-              createdAt: new Date().toISOString(),
-            }),
-          );
-        } catch {
-          // sessionStorage unavailable (private mode) — reconcile will fall
-          // back to the URL param.
-        }
+        // PayOS does not pass orderCode back in the redirect URL, and so the
+        // "Đồng bộ thanh toán" button works when the learner returns later.
+        savePendingPayos({
+          bookingId: result.bookingId,
+          paymentId: result.paymentId,
+          orderCode: result.orderCode,
+          createdAt: new Date().toISOString(),
+        });
         window.location.href = result.checkoutUrl;
         return;
       }
@@ -801,6 +804,12 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                   )}
                 </Section>
               )}
+              {/* Đánh giá */}
+              <ReviewsSection
+                coachId={id}
+                isAuthed={isAuthed}
+                authUser={authUser}
+              />
             </div>
 
             {/* ── Right sidebar — Booking Summary ───────────────────────── */}
@@ -1080,6 +1089,680 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// ── ReviewsSection ────────────────────────────────────────────────────────────
+
+const REVIEW_SORT_OPTIONS = [
+  { key: "latest" as const, label: "Mới nhất" },
+  { key: "highest" as const, label: "Cao nhất" },
+  { key: "lowest" as const, label: "Thấp nhất" },
+];
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onChange(s)}
+          onMouseEnter={() => setHovered(s)}
+          onMouseLeave={() => setHovered(0)}
+          className="p-0.5"
+        >
+          <Star
+            size={22}
+            className={cn(
+              "transition-colors",
+              s <= (hovered || value)
+                ? "fill-amber-400 text-amber-400"
+                : "text-on-surface-variant/20",
+            )}
+          />
+        </button>
+      ))}
+    </span>
+  );
+}
+
+function StarRow({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          size={12}
+          className={s <= rating ? "fill-amber-400 text-amber-400" : "text-on-surface-variant/20"}
+        />
+      ))}
+    </span>
+  );
+}
+
+function RatingBar({ label, count, total }: { label: string; count: number; total: number }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-6 shrink-0 text-right text-[12px] text-on-surface-variant">{label}</span>
+      <Star size={10} className="shrink-0 fill-amber-400 text-amber-400" />
+      <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-on-surface-variant/[0.08]">
+        <div
+          className="h-full rounded-full bg-amber-400 transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-6 shrink-0 text-[11px] tabular-nums text-on-surface-variant">{count}</span>
+    </div>
+  );
+}
+
+function ReviewCard({
+  review,
+  isOwn,
+  onEdit,
+  onDelete,
+  onReport,
+  showReport,
+}: {
+  review: Review;
+  isOwn: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onReport: (id: string) => void;
+  showReport: boolean;
+}) {
+  return (
+    <div className={cn(
+      "rounded-[10px] border p-4 space-y-2 transition-colors",
+      isOwn
+        ? "border-primary/20 bg-primary/[0.03]"
+        : "border-[var(--color-border-soft)] bg-surface-container-lowest",
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {review.learnerAvatarUrl ? (
+            <img
+              src={review.learnerAvatarUrl}
+              alt={review.learnerName ?? ""}
+              className="h-8 w-8 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-bold text-primary">
+              {(review.learnerName ?? "?").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-on-surface truncate">
+              {review.learnerName ?? `Học viên`}
+              {isOwn && (
+                <span className="ml-1.5 text-[11px] font-normal text-primary">(Bạn)</span>
+              )}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <StarRow rating={review.rating} />
+              <span className="text-[11px] text-on-surface-variant tabular-nums">
+                {new Date(review.createdAt).toLocaleDateString("vi-VN")}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {isOwn && review.canEdit && (
+            <>
+              <button
+                onClick={onEdit}
+                className="rounded p-1.5 text-on-surface-variant/60 hover:bg-surface-container-high hover:text-primary transition-colors"
+                title="Chỉnh sửa"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                onClick={onDelete}
+                className="rounded p-1.5 text-on-surface-variant/60 hover:bg-red-50 hover:text-red-500 transition-colors"
+                title="Xoá"
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
+          {isOwn && !review.canEdit && (
+            <span className="text-[11px] italic text-on-surface-variant/60">Đã hết hạn chỉnh sửa</span>
+          )}
+          {showReport && !isOwn && (
+            <button
+              onClick={() => onReport(review.id)}
+              className="rounded p-1.5 text-on-surface-variant/40 hover:bg-surface-container-high hover:text-red-500 transition-colors"
+              title="Báo cáo đánh giá"
+            >
+              <Flag size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+      {review.comment && (
+        <p className="text-[13px] leading-relaxed text-on-surface-variant">{review.comment}</p>
+      )}
+    </div>
+  );
+}
+
+function ReviewsSection({
+  coachId,
+  isAuthed,
+  authUser,
+}: {
+  coachId: string;
+  isAuthed: boolean;
+  authUser: CurrentUserResponse | null;
+}) {
+  const [sortBy, setSortBy] = useState<"latest" | "highest" | "lowest">("latest");
+  const [ratingFilter, setRatingFilter] = useState<number | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const PAGE_SIZE = 10;
+
+  const isLearner = authUser?.roles?.some((r) => r.toLowerCase() === "learner");
+  const isCoach = authUser?.roles?.some((r) => r.toLowerCase() === "coach");
+  const isOwnCoachProfile = isCoach && authUser?.id === coachId;
+
+  // Summary
+  const { data: summary, loading: summaryLoading } = useApiResource<ReviewSummary>(
+    () => api.fetchReviewSummary(coachId),
+    [coachId, refreshKey],
+  );
+
+  // Review list
+  const { data: reviewsData, loading: listLoading } = useApiResource(
+    () => api.fetchReviews(coachId, { pageNumber: page, pageSize: PAGE_SIZE, rating: ratingFilter, sortBy }),
+    [coachId, page, ratingFilter, sortBy, refreshKey],
+  );
+
+  const reviews = reviewsData?.items ?? [];
+  const hasNext = reviewsData?.hasNext ?? false;
+
+  // My review (learner only)
+  const [myReview, setMyReview] = useState<Review | null | undefined>(undefined);
+  const [myReviewLoading, setMyReviewLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthed || !isLearner) { setMyReview(null); return; }
+    setMyReviewLoading(true);
+    api.fetchMyReviewForCoach(coachId)
+      .then((r) => setMyReview(r))
+      .catch(() => setMyReview(null))
+      .finally(() => setMyReviewLoading(false));
+  }, [coachId, isAuthed, isLearner]);
+
+  const bumpRefresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    setPage(1);
+  }, []);
+
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [formRating, setFormRating] = useState(5);
+  const [formComment, setFormComment] = useState("");
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const openCreate = () => {
+    setEditMode(false);
+    setFormRating(5);
+    setFormComment("");
+    setFormError(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (r: Review) => {
+    setEditMode(true);
+    setFormRating(r.rating);
+    setFormComment(r.comment ?? "");
+    setFormError(null);
+    setShowForm(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (formRating < 1 || formRating > 5) { setFormError("Vui lòng chọn từ 1 đến 5 sao."); return; }
+    if (formComment.length > 1000) { setFormError("Nhận xét tối đa 1000 ký tự."); return; }
+    setFormSubmitting(true);
+    setFormError(null);
+    try {
+      const body: CreateReviewRequest | UpdateReviewRequest = { rating: formRating, comment: formComment || undefined };
+      let updated: Review;
+      if (editMode && myReview) {
+        updated = await api.updateReview(myReview.id, body as UpdateReviewRequest);
+      } else {
+        updated = await api.createReview(coachId, body as CreateReviewRequest);
+      }
+      setMyReview(updated);
+      setShowForm(false);
+      bumpRefresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("REVIEW_ALREADY_EXISTS")) {
+        const mine = await api.fetchMyReviewForCoach(coachId);
+        setMyReview(mine);
+        if (mine) { openEdit(mine); }
+        setFormError("Bạn đã đánh giá coach này. Hãy chỉnh sửa đánh giá hiện tại.");
+      } else if (msg.includes("REVIEW_NOT_ALLOWED")) {
+        setFormError("Bạn cần có gói tập đã thanh toán với coach này để đánh giá.");
+      } else if (msg.includes("REVIEW_EDIT_EXPIRED")) {
+        setFormError("Gói tập đã hết hạn. Không thể chỉnh sửa đánh giá.");
+        if (myReview) setMyReview({ ...myReview, canEdit: false });
+      } else {
+        setFormError(msg || "Gửi đánh giá thất bại.");
+      }
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  // Delete
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDeleteReview = async () => {
+    if (!myReview || deleting) return;
+    setDeleting(true);
+    try {
+      await api.deleteReview(myReview.id);
+      setMyReview(null);
+      setShowDeleteConfirm(false);
+      bumpRefresh();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Xoá đánh giá thất bại.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Report
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDesc, setReportDesc] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportDone, setReportDone] = useState(false);
+
+  const openReport = (id: string) => {
+    setReportTarget(id);
+    setReportReason("");
+    setReportDesc("");
+    setReportError(null);
+    setReportDone(false);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportTarget || !reportReason.trim()) { setReportError("Vui lòng điền lý do báo cáo."); return; }
+    setReportSubmitting(true);
+    setReportError(null);
+    try {
+      const body: CreateReviewReportRequest = { reason: reportReason, description: reportDesc || undefined };
+      await api.reportReview(reportTarget, body);
+      setReportDone(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("REVIEW_REPORT_NOT_ALLOWED")) {
+        setReportError("Bạn chỉ có thể báo cáo đánh giá thuộc hồ sơ coach của mình.");
+      } else {
+        setReportError(msg || "Báo cáo thất bại. Vui lòng thử lại.");
+      }
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  const EASE_LOCAL = [0.16, 1, 0.3, 1] as const;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.32, ease: EASE_LOCAL }}
+      className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 space-y-5"
+    >
+      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-on-surface">
+        <Star size={16} className="text-amber-400" />
+        Đánh giá từ học viên
+      </h2>
+
+      {/* Summary */}
+      {!summaryLoading && summary && summary.totalReviews > 0 && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="flex flex-col items-center justify-center rounded-[12px] bg-surface-container-low px-6 py-4 shrink-0">
+            <span className="text-[40px] font-bold tabular-nums leading-none text-on-surface">
+              {summary.averageRating.toFixed(1)}
+            </span>
+            <StarRow rating={Math.round(summary.averageRating)} />
+            <span className="mt-1 text-[12px] text-on-surface-variant tabular-nums">
+              {summary.totalReviews} đánh giá
+            </span>
+          </div>
+          <div className="flex-1 space-y-1.5">
+            {[5, 4, 3, 2, 1].map((s) => (
+              <RatingBar
+                key={s}
+                label={String(s)}
+                count={summary.ratingBreakdown[String(s)] ?? 0}
+                total={summary.totalReviews}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Learner own review section */}
+      {isAuthed && isLearner && (
+        <div>
+          {myReviewLoading && (
+            <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+              <Loader2 size={13} className="animate-spin" />
+              Đang tải đánh giá của bạn…
+            </div>
+          )}
+          {!myReviewLoading && myReview && !showForm && (
+            <div className="space-y-2">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-on-surface-variant">
+                Đánh giá của bạn
+              </p>
+              <ReviewCard
+                review={myReview}
+                isOwn
+                onEdit={() => openEdit(myReview)}
+                onDelete={() => setShowDeleteConfirm(true)}
+                onReport={() => {}}
+                showReport={false}
+              />
+            </div>
+          )}
+          {!myReviewLoading && !myReview && !showForm && (
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-primary/25 bg-primary/[0.06] px-4 py-2.5 text-[13px] font-semibold text-primary hover:bg-primary/[0.1] transition-colors"
+            >
+              <Star size={14} />
+              Viết đánh giá
+            </button>
+          )}
+
+          {/* Create / Edit form */}
+          {showForm && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-[10px] border border-primary/20 bg-primary/[0.03] p-4 space-y-3"
+            >
+              <p className="text-[13px] font-semibold text-on-surface">
+                {editMode ? "Chỉnh sửa đánh giá" : "Viết đánh giá"}
+              </p>
+              <div className="space-y-1">
+                <p className="text-[11px] text-on-surface-variant">Số sao *</p>
+                <StarPicker value={formRating} onChange={setFormRating} />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-on-surface-variant">Nhận xét (tuỳ chọn)</p>
+                  <span className={cn(
+                    "text-[11px] tabular-nums",
+                    formComment.length > 950 ? "text-red-500" : "text-on-surface-variant/60",
+                  )}>
+                    {formComment.length}/1000
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  className="w-full resize-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
+                  placeholder="Chia sẻ trải nghiệm của bạn…"
+                  value={formComment}
+                  onChange={(e) => setFormComment(e.target.value)}
+                />
+              </div>
+              {formError && (
+                <div className="flex items-center gap-2 rounded-[7px] border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+                  <AlertCircle size={12} className="shrink-0" />
+                  {formError}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={formSubmitting}
+                  className="inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-4 py-2 text-[13px] font-semibold text-on-primary disabled:opacity-60"
+                >
+                  {formSubmitting && <Loader2 size={13} className="animate-spin" />}
+                  {editMode ? "Lưu thay đổi" : "Gửi đánh giá"}
+                </button>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="rounded-[8px] px-4 py-2 text-[13px] text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                >
+                  Huỷ
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Delete confirm */}
+          {showDeleteConfirm && (
+            <div className="rounded-[10px] border border-red-200 bg-red-50 p-4 space-y-3">
+              <p className="text-[13px] font-semibold text-red-800">Xoá đánh giá?</p>
+              <p className="text-[12px] text-red-700">Hành động này không thể hoàn tác.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDeleteReview}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1 rounded-[8px] bg-red-600 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60"
+                >
+                  {deleting && <Loader2 size={12} className="animate-spin" />}
+                  Xoá
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="rounded-[8px] px-3 py-1.5 text-[12px] text-on-surface-variant hover:bg-red-100 transition-colors"
+                >
+                  Huỷ
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sort + filter controls */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12px] text-on-surface-variant">Sắp xếp:</span>
+        <div className="flex gap-1">
+          {REVIEW_SORT_OPTIONS.map((o) => (
+            <button
+              key={o.key}
+              onClick={() => { setSortBy(o.key); setPage(1); }}
+              className={cn(
+                "rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors",
+                sortBy === o.key
+                  ? "border-primary/30 bg-primary/[0.08] text-primary"
+                  : "border-[var(--color-border-soft)] text-on-surface-variant hover:bg-surface-container-low",
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <span className="ml-2 text-[12px] text-on-surface-variant">Lọc:</span>
+        <div className="flex gap-1">
+          {[undefined, 5, 4, 3, 2, 1].map((r) => (
+            <button
+              key={r ?? "all"}
+              onClick={() => { setRatingFilter(r); setPage(1); }}
+              className={cn(
+                "rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors",
+                ratingFilter === r
+                  ? "border-amber-300 bg-amber-50 text-amber-700"
+                  : "border-[var(--color-border-soft)] text-on-surface-variant hover:bg-surface-container-low",
+              )}
+            >
+              {r == null ? "Tất cả" : `${r}★`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Review list */}
+      {listLoading && (
+        <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+          <Loader2 size={14} className="animate-spin" />
+          Đang tải…
+        </div>
+      )}
+      {!listLoading && reviews.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[var(--color-border-soft)] py-10 text-center">
+          <MessageSquare size={24} className="mb-2 text-on-surface-variant/30" />
+          <p className="text-[13px] text-on-surface-variant">Chưa có đánh giá nào.</p>
+        </div>
+      )}
+      {!listLoading && reviews.length > 0 && (
+        <div className="space-y-2">
+          {reviews.map((r) => {
+            const isOwn = !!authUser && r.learnerId === authUser.id;
+            return (
+              <ReviewCard
+                key={r.id}
+                review={r}
+                isOwn={isOwn}
+                onEdit={() => openEdit(r)}
+                onDelete={() => setShowDeleteConfirm(true)}
+                onReport={openReport}
+                showReport={!!isOwnCoachProfile}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {(hasNext || page > 1) && (
+        <div className="flex justify-center gap-2">
+          {page > 1 && (
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] px-3 py-1.5 text-[12px] text-on-surface-variant hover:bg-surface-container-low transition-colors"
+            >
+              ← Trước
+            </button>
+          )}
+          {hasNext && (
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] px-3 py-1.5 text-[12px] text-on-surface-variant hover:bg-surface-container-low transition-colors"
+            >
+              Tiếp <ChevronDown size={12} className="-rotate-90" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Report modal */}
+      <AnimatePresence>
+        {reportTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setReportTarget(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: EASE_LOCAL }}
+              className="relative z-10 w-full max-w-[440px] rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_20px_60px_-12px_rgba(15,15,30,0.25)] space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-red-50">
+                    <Flag size={15} className="text-red-500" />
+                  </div>
+                  <p className="text-[14px] font-semibold text-on-surface">Báo cáo đánh giá</p>
+                </div>
+                <button
+                  onClick={() => setReportTarget(null)}
+                  className="rounded-[7px] p-1.5 text-on-surface-variant hover:bg-surface-container-low"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              {reportDone ? (
+                <div className="flex flex-col items-center py-4 gap-2 text-emerald-700">
+                  <Check size={24} />
+                  <p className="text-[13px] font-semibold">Báo cáo đã được gửi</p>
+                  <p className="text-[12px] text-on-surface-variant">Chúng tôi sẽ xem xét trong thời gian sớm nhất.</p>
+                  <button
+                    onClick={() => setReportTarget(null)}
+                    className="mt-2 rounded-[8px] border border-[var(--color-border-soft)] px-4 py-2 text-[13px] text-on-surface-variant hover:bg-surface-container-low"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-semibold text-on-surface-variant">
+                      Lý do báo cáo *
+                    </label>
+                    <input
+                      className="w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
+                      placeholder="Nội dung vi phạm, thông tin sai…"
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-semibold text-on-surface-variant">
+                      Mô tả thêm (tuỳ chọn)
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="w-full resize-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
+                      placeholder="Chi tiết thêm về vấn đề…"
+                      value={reportDesc}
+                      onChange={(e) => setReportDesc(e.target.value)}
+                    />
+                  </div>
+                  {reportError && (
+                    <div className="flex items-center gap-2 rounded-[7px] border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+                      <AlertCircle size={12} className="shrink-0" />
+                      {reportError}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleReportSubmit}
+                      disabled={reportSubmitting}
+                      className="inline-flex items-center gap-1.5 rounded-[8px] bg-red-600 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60"
+                    >
+                      {reportSubmitting && <Loader2 size={12} className="animate-spin" />}
+                      Gửi báo cáo
+                    </button>
+                    <button
+                      onClick={() => setReportTarget(null)}
+                      className="rounded-[8px] px-4 py-2 text-[13px] text-on-surface-variant hover:bg-surface-container-low"
+                    >
+                      Huỷ
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.section>
   );
 }
 

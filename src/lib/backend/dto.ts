@@ -251,6 +251,8 @@ export interface CoachPayoutAccountResponse {
   coachId: string;
   payoutMethod?: string | null;
   bankName?: string | null;
+  /** 6-digit Napas/VietQR BIN code. */
+  bankBin?: string | null;
   bankAccountNumber?: string | null;
   bankAccountHolder?: string | null;
   status?: string | null;
@@ -549,6 +551,12 @@ export interface UpdateExerciseRequest {
   notes?: string;
 }
 
+// ---- Progress check-in feedback -------------------------------------------
+
+export interface UpdateCheckInFeedbackRequest {
+  coachFeedback: string;
+}
+
 // ---- Session booking / actions --------------------------------------------
 
 export interface CreateSessionRequest {
@@ -644,4 +652,92 @@ export interface AdminDashboardResponse {
   processingWithdrawals: number;
   paidWithdrawals: number;
   failedWithdrawals: number;
+}
+
+// ---- Reviews ---------------------------------------------------------------
+
+/** Lightweight reviewer info embedded in ReviewResponse. */
+export interface ReviewerInfoResponse {
+  id?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+}
+
+/** Single review as returned by GET /api/coaches/{coachId}/reviews and related endpoints. */
+export interface ReviewResponse {
+  id: string;
+  coachId: string;
+  learnerId?: string | null;
+  rating: number;
+  comment?: string | null;
+  /** "active" | "hidden" | "deleted" */
+  status?: string | null;
+  /** True when the authenticated learner owns this review AND the edit window is still open. */
+  canEdit?: boolean | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  /** Reviewer's display info, if the backend embeds it. */
+  reviewer?: ReviewerInfoResponse | null;
+}
+
+/** GET /api/coaches/{coachId}/reviews/summary */
+export interface CoachReviewSummaryResponse {
+  averageRating: number;
+  totalReviews: number;
+  /** Map of star level (string key "1"–"5") → review count. */
+  ratingBreakdown: Record<string, number>;
+}
+
+/** Query params for GET /api/coaches/{coachId}/reviews */
+export interface ReviewFilterRequest {
+  pageNumber?: number;
+  pageSize?: number;
+  /** Filter by exact star rating (1–5). Omit for all ratings. */
+  rating?: number;
+  /** "latest" | "highest" | "lowest" */
+  sortBy?: "latest" | "highest" | "lowest";
+}
+
+/** POST /api/coaches/{coachId}/reviews */
+export interface CreateReviewRequest {
+  bookingId?: string;
+  rating: number;
+  comment?: string | null;
+}
+
+/** PUT /api/reviews/{id} */
+export interface UpdateReviewRequest {
+  rating: number;
+  comment?: string | null;
+}
+
+/** POST /api/reviews/{id}/report */
+export interface CreateReviewReportRequest {
+  reason: string;
+  description?: string | null;
+}
+
+/** Item in GET /api/admin/review-reports */
+export interface ReviewReportResponse {
+  id: string;
+  reviewId?: string | null;
+  /** "pending" | "reviewing" | "resolved" | "rejected" */
+  status: string;
+  reason?: string | null;
+  description?: string | null;
+  /** "none" | "review_hidden" | "review_deleted" */
+  actionTaken?: string | null;
+  resolutionNote?: string | null;
+  handledAt?: string | null;
+  handledByUserId?: string | null;
+  /** Snapshot of the reported review. */
+  review?: ReviewResponse | null;
+  createdAt?: string | null;
+}
+
+/** PUT /api/admin/review-reports/{id}/resolve */
+export interface ResolveReviewReportRequest {
+  isValid: boolean;
+  hideOrDeleteReview: boolean;
+  resolutionNote?: string | null;
 }

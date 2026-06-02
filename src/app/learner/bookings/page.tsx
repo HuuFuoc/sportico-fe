@@ -21,6 +21,7 @@ import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { BookSessionModal } from "@/components/common/BookSessionModal";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
+import { findOrderCodeForBooking, clearPendingPayos } from "@/lib/payos-pending";
 import { cn } from "@/lib/utils";
 import type { Booking } from "@/types";
 
@@ -63,7 +64,13 @@ function statusInfo(status: string) {
 
 // ---- SyncPaymentButton ----------------------------------------------------
 
-function SyncPaymentButton({ bookingId }: { bookingId: string }) {
+function SyncPaymentButton({
+  bookingId,
+  onSynced,
+}: {
+  bookingId: string;
+  onSynced?: () => void;
+}) {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<"success" | "pending" | "error" | null>(null);
 
@@ -71,26 +78,36 @@ function SyncPaymentButton({ bookingId }: { bookingId: string }) {
     setSyncing(true);
     setResult(null);
     try {
-      let orderCode: string | number | null = null;
-      try {
-        const raw = sessionStorage.getItem("pendingPayosPayment");
-        if (raw) {
-          const p = JSON.parse(raw) as { orderCode?: number; bookingId?: string };
-          if (p.bookingId === bookingId && p.orderCode) orderCode = p.orderCode;
+      // 1) If we know the PayOS orderCode, force a reconcile — this verifies the
+      //    payment with PayOS and activates the booking server-side.
+      const orderCode = findOrderCodeForBooking(bookingId);
+      if (orderCode != null) {
+        try {
+          const r = await api.reconcilePayment(orderCode);
+          if (r.activated || r.bookingStatus?.toLowerCase() === "active") {
+            clearPendingPayos(bookingId);
+            setResult("success");
+            onSynced?.();
+            return;
+          }
+        } catch {
+          // Reconcile failed (cold start / transient) — fall through to the
+          // booking re-check below before giving up.
         }
-      } catch { /**/ }
+      }
 
-      if (!orderCode) {
-        setResult("error");
+      // 2) Always re-check the booking itself. The PayOS webhook may have already
+      //    activated it server-side, so this works even without a local orderCode.
+      const fresh = await api.fetchBooking(bookingId);
+      const status = fresh?.status?.toLowerCase();
+      if (status && status !== "pending_payment") {
+        clearPendingPayos(bookingId);
+        setResult("success");
+        onSynced?.();
         return;
       }
-      const r = await api.reconcilePayment(orderCode);
-      if (r.activated || r.bookingStatus?.toLowerCase() === "active") {
-        setResult("success");
-        try { sessionStorage.removeItem("pendingPayosPayment"); } catch { /**/ }
-      } else {
-        setResult("pending");
-      }
+
+      setResult("pending");
     } catch {
       setResult("error");
     } finally {
@@ -102,7 +119,7 @@ function SyncPaymentButton({ bookingId }: { bookingId: string }) {
     return (
       <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-700">
         <CheckCircle2 size={13} />
-        Đã kích hoạt - tải lại trang để xem
+        Đã xác nhận thanh toán
       </span>
     );
   }
@@ -118,10 +135,14 @@ function SyncPaymentButton({ bookingId }: { bookingId: string }) {
         {syncing ? "Đang đồng bộ…" : "Đồng bộ thanh toán"}
       </button>
       {result === "pending" && (
-        <p className="text-[11px] text-amber-700">Thanh toán đang xử lý. Thử lại sau vài phút.</p>
+        <p className="text-[11px] text-amber-700">
+          Chưa nhận được xác nhận thanh toán. Nếu bạn vừa thanh toán, vui lòng đợi 1–2 phút rồi thử lại.
+        </p>
       )}
       {result === "error" && (
-        <p className="text-[11px] text-red-600">Không tìm thấy mã đơn hàng. Vui lòng thử từ trang thanh toán.</p>
+        <p className="text-[11px] text-red-600">
+          Không kiểm tra được trạng thái. Vui lòng kiểm tra kết nối và thử lại.
+        </p>
       )}
     </div>
   );
@@ -133,10 +154,12 @@ function BookingCard({
   booking,
   index,
   onBookSession,
+  onSynced,
 }: {
   booking: Booking;
   index: number;
   onBookSession: (b: Booking) => void;
+  onSynced?: () => void;
 }) {
   const { label, chip, icon: StatusIcon } = statusInfo(booking.status);
   const status = booking.status?.toLowerCase();
@@ -270,7 +293,9 @@ function BookingCard({
         </div>
 
         {/* Pending payment sync */}
-        {isPendingPayment && <SyncPaymentButton bookingId={booking.id} />}
+        {isPendingPayment && (
+          <SyncPaymentButton bookingId={booking.id} onSynced={onSynced} />
+        )}
 
         {/* Learner prompt for active booking with no sessions yet */}
         {isActive && booking.completedSessions === 0 && booking.totalSessions > 0 && (
@@ -371,7 +396,7 @@ export default function LearnerBookingsPage() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {pendingBookings.map((b, i) => (
-                <BookingCard key={b.id} booking={b} index={i} onBookSession={setBookSessionTarget} />
+                <BookingCard key={b.id} booking={b} index={i} onBookSession={setBookSessionTarget} onSynced={refetch} />
               ))}
             </div>
           </section>

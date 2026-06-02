@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, ClipboardList, Home, RefreshCw, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import { findLatestOrderCode, clearPendingPayos } from "@/lib/payos-pending";
 
 type FailScenario = "cancelled" | "failed" | "unknown";
 
@@ -70,20 +71,12 @@ export function PaymentFailUI({ cancel, status, orderCode, id }: PaymentFailUIPr
 
   // Fire-and-forget reconcile so the BE can settle the payment record.
   useEffect(() => {
-    const code = orderCode ?? (() => {
-      try {
-        const raw = sessionStorage.getItem("pendingPayosPayment");
-        if (raw) {
-          const p = JSON.parse(raw) as { orderCode?: number };
-          return p.orderCode ? String(p.orderCode) : null;
-        }
-      } catch { /**/ }
-      return null;
-    })();
-
-    if (code) {
+    const code = orderCode ?? findLatestOrderCode();
+    if (code != null) {
       void api.reconcilePayment(code).catch(() => { /* best-effort */ });
-      try { sessionStorage.removeItem("pendingPayosPayment"); } catch { /**/ }
+      // Only clear the legacy single key here; the per-booking record is cleaned
+      // up by the bookings page once it sees a terminal status.
+      clearPendingPayos();
     }
   }, [orderCode]);
 

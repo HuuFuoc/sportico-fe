@@ -160,17 +160,19 @@ export default function CoachProfilePage() {
     setSaved(false);
   };
 
+  const profileUserId = profile?.userId;
+
   const handleCoverPosChange = useCallback((pos: CoverPosition) => {
     setCoverPos(pos);
-    if (profile?.userId) saveCoverPos(profile.userId, pos);
-  }, [profile?.userId]);
+    if (profileUserId) saveCoverPos(profileUserId, pos);
+  }, [profileUserId]);
 
   const resetCoverPos = () => handleCoverPosChange(DEFAULT_COVER_POS);
 
   const handleAvatarPosChange = useCallback((pos: CoverPosition) => {
     setAvatarPos(pos);
-    if (profile?.userId) saveAvatarPos(profile.userId, pos);
-  }, [profile?.userId]);
+    if (profileUserId) saveAvatarPos(profileUserId, pos);
+  }, [profileUserId]);
 
   const resetAvatarPos = () => handleAvatarPosChange(DEFAULT_COVER_POS);
 

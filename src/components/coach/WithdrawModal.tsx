@@ -6,12 +6,22 @@ import {
   ArrowDownToLine,
   Building2,
   CheckCircle2,
+  Clock,
   Loader2,
+  ShieldCheck,
   X,
+  XCircle,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { messageForApiError } from "@/lib/errors-vi";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import {
+  VN_BANKS,
+  findBankByBin,
+  findBankByName,
+  isValidBankBin,
+} from "@/lib/banks-vn";
 import type { PayoutAccount } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -49,6 +59,7 @@ export function WithdrawModal({
 
   // Bank form fields
   const [bankName, setBankName] = useState("");
+  const [bankBin, setBankBin] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountHolder, setAccountHolder] = useState("");
 
@@ -68,6 +79,11 @@ export function WithdrawModal({
       setAmount("");
       setError(null);
       setBankName(account?.bankName ?? "");
+      // Prefill BIN from the saved value, or best-effort match a legacy account
+      // (saved before the BIN field existed) by its bank name.
+      setBankBin(
+        account?.bankBin ?? findBankByName(account?.bankName)?.bin ?? "",
+      );
       setAccountNumber(account?.bankAccountNumber ?? "");
       setAccountHolder(account?.bankAccountHolder ?? "");
     }
@@ -78,9 +94,19 @@ export function WithdrawModal({
   const amountNum = Number(amount);
   const amountValid = amountNum > 0 && amountNum <= available;
 
+  // The backend only allows withdrawals against a payout account an admin has
+  // verified. Reflect that here so the coach isn't surprised by a 409.
+  const accountStatus = (account?.status ?? "").toLowerCase();
+  const isVerified = accountStatus === "verified" || accountStatus === "approved";
+  const isRejected = accountStatus === "rejected";
+
   const saveAccount = async () => {
     if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
       setError("Vui lòng nhập đủ thông tin ngân hàng.");
+      return;
+    }
+    if (!isValidBankBin(bankBin.trim())) {
+      setError("Vui lòng chọn ngân hàng để có mã BIN (6 chữ số).");
       return;
     }
     setError(null);
@@ -89,16 +115,24 @@ export function WithdrawModal({
       await api.upsertPayoutAccount({
         payoutMethod: "BankTransfer",
         bankName: bankName.trim(),
+        bankBin: bankBin.trim(),
         bankAccountNumber: accountNumber.trim(),
         bankAccountHolder: accountHolder.trim(),
       });
       refetch();
       setView("form");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không lưu được tài khoản.");
+      setError(messageForApiError(e));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /** Selecting a bank fills both the display name and the BIN. */
+  const onSelectBank = (bin: string) => {
+    setBankBin(bin);
+    const bank = findBankByBin(bin);
+    if (bank) setBankName(bank.name);
   };
 
   const submitWithdrawal = async () => {
@@ -110,7 +144,7 @@ export function WithdrawModal({
       setView("success");
       onSuccess?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Yêu cầu rút tiền thất bại.");
+      setError(messageForApiError(e));
     } finally {
       setSubmitting(false);
     }
@@ -171,13 +205,17 @@ export function WithdrawModal({
                 <p className="text-[12.5px] text-on-surface-variant">
                   Thêm tài khoản ngân hàng để nhận tiền trước khi rút.
                 </p>
-                <FormField label="Tên ngân hàng">
-                  <Input
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="Vietcombank"
-                  />
+                <FormField label="Ngân hàng">
+                  <BankSelect value={bankBin} onChange={onSelectBank} />
                 </FormField>
+                {bankBin && (
+                  <p className="text-[11px] text-on-surface-variant -mt-1">
+                    Mã BIN:{" "}
+                    <span className="font-mono tabular-nums text-on-surface">
+                      {bankBin}
+                    </span>
+                  </p>
+                )}
                 <FormField label="Số tài khoản">
                   <Input
                     value={accountNumber}
@@ -227,6 +265,7 @@ export function WithdrawModal({
                       {account?.bankAccountHolder ?? ""}
                     </p>
                   </div>
+                  <AccountStatusBadge status={accountStatus} />
                   <button
                     onClick={() => setView("account")}
                     className="text-[12px] text-primary hover:underline shrink-0"
@@ -234,6 +273,29 @@ export function WithdrawModal({
                     Đổi
                   </button>
                 </div>
+
+                {/* Verification gate — withdrawals need an admin-verified account */}
+                {!isVerified && (
+                  <div
+                    className={cn(
+                      "flex items-start gap-2.5 p-3 rounded-[12px] border text-[12.5px]",
+                      isRejected
+                        ? "border-rose-200 bg-rose-50 text-rose-700"
+                        : "border-amber-200 bg-amber-50 text-amber-800",
+                    )}
+                  >
+                    {isRejected ? (
+                      <XCircle size={16} className="shrink-0 mt-0.5" />
+                    ) : (
+                      <Clock size={16} className="shrink-0 mt-0.5" />
+                    )}
+                    <p>
+                      {isRejected
+                        ? "Tài khoản nhận tiền đã bị từ chối. Vui lòng cập nhật thông tin và chờ duyệt lại."
+                        : "Tài khoản nhận tiền đang chờ quản trị viên xác minh. Bạn có thể rút tiền sau khi tài khoản được duyệt."}
+                    </p>
+                  </div>
+                )}
 
                 <FormField label="Số tiền rút">
                   <Input
@@ -273,13 +335,18 @@ export function WithdrawModal({
 
                 <button
                   onClick={() => void submitWithdrawal()}
-                  disabled={!amountValid || submitting}
+                  disabled={!amountValid || submitting || !isVerified}
                   className="w-full h-11 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13.5px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:scale-[1.01] active:scale-[0.99] transition-transform disabled:opacity-60 disabled:hover:scale-100 inline-flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <>
                       <Loader2 size={14} className="animate-spin" />
                       Đang gửi yêu cầu…
+                    </>
+                  ) : !isVerified ? (
+                    <>
+                      <Clock size={15} />
+                      Chờ duyệt tài khoản
                     </>
                   ) : (
                     <>
@@ -342,6 +409,61 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
         props.className,
       )}
     />
+  );
+}
+
+function AccountStatusBadge({ status }: { status: string }) {
+  const verified = status === "verified" || status === "approved";
+  const rejected = status === "rejected";
+  if (verified) {
+    return (
+      <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700">
+        <ShieldCheck size={11} />
+        Đã duyệt
+      </span>
+    );
+  }
+  if (rejected) {
+    return (
+      <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10.5px] font-semibold text-rose-600">
+        <XCircle size={11} />
+        Bị từ chối
+      </span>
+    );
+  }
+  return (
+    <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">
+      <Clock size={11} />
+      Chờ duyệt
+    </span>
+  );
+}
+
+function BankSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (bin: string) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "w-full h-10 px-3 bg-surface-container-low border border-[var(--color-border-soft)] focus:border-primary/40 focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[13.5px] transition-all",
+        !value && "text-on-surface-variant",
+      )}
+    >
+      <option value="" disabled>
+        Chọn ngân hàng…
+      </option>
+      {VN_BANKS.map((b) => (
+        <option key={b.bin} value={b.bin}>
+          {b.name} ({b.code})
+        </option>
+      ))}
+    </select>
   );
 }
 

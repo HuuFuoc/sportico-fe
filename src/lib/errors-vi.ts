@@ -63,6 +63,20 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   WITHDRAWAL_INSUFFICIENT_BALANCE: "Số dư ví không đủ để rút.",
   WITHDRAWAL_AMOUNT_TOO_SMALL: "Số tiền rút tối thiểu chưa đạt.",
   WITHDRAWAL_PENDING_EXISTS: "Bạn đang có yêu cầu rút tiền chờ xử lý.",
+  // Payout account
+  PAYOUT_ACCOUNT_REQUIRED:
+    "Tài khoản nhận tiền chưa được xác minh. Vui lòng chờ quản trị viên duyệt trước khi rút.",
+  PAYOUT_ACCOUNT_NOT_FOUND: "Bạn chưa thêm tài khoản nhận tiền.",
+  PAYOUT_ACCOUNT_NOT_VERIFIED:
+    "Tài khoản nhận tiền đang chờ duyệt. Bạn có thể rút tiền sau khi được xác minh.",
+  INVALID_BANK_BIN: "Mã BIN ngân hàng không hợp lệ (phải đủ 6 chữ số).",
+  // Reviews
+  REVIEW_NOT_FOUND: "Không tìm thấy đánh giá.",
+  REVIEW_NOT_ALLOWED: "Bạn cần có gói tập đã thanh toán với coach này để đánh giá, hoặc không được tự đánh giá chính mình.",
+  REVIEW_ALREADY_EXISTS: "Bạn đã đánh giá coach này. Hãy chỉnh sửa đánh giá hiện tại.",
+  REVIEW_EDIT_EXPIRED: "Gói tập đã hết hạn. Không thể chỉnh sửa đánh giá.",
+  REVIEW_NOT_OWNED: "Bạn không có quyền sửa hoặc xoá đánh giá này.",
+  REVIEW_REPORT_NOT_ALLOWED: "Bạn chỉ có thể báo cáo đánh giá thuộc hồ sơ coach của mình.",
   // Common
   COMMON_VALIDATION_ERROR: "Thông tin chưa hợp lệ.",
   COMMON_INTERNAL_SERVER_ERROR: "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.",
@@ -79,16 +93,23 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
  * with an `error.code` field.
  */
 export function messageForApiError(err: unknown): string {
-  // 1. Newer ApiError from apiFetch — body is the full Result envelope.
-  if (
-    err instanceof Error &&
-    err.name === "ApiError" &&
-    typeof (err as { body?: unknown }).body === "object"
-  ) {
-    const body = (err as { body?: { code?: string; message?: string; details?: string[] } }).body;
-    if (body?.code && ERROR_MESSAGES_VI[body.code]) return ERROR_MESSAGES_VI[body.code];
-    if (body?.code === "COMMON_VALIDATION_ERROR" && body?.details?.length) return body.details[0];
-    if (body?.message && body.message.trim()) return body.message.trim();
+  // 1. Newer ApiError from apiFetch / unwrap.
+  if (err instanceof Error && err.name === "ApiError") {
+    const raw = (err as { body?: unknown }).body;
+    // `body` may be EITHER the full Result envelope `{ error: { code, … } }`
+    // (thrown by apiFetch on a non-2xx response) OR the flat error object
+    // `{ code, message, details }` (thrown by unwrap on isSuccess=false).
+    let e: { code?: string; message?: string; details?: string[] } | undefined;
+    if (raw && typeof raw === "object") {
+      const env = raw as { error?: unknown };
+      e =
+        env.error && typeof env.error === "object"
+          ? (env.error as typeof e)
+          : (raw as typeof e);
+    }
+    if (e?.code && ERROR_MESSAGES_VI[e.code]) return ERROR_MESSAGES_VI[e.code];
+    if (e?.code === "COMMON_VALIDATION_ERROR" && e?.details?.length) return e.details[0];
+    if (e?.message && e.message.trim()) return e.message.trim();
   }
 
   if (err instanceof ApiResultError) {

@@ -28,6 +28,9 @@ import type {
   Learner,
   LearnerAssessment,
   ProgressCheckIn,
+  Review,
+  ReviewReport,
+  ReviewSummary,
   TrainingPlan,
   Message,
   MessageThread,
@@ -54,10 +57,15 @@ import type {
   BookingResponse,
   CreateDayRequest,
   CreateExerciseRequest,
+  CreateReviewRequest,
+  CreateReviewReportRequest,
   CreateTrainingPlanRequest,
   CreateWeekRequest,
   ReconcilePayOsResponse,
+  ResolveReviewReportRequest,
+  ReviewFilterRequest,
   UpdateExerciseRequest,
+  UpdateReviewRequest,
   UpdateTrainingPlanRequest,
   WithdrawalReceiptResponse,
 } from "@/lib/backend/dto";
@@ -225,6 +233,28 @@ export const api = {
     Promise.resolve(getAdminById(id)),
   fetchUser: (id: string): Promise<AnyUser | undefined> =>
     Promise.resolve(getUserById(id)),
+
+  // ---- User profile lookup (any user by id) -----------------------------
+  /** Resolve a user's display name + avatar by their id.
+   *  Returns null if the endpoint 403s, 404s, or is unavailable (safe fallback).
+   *  Used by coach pages to resolve learner identity from learnerId. */
+  fetchUserProfile: (
+    userId: string,
+  ): Promise<{ name: string; avatarUrl?: string } | null> =>
+    liveAuthed(
+      async () => {
+        try {
+          const u = await backend.userById(userId);
+          return {
+            name: u.fullName?.trim() || `Người dùng #${userId.slice(0, 6).toUpperCase()}`,
+            avatarUrl: u.avatarUrl ?? undefined,
+          };
+        } catch {
+          return null;
+        }
+      },
+      () => null,
+    ),
 
   // ---- Current user (settings page) -------------------------------------
   /** Load the signed-in learner via `/api/users/me`. Falls back to the dev
@@ -430,13 +460,21 @@ export const api = {
           .catch(() => null),
       () => null,
     ),
-  fetchProgressCheckIns: (bookingId: string): Promise<ProgressCheckIn[]> =>
+  fetchProgressCheckIns: (
+    bookingId: string,
+    params?: { pageNumber?: number; pageSize?: number },
+  ): Promise<{ items: ProgressCheckIn[]; hasNext: boolean; totalCount: number }> =>
     liveAuthed(async () => {
       const page = await backend.bookingProgressCheckIns(bookingId, {
-        pageSize: 100,
+        pageNumber: params?.pageNumber ?? 1,
+        pageSize: params?.pageSize ?? 20,
       });
-      return (page.items ?? []).map(map.progressCheckInToUi);
-    }, () => []),
+      return {
+        items: (page.items ?? []).map(map.progressCheckInToUi),
+        hasNext: page.hasNext,
+        totalCount: page.totalCount,
+      };
+    }, () => ({ items: [], hasNext: false, totalCount: 0 })),
   createProgressCheckIn: (
     bookingId: string,
     body: {
@@ -455,6 +493,17 @@ export const api = {
           await backend.createProgressCheckIn(bookingId, body),
         ),
       () => ({ id: `ci-${Date.now()}`, ...body }),
+    ),
+  updateCheckInFeedback: (
+    id: string,
+    coachFeedback: string,
+  ): Promise<ProgressCheckIn> =>
+    liveAuthed(
+      async () =>
+        map.progressCheckInToUi(
+          await backend.updateCheckInFeedback(id, { coachFeedback }),
+        ),
+      () => ({ id, coachFeedback } as ProgressCheckIn),
     ),
   fetchAssessment: (bookingId: string): Promise<LearnerAssessment | null> =>
     liveAuthed<LearnerAssessment | null>(
@@ -662,7 +711,7 @@ export const api = {
   /** All admin withdrawal requests, optionally filtered by status. */
   fetchAllWithdrawals: (status?: string): Promise<Payout[]> =>
     liveAuthed(async () => {
-      const page = await backend.allWithdrawals({ pageSize: 200, status });
+      const page = await backend.allWithdrawals({ pageSize: 100, status });
       return (page.items ?? []).map(map.withdrawalToPayout);
     }, () => getPayouts()),
   approveWithdrawal: (id: string): Promise<void> =>
@@ -724,6 +773,7 @@ export const api = {
   upsertPayoutAccount: (body: {
     payoutMethod?: string;
     bankName?: string;
+    bankBin?: string;
     bankAccountNumber?: string;
     bankAccountHolder?: string;
   }): Promise<PayoutAccount> =>
@@ -898,6 +948,106 @@ export const api = {
 
   // ---- Reference data (no GET sports endpoint) → mock --------------------
   fetchSports: (): Promise<Sport[]> => Promise.resolve(AVAILABLE_SPORTS),
+
+  // ---- Reviews (public + learner + coach + admin) ------------------------
+
+  /** Public: list active reviews for a coach. Optional auth (canEdit flag). */
+  fetchReviews: (
+    coachId: string,
+    filter?: ReviewFilterRequest,
+  ): Promise<{ items: Review[]; totalCount: number; hasNext: boolean }> =>
+    live(
+      async () => {
+        const page = await backend.fetchReviews(coachId, filter);
+        return {
+          items: (page.items ?? []).map(map.reviewToUi),
+          totalCount: page.totalCount,
+          hasNext: page.hasNext,
+        };
+      },
+      () => ({ items: [], totalCount: 0, hasNext: false }),
+    ),
+
+  /** Public: aggregate rating summary (averageRating, totalReviews, ratingBreakdown). */
+  fetchReviewSummary: (coachId: string): Promise<ReviewSummary> =>
+    live(
+      async () => map.reviewSummaryToUi(await backend.fetchReviewSummary(coachId)),
+      () => ({ averageRating: 0, totalReviews: 0, ratingBreakdown: {} }),
+    ),
+
+  /** Learner: get own review for a coach. Returns null if not yet reviewed (404). */
+  fetchMyReviewForCoach: (coachId: string): Promise<Review | null> =>
+    liveAuthed<Review | null>(
+      async () => {
+        try {
+          return map.reviewToUi(await backend.fetchMyReviewForCoach(coachId));
+        } catch (err) {
+          if (
+            err instanceof ApiError &&
+            (err.status === 404 ||
+              (typeof (err as { body?: { code?: string } }).body === "object" &&
+                (err as { body?: { code?: string } }).body?.code === "REVIEW_NOT_FOUND"))
+          ) {
+            return null;
+          }
+          throw err;
+        }
+      },
+      () => null,
+    ),
+
+  /** Learner: submit a new review. Throws on permission/validation errors. */
+  createReview: (coachId: string, body: CreateReviewRequest): Promise<Review> =>
+    liveAuthed<Review>(
+      async () => map.reviewToUi(await backend.createReview(coachId, body)),
+      () => Promise.reject(new Error("Đánh giá cần đăng nhập và kết nối backend.")),
+    ),
+
+  /** Learner: update own review. Throws on expired/permission errors. */
+  updateReview: (id: string, body: UpdateReviewRequest): Promise<Review> =>
+    liveAuthed<Review>(
+      async () => map.reviewToUi(await backend.updateReview(id, body)),
+      () => Promise.reject(new Error("Đánh giá cần đăng nhập và kết nối backend.")),
+    ),
+
+  /** Learner: soft-delete own review. */
+  deleteReview: (id: string): Promise<void> =>
+    liveAuthed<void>(
+      () => backend.deleteReview(id),
+      () => Promise.reject(new Error("Xoá đánh giá cần đăng nhập và kết nối backend.")),
+    ),
+
+  /** Coach: report a review on their own profile. */
+  reportReview: (id: string, body: CreateReviewReportRequest): Promise<void> =>
+    liveAuthed<void>(
+      async () => { await backend.reportReview(id, body); },
+      () => Promise.reject(new Error("Báo cáo cần đăng nhập và kết nối backend.")),
+    ),
+
+  /** Admin: paged review report queue. */
+  fetchReviewReports: (filter?: {
+    status?: string;
+    pageNumber?: number;
+    pageSize?: number;
+  }): Promise<{ items: ReviewReport[]; totalCount: number; hasNext: boolean }> =>
+    liveAuthed(
+      async () => {
+        const page = await backend.fetchReviewReports(filter);
+        return {
+          items: (page.items ?? []).map(map.reviewReportToUi),
+          totalCount: page.totalCount,
+          hasNext: page.hasNext,
+        };
+      },
+      () => ({ items: [], totalCount: 0, hasNext: false }),
+    ),
+
+  /** Admin: resolve or reject a review report. */
+  resolveReviewReport: (id: string, body: ResolveReviewReportRequest): Promise<ReviewReport> =>
+    liveAuthed<ReviewReport>(
+      async () => map.reviewReportToUi(await backend.resolveReviewReport(id, body)),
+      () => Promise.reject(new Error("Cần đăng nhập và kết nối backend.")),
+    ),
 };
 
 export default api;

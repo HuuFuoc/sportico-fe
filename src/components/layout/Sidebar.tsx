@@ -91,6 +91,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Người dùng", icon: "group" },
       { href: "/admin/verifications", label: "Duyệt gói tập", icon: "inventory_2" },
+      { href: "/admin/reviews", label: "Đánh giá", icon: "star" },
     ],
   },
   {

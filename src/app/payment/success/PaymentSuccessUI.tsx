@@ -15,6 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { findLatestOrderCode, clearPendingPayos } from "@/lib/payos-pending";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -180,19 +181,9 @@ export function PaymentSuccessUI({ params }: Props) {
         return;
       }
 
-      // 2. Resolve orderCode: URL param first, then sessionStorage fallback
-      let resolvedOrderCode: string | number | null = params.orderCode ?? null;
-      if (!resolvedOrderCode) {
-        try {
-          const raw = sessionStorage.getItem("pendingPayosPayment");
-          if (raw) {
-            const pending = JSON.parse(raw) as { orderCode?: number };
-            if (pending.orderCode) resolvedOrderCode = pending.orderCode;
-          }
-        } catch {
-          // sessionStorage not available
-        }
-      }
+      // 2. Resolve orderCode: URL param first, then stored fallback
+      const resolvedOrderCode: string | number | null =
+        params.orderCode ?? findLatestOrderCode();
 
       if (!resolvedOrderCode) {
         setState("invalid");
@@ -214,7 +205,7 @@ export function PaymentSuccessUI({ params }: Props) {
         try {
           const result = await reconcileOnce(resolvedOrderCode);
           // Clear pending payment record once reconcile succeeds
-          try { sessionStorage.removeItem("pendingPayosPayment"); } catch { /**/ }
+          clearPendingPayos(result.bookingId ?? undefined);
 
           if (result.activated === true || result.bookingStatus?.toLowerCase() === "active") {
             setBookingId(result.bookingId ?? undefined);

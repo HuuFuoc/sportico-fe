@@ -12,6 +12,12 @@ import {
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import {
+  VN_BANKS,
+  findBankByBin,
+  findBankByName,
+  isValidBankBin,
+} from "@/lib/banks-vn";
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
@@ -346,6 +352,7 @@ function PaymentsTab() {
   );
   const [editing, setEditing] = useState(false);
   const [bankName, setBankName] = useState("");
+  const [bankBin, setBankBin] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountHolder, setAccountHolder] = useState("");
   const [saving, setSaving] = useState(false);
@@ -354,6 +361,8 @@ function PaymentsTab() {
   useEffect(() => {
     if (account) {
       setBankName(account.bankName ?? "");
+      // Prefill BIN from saved value, or best-effort match a legacy account by name.
+      setBankBin(account.bankBin ?? findBankByName(account.bankName)?.bin ?? "");
       setAccountNumber(account.bankAccountNumber ?? "");
       setAccountHolder(account.bankAccountHolder ?? "");
     }
@@ -361,9 +370,20 @@ function PaymentsTab() {
 
   const hasAccount = !!account?.bankAccountNumber;
 
+  /** Selecting a bank fills both the display name and the BIN. */
+  const onSelectBank = (bin: string) => {
+    setBankBin(bin);
+    const bank = findBankByBin(bin);
+    if (bank) setBankName(bank.name);
+  };
+
   const save = async () => {
     if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
       setError("Vui lòng nhập đủ thông tin ngân hàng.");
+      return;
+    }
+    if (!isValidBankBin(bankBin.trim())) {
+      setError("Vui lòng chọn ngân hàng để có mã BIN (6 chữ số).");
       return;
     }
     setError(null);
@@ -372,6 +392,7 @@ function PaymentsTab() {
       await api.upsertPayoutAccount({
         payoutMethod: "BankTransfer",
         bankName: bankName.trim(),
+        bankBin: bankBin.trim(),
         bankAccountNumber: accountNumber.trim(),
         bankAccountHolder: accountHolder.trim(),
       });
@@ -424,12 +445,36 @@ function PaymentsTab() {
           </div>
         ) : (
           <div className="space-y-4 rounded-[10px] border border-[var(--color-border-soft)] p-4">
-            <TabInput
-              label="Tên ngân hàng"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              placeholder="Vietcombank"
-            />
+            <div>
+              <label className="mb-1 block text-[13px] font-medium text-on-surface">
+                Ngân hàng
+              </label>
+              <select
+                value={bankBin}
+                onChange={(e) => onSelectBank(e.target.value)}
+                className={cn(
+                  "h-11 w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 text-[14px] outline-none transition-colors focus:border-primary",
+                  !bankBin && "text-on-surface-variant",
+                )}
+              >
+                <option value="" disabled>
+                  Chọn ngân hàng…
+                </option>
+                {VN_BANKS.map((b) => (
+                  <option key={b.bin} value={b.bin}>
+                    {b.name} ({b.code})
+                  </option>
+                ))}
+              </select>
+              {bankBin && (
+                <p className="mt-1 text-[11.5px] text-on-surface-variant">
+                  Mã BIN:{" "}
+                  <span className="font-mono tabular-nums text-on-surface">
+                    {bankBin}
+                  </span>
+                </p>
+              )}
+            </div>
             <TabInput
               label="Số tài khoản"
               value={accountNumber}

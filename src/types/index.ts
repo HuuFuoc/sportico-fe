@@ -2,6 +2,47 @@
 // Domain types for Smart Coach Hub. All UI components import from this file.
 // ============================================================================
 
+// ============================================================================
+// Reviews
+// ============================================================================
+
+export interface Review {
+  id: string;
+  coachId: string;
+  learnerId: string;
+  rating: number;
+  comment?: string;
+  /** "active" | "hidden" | "deleted" */
+  status: string;
+  /** True when the authenticated learner owns this review and the edit window is open. */
+  canEdit: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  learnerName?: string;
+  learnerAvatarUrl?: string;
+}
+
+export interface ReviewSummary {
+  averageRating: number;
+  totalReviews: number;
+  /** Keys are "1"–"5" (string), values are review counts. */
+  ratingBreakdown: Record<string, number>;
+}
+
+export interface ReviewReport {
+  id: string;
+  /** "pending" | "reviewing" | "resolved" | "rejected" */
+  status: string;
+  reason: string;
+  description?: string;
+  /** "none" | "review_hidden" | "review_deleted" */
+  actionTaken?: string;
+  resolutionNote?: string;
+  handledAt?: string;
+  createdAt: string;
+  reviewSnapshot?: Review;
+}
+
 export type Role = "learner" | "coach" | "admin";
 
 export type Sport =
@@ -105,10 +146,15 @@ export interface Booking {
   id: string;
   title: string;
   coachId: string;
+  /** learnerId is returned by the backend but learnerName/avatar are not — use avatarFor(learnerId) as fallback */
+  learnerId?: string;
+  trainingPackageId?: string;
   totalSessions: number;
   completedSessions: number;
   status: string;
   totalAmount: number;
+  /** ISO datetime when payment was confirmed. May be null for pending_payment bookings. */
+  paidAt?: string;
   createdAt: string;
 }
 
@@ -149,6 +195,7 @@ export interface TrainingPlan {
   status?: string;
   isReadOnly?: boolean;
   readOnlyReason?: string;
+  bookingExpiresAt?: string;
   weeks: PlanWeek[];
 }
 
@@ -262,6 +309,8 @@ export interface PayoutAccount {
   id: string;
   payoutMethod?: string;
   bankName?: string;
+  /** 6-digit Napas/VietQR BIN code (e.g. 970415). Required by the payout backend. */
+  bankBin?: string;
   bankAccountNumber?: string;
   bankAccountHolder?: string;
   status?: string; // backend verification status (Pending / Verified / Rejected)

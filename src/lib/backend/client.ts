@@ -19,12 +19,15 @@ import type {
   ChatRoomResponse,
   CoachDashboardResponse,
   CoachPayoutAccountResponse,
+  CoachReviewSummaryResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
   ConfirmSessionRequest,
   CreateAvailabilitySlotRequest,
   CreateDayRequest,
   CreateExerciseRequest,
+  CreateReviewRequest,
+  CreateReviewReportRequest,
   CreateSessionRequest,
   CreateTrainingPlanRequest,
   CreateWeekRequest,
@@ -39,15 +42,21 @@ import type {
   PublicCoachListItemResponse,
   PurchasePayOsResponse,
   ReconcilePayOsResponse,
+  ResolveReviewReportRequest,
   Result,
+  ReviewFilterRequest,
+  ReviewReportResponse,
+  ReviewResponse,
   TrainingPackageResponse,
   TrainingPlanDayResponse,
   TrainingPlanExerciseResponse,
   TrainingPlanResponse,
   TrainingPlanWeekResponse,
   TrainingSessionResponse,
+  UpdateCheckInFeedbackRequest,
   UpdateExerciseRequest,
   UpdateMeRequest,
+  UpdateReviewRequest,
   UpdateTrainingPlanRequest,
   WithdrawalReceiptResponse,
   WithdrawalRequestResponse,
@@ -143,10 +152,14 @@ function listQuery(p: ListParams = {}): string {
 }
 
 const GET = <T>(path: string) => apiFetch<Result<T>>(path);
+// Always carry a JSON body — even when empty. Backend actions that bind a
+// `[FromBody]` parameter (e.g. /confirm, /complete) reject a body-less PUT with
+// 415 Unsupported Media Type because no `Content-Type` is negotiated. Defaulting
+// to `{}` makes `apiFetch` declare `Content-Type: application/json`.
 const PUT = <T>(path: string, body?: unknown) =>
   apiFetch<Result<T>>(path, {
     method: "PUT",
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    body: JSON.stringify(body ?? {}),
   });
 const POST = <T>(path: string, body?: unknown, opts?: ApiFetchOptions) =>
   apiFetch<Result<T>>(path, {
@@ -164,6 +177,10 @@ export const backend = {
   },
   async updateMe(body: UpdateMeRequest) {
     return unwrap(await PUT<CurrentUserResponse>(ep.usersMe, body));
+  },
+  /** GET /api/users/{id} — look up any user's public profile. Throws on 404/403. */
+  async userById(id: string) {
+    return unwrap(await GET<CurrentUserResponse>(ep.userById(id)));
   },
   async changePassword(body: ChangePasswordRequest) {
     const result = await POST<unknown>(ep.auth.changePassword, body);
@@ -413,6 +430,7 @@ export const backend = {
   async upsertPayoutAccount(body: {
     payoutMethod?: string;
     bankName?: string;
+    bankBin?: string;
     bankAccountNumber?: string;
     bankAccountHolder?: string;
   }) {
@@ -558,6 +576,11 @@ export const backend = {
   async deleteExercise(id: string) {
     await apiFetch(ep.trainingPlanExerciseById(id), { method: "DELETE" });
   },
+  async updateCheckInFeedback(id: string, body: UpdateCheckInFeedbackRequest) {
+    return unwrap(
+      await PUT<ProgressCheckInResponse>(ep.progressCheckInFeedback(id), body),
+    );
+  },
 
   // ---- Chat room creation ------------------------------------------------
   async createChatRoom(coachId: string) {
@@ -661,6 +684,82 @@ export const backend = {
   async adminWithdrawalReceipt(id: string) {
     return unwrap(
       await GET<WithdrawalReceiptResponse>(ep.adminWithdrawalReceipt(id)),
+    );
+  },
+
+  // ---- Reviews ---------------------------------------------------------------
+
+  /** GET /api/coaches/{coachId}/reviews — public, optional auth. */
+  async fetchReviews(coachId: string, p?: ReviewFilterRequest) {
+    const query = qs({
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+      Rating: p?.rating,
+      SortBy: p?.sortBy,
+    });
+    return unwrapPage(
+      await GET<PagedResult<ReviewResponse>>(ep.coachReviews(coachId) + query),
+    );
+  },
+
+  /** GET /api/coaches/{coachId}/reviews/summary — public. */
+  async fetchReviewSummary(coachId: string) {
+    return unwrap(
+      await GET<CoachReviewSummaryResponse>(ep.coachReviewSummary(coachId)),
+    );
+  },
+
+  /** GET /api/coaches/{coachId}/reviews/me — learner only. 404 = not yet reviewed. */
+  async fetchMyReviewForCoach(coachId: string) {
+    return unwrap(await GET<ReviewResponse>(ep.myReviewForCoach(coachId)));
+  },
+
+  /** POST /api/coaches/{coachId}/reviews — learner only. */
+  async createReview(coachId: string, body: CreateReviewRequest) {
+    return unwrap(
+      await POST<ReviewResponse>(ep.createCoachReview(coachId), body),
+    );
+  },
+
+  /** PUT /api/reviews/{id} — learner owner only. */
+  async updateReview(id: string, body: UpdateReviewRequest) {
+    return unwrap(await PUT<ReviewResponse>(ep.reviewById(id), body));
+  },
+
+  /** DELETE /api/reviews/{id} — soft delete, learner owner only. */
+  async deleteReview(id: string) {
+    await apiFetch(ep.reviewById(id), { method: "DELETE" });
+  },
+
+  /** POST /api/reviews/{id}/report — coach only. */
+  async reportReview(id: string, body: CreateReviewReportRequest) {
+    return unwrap(
+      await POST<ReviewReportResponse>(ep.reviewReport(id), body),
+    );
+  },
+
+  /** GET /api/admin/review-reports — admin only. */
+  async fetchReviewReports(p?: {
+    status?: string;
+    pageNumber?: number;
+    pageSize?: number;
+  }) {
+    const query = qs({
+      Status: p?.status,
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+    });
+    return unwrapPage(
+      await GET<PagedResult<ReviewReportResponse>>(
+        ep.adminReviewReports + query,
+      ),
+    );
+  },
+
+  /** PUT /api/admin/review-reports/{id}/resolve — admin only. */
+  async resolveReviewReport(id: string, body: ResolveReviewReportRequest) {
+    return unwrap(
+      await PUT<ReviewReportResponse>(ep.adminResolveReviewReport(id), body),
     );
   },
 };

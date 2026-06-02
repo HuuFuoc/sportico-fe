@@ -20,6 +20,8 @@ export const backendEndpoints = {
 
   // ---- Users -------------------------------------------------------------
   usersMe: "/api/users/me",
+  /** GET /api/users/{userId} — resolve any user's public profile (name, avatar). */
+  userById: (id: string) => `/api/users/${encodeURIComponent(id)}`,
 
   // ---- Coaches (public + self) -------------------------------------------
   publicCoaches: "/api/public/coaches",
@@ -115,6 +117,9 @@ export const backendEndpoints = {
     `/api/bookings/${encodeURIComponent(bookingId)}/progress-checkins`,
   bookingAssessment: (bookingId: string) =>
     `/api/bookings/${encodeURIComponent(bookingId)}/assessment`,
+  /** PUT /api/progress-checkins/{id}/coach-feedback — coach submits feedback */
+  progressCheckInFeedback: (id: string) =>
+    `/api/progress-checkins/${encodeURIComponent(id)}/coach-feedback`,
 
   // ---- Chat --------------------------------------------------------------
   chatRooms: "/api/chat/rooms",
@@ -140,6 +145,30 @@ export const backendEndpoints = {
   /** Single withdrawal request detail. */
   adminWithdrawalById: (id: string) =>
     `/api/admin/withdrawal-requests/${encodeURIComponent(id)}`,
+
+  // ---- Reviews -----------------------------------------------------------
+  /** Public: list active reviews for a coach. Optional auth: canEdit flag set when learner owns the review. */
+  coachReviews: (coachId: string) =>
+    `/api/coaches/${encodeURIComponent(coachId)}/reviews`,
+  /** Public: aggregate rating summary (averageRating, totalReviews, ratingBreakdown). */
+  coachReviewSummary: (coachId: string) =>
+    `/api/coaches/${encodeURIComponent(coachId)}/reviews/summary`,
+  /** Learner: fetch own review for a specific coach. 404 = not yet reviewed. */
+  myReviewForCoach: (coachId: string) =>
+    `/api/coaches/${encodeURIComponent(coachId)}/reviews/me`,
+  /** Learner: create a review for a coach. */
+  createCoachReview: (coachId: string) =>
+    `/api/coaches/${encodeURIComponent(coachId)}/reviews`,
+  /** Learner: update (PUT) or soft-delete (DELETE) an existing review by id. */
+  reviewById: (id: string) => `/api/reviews/${encodeURIComponent(id)}`,
+  /** Coach: report a review on their own profile. */
+  reviewReport: (id: string) =>
+    `/api/reviews/${encodeURIComponent(id)}/report`,
+  /** Admin: paged queue of review reports. */
+  adminReviewReports: "/api/admin/review-reports",
+  /** Admin: resolve or reject a review report. */
+  adminResolveReviewReport: (id: string) =>
+    `/api/admin/review-reports/${encodeURIComponent(id)}/resolve`,
 
   // ---- Admin moderation queues ------------------------------------------
   adminPendingPosts: "/api/admin/posts/pending",

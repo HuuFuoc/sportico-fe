@@ -19,6 +19,9 @@ import type {
   Payout,
   PayoutAccount,
   ProgressCheckIn,
+  Review,
+  ReviewReport,
+  ReviewSummary,
   Session,
   SessionStatus,
   Sport,
@@ -31,6 +34,7 @@ import type {
   ChatMessageResponse,
   ChatRoomResponse,
   CoachPayoutAccountResponse,
+  CoachReviewSummaryResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
   CurrentUserResponse,
@@ -40,6 +44,8 @@ import type {
   ProgressCheckInResponse,
   PublicCoachDetailResponse,
   PublicCoachListItemResponse,
+  ReviewReportResponse,
+  ReviewResponse,
   TrainingPackageResponse,
   TrainingPlanResponse,
   TrainingSessionResponse,
@@ -183,10 +189,13 @@ export function bookingToUi(b: BookingResponse): Booking {
     id: b.id,
     title: b.trainingPackageTitle ?? "Gói huấn luyện",
     coachId: b.coachId,
+    learnerId: b.learnerId,
+    trainingPackageId: b.trainingPackageId,
     totalSessions: b.totalSessions,
     completedSessions: b.completedSessions,
     status: b.status ?? "Active",
     totalAmount: b.totalAmount,
+    paidAt: b.paidAt ?? undefined,
     createdAt: b.createdAt,
   };
 }
@@ -204,6 +213,7 @@ export function trainingPlanToUi(p: TrainingPlanResponse): TrainingPlan {
     status: p.status ?? undefined,
     isReadOnly: p.isReadOnly,
     readOnlyReason: p.readOnlyReason ?? undefined,
+    bookingExpiresAt: p.bookingExpiresAt ?? undefined,
     weeks: (p.weeks ?? []).map((w) => ({
       id: w.id,
       weekNumber: w.weekNumber,
@@ -467,6 +477,7 @@ export function payoutAccountToUi(a: CoachPayoutAccountResponse): PayoutAccount 
     id: a.id,
     payoutMethod: a.payoutMethod ?? undefined,
     bankName: a.bankName ?? undefined,
+    bankBin: a.bankBin ?? undefined,
     bankAccountNumber: a.bankAccountNumber ?? undefined,
     bankAccountHolder: a.bankAccountHolder ?? undefined,
     status: a.status ?? undefined,
@@ -553,5 +564,45 @@ export function payoutAccountToVerification(
     notes: a.bankAccountHolder ?? undefined,
     kind: "payout-account",
     title: `${a.bankName ?? "Ngân hàng"} • ${a.bankAccountNumber ?? ""}`,
+  };
+}
+
+// ---- Reviews ---------------------------------------------------------------
+
+export function reviewToUi(r: ReviewResponse): Review {
+  return {
+    id: r.id,
+    coachId: r.coachId,
+    learnerId: r.learnerId ?? "",
+    rating: r.rating,
+    comment: r.comment ?? undefined,
+    status: r.status ?? "active",
+    canEdit: r.canEdit ?? false,
+    createdAt: r.createdAt ?? new Date().toISOString(),
+    updatedAt: r.updatedAt ?? undefined,
+    learnerName: r.reviewer?.fullName ?? undefined,
+    learnerAvatarUrl: r.reviewer?.avatarUrl ?? undefined,
+  };
+}
+
+export function reviewSummaryToUi(r: CoachReviewSummaryResponse): ReviewSummary {
+  return {
+    averageRating: r.averageRating,
+    totalReviews: r.totalReviews,
+    ratingBreakdown: r.ratingBreakdown ?? {},
+  };
+}
+
+export function reviewReportToUi(r: ReviewReportResponse): ReviewReport {
+  return {
+    id: r.id,
+    status: r.status,
+    reason: r.reason ?? "",
+    description: r.description ?? undefined,
+    actionTaken: r.actionTaken ?? undefined,
+    resolutionNote: r.resolutionNote ?? undefined,
+    handledAt: r.handledAt ?? undefined,
+    createdAt: r.createdAt ?? new Date().toISOString(),
+    reviewSnapshot: r.review ? reviewToUi(r.review) : undefined,
   };
 }

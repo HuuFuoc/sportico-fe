@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { savePendingPayos } from "@/lib/payos-pending";
 
 interface BookSessionButtonProps {
   /** Coach id from the route — used to resolve the live package client-side. */
@@ -49,19 +50,15 @@ export function BookSessionButton({
       }
       const result = await api.purchasePackage(pkgId);
       if ("checkoutUrl" in result) {
-        try {
-          sessionStorage.setItem(
-            "pendingPayosPayment",
-            JSON.stringify({
-              bookingId: result.bookingId,
-              paymentId: result.paymentId,
-              orderCode: result.orderCode,
-              createdAt: new Date().toISOString(),
-            }),
-          );
-        } catch {
-          // sessionStorage unavailable — reconcile falls back to URL param
-        }
+        // Remember the orderCode so the booking can be reconciled later — even
+        // if PayOS does not echo it back in the redirect URL, or the learner
+        // returns to "Đồng bộ thanh toán" in a later session.
+        savePendingPayos({
+          bookingId: result.bookingId,
+          paymentId: result.paymentId,
+          orderCode: result.orderCode,
+          createdAt: new Date().toISOString(),
+        });
         window.location.href = result.checkoutUrl;
         return; // keep the spinner while the browser navigates away
       }
