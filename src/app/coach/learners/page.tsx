@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   AlertCircle,
   ArrowRight,
   BookOpen,
+  CalendarDays,
   CheckCircle2,
   Clock,
   CreditCard,
   Dumbbell,
+  LayoutList,
   Search,
   Users,
   XCircle,
@@ -19,7 +21,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
-import { cn, formatCurrency, avatarFor } from "@/lib/utils";
+import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
 import type { Booking } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -39,7 +41,7 @@ const BOOKING_STATUS: Record<
     icon: CheckCircle2,
   },
   cancelled: {
-    label: "Đã huỷ",
+    label: "Đã hủy",
     chip: "bg-red-50 text-red-600 border-red-200",
     icon: XCircle,
   },
@@ -61,21 +63,33 @@ function statusInfo(status: string) {
   );
 }
 
-// Derive a short display name from learnerId when learnerName is not returned by backend.
+function formatDateVi(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
 // MISSING BACKEND FIELD: BookingResponse.learnerName, BookingResponse.learnerAvatarUrl
-function learnerDisplayName(learnerId?: string): string {
+// We use the learnerId to derive a display name and fetch profile via api.fetchUserProfile.
+function learnerFallbackName(learnerId?: string): string {
   if (!learnerId) return "Học viên";
   return `HV #${learnerId.slice(0, 6).toUpperCase()}`;
 }
 
-// Priority badge: derived from booking DTO fields only (no extra API calls on list page).
+// Priority badge: derived from booking DTO fields only.
 function PriorityBadge({ booking }: { booking: Booking }) {
   const remaining = booking.totalSessions - booking.completedSessions;
   const s = booking.status.toLowerCase();
 
   if (s === "pending_payment") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">
         <CreditCard size={10} />
         Chờ thanh toán
       </span>
@@ -83,7 +97,7 @@ function PriorityBadge({ booking }: { booking: Booking }) {
   }
   if (s === "active" && booking.completedSessions === 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10.5px] font-semibold text-blue-700">
+      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10.5px] font-semibold text-blue-700">
         <AlertCircle size={10} />
         Mới bắt đầu
       </span>
@@ -91,7 +105,7 @@ function PriorityBadge({ booking }: { booking: Booking }) {
   }
   if (s === "active" && remaining === 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-[10.5px] font-semibold text-violet-700">
+      <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10.5px] font-semibold text-violet-700">
         <CheckCircle2 size={10} />
         Đã hết buổi
       </span>
@@ -104,35 +118,33 @@ function BookingCard({
   booking,
   index,
   profile,
+  shouldAnimate,
 }: {
   booking: Booking;
   index: number;
   profile?: { name: string; avatarUrl?: string } | null;
+  shouldAnimate: boolean;
 }) {
   const { label, chip, icon: StatusIcon } = statusInfo(booking.status);
   const progress =
     booking.totalSessions > 0
-      ? Math.min(
-          100,
-          Math.round((booking.completedSessions / booking.totalSessions) * 100),
-        )
+      ? Math.min(100, Math.round((booking.completedSessions / booking.totalSessions) * 100))
       : 0;
-  const remaining = booking.totalSessions - booking.completedSessions;
+  const remaining = Math.max(0, booking.totalSessions - booking.completedSessions);
   const learnerId = booking.learnerId;
   const learnerAvatar = profile?.avatarUrl ?? avatarFor(learnerId ?? booking.id);
-  const displayName = profile?.name ?? learnerDisplayName(learnerId);
-  const dateDisplay = booking.paidAt
-    ? `Thanh toán ${new Date(booking.paidAt).toLocaleDateString("vi-VN")}`
-    : `Đặt ${new Date(booking.createdAt).toLocaleDateString("vi-VN")}`;
+  const displayName = profile?.name ?? learnerFallbackName(learnerId);
+  const isActive = booking.status?.toLowerCase() === "active";
+  const paymentPaid = !!(booking.paidAt || isActive || booking.status?.toLowerCase() === "completed");
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 14 }}
+      initial={shouldAnimate ? { opacity: 0, y: 14 } : false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.38, delay: index * 0.05, ease: EASE }}
-      className="flex flex-col gap-0 rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_24px_-12px_rgba(53,37,205,0.18)]"
+      transition={{ duration: 0.38, delay: Math.min(index * 0.05, 0.3), ease: EASE }}
+      className="flex flex-col overflow-hidden rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_24px_-12px_rgba(53,37,205,0.15)]"
     >
-      {/* Top accent bar */}
+      {/* Accent bar */}
       <div className="h-[3px] w-full bg-gradient-to-r from-primary via-[#7d6dff] to-[#c084fc]" />
 
       <div className="flex flex-col gap-3.5 p-5">
@@ -142,18 +154,19 @@ function BookingCard({
             <img
               src={learnerAvatar}
               alt={displayName}
-              className="w-10 h-10 rounded-full object-cover shrink-0 ring-2 ring-[var(--color-border-soft)]"
+              className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-[var(--color-border-soft)]"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = avatarFor(booking.id);
               }}
             />
             <div className="min-w-0">
-              {/* MISSING: learnerName not returned by BookingResponse — using ID fallback */}
-              <p className="text-[14px] font-semibold text-on-surface font-mono tabular-nums">
+              <p className="truncate text-[14px] font-semibold text-on-surface">
                 {displayName}
               </p>
-              <p className="text-[11.5px] text-on-surface-variant truncate">
-                {dateDisplay}
+              <p className="text-[11.5px] text-on-surface-variant">
+                {booking.paidAt
+                  ? `Thanh toán ${formatDateVi(booking.paidAt)}`
+                  : `Đặt ${formatDateVi(booking.createdAt)}`}
               </p>
             </div>
           </div>
@@ -174,13 +187,13 @@ function BookingCard({
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-primary/[0.08]">
               <Users size={13} className="text-primary" />
             </div>
-            <p className="text-[13px] font-medium text-on-surface truncate">
+            <p className="truncate text-[13px] font-medium text-on-surface">
               {booking.title}
             </p>
           </div>
           {booking.totalAmount > 0 && (
-            <p className="text-[12px] font-semibold tabular-nums text-on-surface-variant shrink-0">
-              {formatCurrency(booking.totalAmount)}
+            <p className="shrink-0 text-[12px] font-semibold tabular-nums text-on-surface-variant">
+              {formatCurrencyVnd(booking.totalAmount)}
             </p>
           )}
         </div>
@@ -192,7 +205,7 @@ function BookingCard({
             <span className="tabular-nums font-semibold text-on-surface">
               {booking.completedSessions}/{booking.totalSessions} buổi
               {remaining > 0 && (
-                <span className="text-on-surface-variant font-normal ml-1">
+                <span className="ml-1 font-normal text-on-surface-variant">
                   · còn {remaining}
                 </span>
               )}
@@ -206,12 +219,28 @@ function BookingCard({
           </div>
         </div>
 
-        {/* Priority badge row */}
+        {/* Meta row: payment + date */}
+        <div className="flex items-center gap-3 text-[11.5px] text-on-surface-variant">
+          <span className={cn(
+            "inline-flex items-center gap-1 font-semibold",
+            paymentPaid ? "text-emerald-700" : "text-amber-700",
+          )}>
+            <CreditCard size={11} />
+            {paymentPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+          </span>
+          <span className="text-on-surface/20">·</span>
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays size={11} />
+            Ngày mua: {formatDateVi(booking.createdAt)}
+          </span>
+        </div>
+
+        {/* Priority badge */}
         <PriorityBadge booking={booking} />
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] pt-3 mt-0.5">
-          <span className="text-[12px] tabular-nums font-semibold text-on-surface-variant">
+          <span className="tabular-nums text-[12px] font-semibold text-on-surface-variant">
             {progress}% hoàn thành
           </span>
           <Link
@@ -227,7 +256,109 @@ function BookingCard({
   );
 }
 
+// ---- Summary cards ---------------------------------------------------------
+
+function SummaryCards({
+  bookings,
+  shouldAnimate,
+}: {
+  bookings: Booking[];
+  shouldAnimate: boolean;
+}) {
+  const active = bookings.filter((b) => b.status?.toLowerCase() === "active").length;
+  const pending = bookings.filter((b) => b.status?.toLowerCase() === "pending_payment").length;
+  const completed = bookings.filter((b) => b.status?.toLowerCase() === "completed").length;
+  const needsPlan = bookings.filter(
+    (b) => b.status?.toLowerCase() === "active" && b.completedSessions === 0,
+  ).length;
+
+  const cards = [
+    {
+      label: "Đang hoạt động",
+      value: active,
+      unit: "học viên",
+      bg: "from-emerald-500/[0.07] to-emerald-400/[0.04]",
+      iconBg: "from-emerald-500 to-emerald-400",
+      icon: Users,
+      valueColor: "text-emerald-700",
+    },
+    {
+      label: "Chờ thanh toán",
+      value: pending,
+      unit: "gói",
+      bg: "from-amber-500/[0.08] to-amber-400/[0.04]",
+      iconBg: "from-amber-500 to-amber-400",
+      icon: CreditCard,
+      valueColor: "text-amber-700",
+    },
+    {
+      label: "Mới bắt đầu",
+      value: needsPlan,
+      unit: "cần tạo lộ trình",
+      bg: "from-primary/[0.07] to-[#7d6dff]/[0.04]",
+      iconBg: "from-primary to-[#7d6dff]",
+      icon: LayoutList,
+      valueColor: "text-primary",
+    },
+    {
+      label: "Hoàn thành",
+      value: completed,
+      unit: "gói",
+      bg: "from-slate-500/[0.06] to-slate-400/[0.03]",
+      iconBg: "from-slate-500 to-slate-400",
+      icon: CheckCircle2,
+      valueColor: "text-slate-600",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {cards.map((c, i) => (
+        <motion.div
+          key={c.label}
+          initial={shouldAnimate ? { opacity: 0, y: 10 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, delay: i * 0.05, ease: EASE }}
+          className={cn(
+            "flex flex-col gap-2.5 rounded-[14px] border border-[var(--color-border-soft)] bg-gradient-to-br p-4",
+            c.bg,
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-[8px] bg-gradient-to-br",
+              c.iconBg,
+            )}
+          >
+            <c.icon size={15} className="text-white" />
+          </div>
+          <div>
+            <p className={cn("text-[24px] font-bold tabular-nums leading-none", c.valueColor)}>
+              {c.value}
+            </p>
+            <p className="mt-0.5 text-[11px] text-on-surface-variant">{c.unit}</p>
+          </div>
+          <p className="text-[12px] font-medium text-on-surface">{c.label}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Page -----------------------------------------------------------------
+
+const FILTER_OPTIONS = [
+  { value: "all", label: "Tất cả" },
+  { value: "active", label: "Đang học" },
+  { value: "pending_payment", label: "Chờ thanh toán" },
+  { value: "completed", label: "Hoàn thành" },
+  { value: "cancelled", label: "Đã hủy" },
+];
+
 export default function CoachLearnersPage() {
+  const prefersReducedMotion = useReducedMotion();
+  const shouldAnimate = !prefersReducedMotion;
+
   const {
     data: bookingsData,
     loading,
@@ -258,23 +389,19 @@ export default function CoachLearnersPage() {
         api.fetchUserProfile(id).then((profile) => ({ id, profile })),
       ),
     ).then((results) => {
-      const map = new Map<string, { name: string; avatarUrl?: string }>();
+      const m = new Map<string, { name: string; avatarUrl?: string }>();
       for (const r of results) {
         if (r.status === "fulfilled" && r.value.profile) {
-          map.set(r.value.id, r.value.profile);
+          m.set(r.value.id, r.value.profile);
         }
       }
-      if (map.size) setLearnerProfiles(map);
+      if (m.size) setLearnerProfiles(m);
     });
   }, [allBookings]);
 
   const bookings = useMemo(() => {
     return allBookings.filter((b) => {
-      if (
-        statusFilter !== "all" &&
-        b.status?.toLowerCase() !== statusFilter
-      )
-        return false;
+      if (statusFilter !== "all" && b.status?.toLowerCase() !== statusFilter) return false;
       if (query) {
         const q = query.toLowerCase();
         if (!b.title.toLowerCase().includes(q)) return false;
@@ -282,12 +409,6 @@ export default function CoachLearnersPage() {
       return true;
     });
   }, [allBookings, query, statusFilter]);
-
-  const activeCount = useMemo(
-    () =>
-      allBookings.filter((b) => b.status?.toLowerCase() === "active").length,
-    [allBookings],
-  );
 
   if (loading) {
     return (
@@ -313,14 +434,25 @@ export default function CoachLearnersPage() {
     <AppShell role="coach" title="Học viên">
       <div className="mx-auto max-w-[1000px] space-y-6">
         {/* Header */}
-        <header className="flex flex-col gap-1">
+        <motion.header
+          initial={shouldAnimate ? { opacity: 0, y: -8 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, ease: EASE }}
+          className="flex flex-col gap-1"
+        >
           <h1 className="text-[26px] font-bold tracking-tight text-on-surface">
             Học viên của tôi
           </h1>
           <p className="text-[14px] text-on-surface-variant">
-            {allBookings.length} gói tập · {activeCount} đang học
+            {allBookings.length} gói tập ·{" "}
+            {allBookings.filter((b) => b.status?.toLowerCase() === "active").length} đang học
           </p>
-        </header>
+        </motion.header>
+
+        {/* Summary cards */}
+        {allBookings.length > 0 && (
+          <SummaryCards bookings={allBookings} shouldAnimate={shouldAnimate} />
+        )}
 
         {/* Search + filter row */}
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -339,10 +471,11 @@ export default function CoachLearnersPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-10 cursor-pointer appearance-none rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest pl-3 pr-8 text-[13px] font-medium text-on-surface outline-none transition-colors hover:border-primary/40 focus:border-primary"
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="active">Đang học</option>
-            <option value="completed">Hoàn thành</option>
-            <option value="cancelled">Đã huỷ</option>
+            {FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -373,6 +506,7 @@ export default function CoachLearnersPage() {
                 booking={b}
                 index={i}
                 profile={b.learnerId ? learnerProfiles.get(b.learnerId) : undefined}
+                shouldAnimate={shouldAnimate}
               />
             ))}
           </div>

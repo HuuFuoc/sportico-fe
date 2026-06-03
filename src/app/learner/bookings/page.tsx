@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
   BookOpen,
@@ -10,59 +10,102 @@ import {
   CalendarPlus,
   CheckCircle2,
   Clock,
+  CreditCard,
   Dumbbell,
   Loader2,
   RefreshCw,
+  RotateCcw,
   ShoppingBag,
+  Star,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { BookSessionModal } from "@/components/common/BookSessionModal";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { findOrderCodeForBooking, clearPendingPayos } from "@/lib/payos-pending";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
 import type { Booking } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 // ---- Status config ---------------------------------------------------------
 
-const STATUS_MAP: Record<string, { label: string; chip: string; icon: React.ElementType }> = {
+const STATUS_MAP: Record<
+  string,
+  { label: string; chip: string; accentBar: string; icon: React.ElementType }
+> = {
   active: {
-    label: "Đang học",
+    label: "Đang hoạt động",
     chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    accentBar: "from-emerald-400 via-teal-400 to-cyan-400",
     icon: CheckCircle2,
   },
   completed: {
     label: "Hoàn thành",
     chip: "bg-slate-100 text-slate-600 border-slate-200",
+    accentBar: "from-slate-300 to-slate-400",
     icon: CheckCircle2,
   },
   cancelled: {
-    label: "Đã huỷ",
+    label: "Đã hủy",
     chip: "bg-red-50 text-red-600 border-red-200",
+    accentBar: "from-red-400 to-rose-400",
     icon: XCircle,
   },
   pending_payment: {
     label: "Chờ thanh toán",
     chip: "bg-amber-50 text-amber-700 border-amber-200",
+    accentBar: "from-amber-400 to-orange-400",
     icon: Clock,
   },
 };
 
-function statusInfo(status: string) {
+function statusCfg(status: string) {
+  const s = (status ?? "").toLowerCase();
   return (
-    STATUS_MAP[status?.toLowerCase()] ?? {
-      label: status ?? "Không rõ",
+    STATUS_MAP[s] ?? {
+      label: status || "Không rõ",
       chip: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
+      accentBar: "from-on-surface/10 to-on-surface/20",
       icon: BookOpen,
     }
   );
 }
 
-// ---- SyncPaymentButton ----------------------------------------------------
+function formatDateVi(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+// ---- Tab config ------------------------------------------------------------
+
+const TABS = [
+  { key: "all", label: "Tất cả" },
+  { key: "pending_payment", label: "Chờ thanh toán" },
+  { key: "active", label: "Đang hoạt động" },
+  { key: "completed", label: "Hoàn thành" },
+  { key: "cancelled", label: "Đã hủy" },
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
+
+const SORT_OPTIONS = [
+  { key: "newest", label: "Mới nhất" },
+  { key: "remaining", label: "Còn nhiều buổi nhất" },
+  { key: "action", label: "Cần xử lý trước" },
+] as const;
+
+type SortKey = (typeof SORT_OPTIONS)[number]["key"];
+
+// ---- SyncPaymentButton (logic unchanged — critical payment flow) -----------
 
 function SyncPaymentButton({
   bookingId,
@@ -78,8 +121,6 @@ function SyncPaymentButton({
     setSyncing(true);
     setResult(null);
     try {
-      // 1) If we know the PayOS orderCode, force a reconcile — this verifies the
-      //    payment with PayOS and activates the booking server-side.
       const orderCode = findOrderCodeForBooking(bookingId);
       if (orderCode != null) {
         try {
@@ -91,13 +132,9 @@ function SyncPaymentButton({
             return;
           }
         } catch {
-          // Reconcile failed (cold start / transient) — fall through to the
-          // booking re-check below before giving up.
+          // cold start / transient — fall through to booking re-check
         }
       }
-
-      // 2) Always re-check the booking itself. The PayOS webhook may have already
-      //    activated it server-side, so this works even without a local orderCode.
       const fresh = await api.fetchBooking(bookingId);
       const status = fresh?.status?.toLowerCase();
       if (status && status !== "pending_payment") {
@@ -106,7 +143,6 @@ function SyncPaymentButton({
         onSynced?.();
         return;
       }
-
       setResult("pending");
     } catch {
       setResult("error");
@@ -117,7 +153,7 @@ function SyncPaymentButton({
 
   if (result === "success") {
     return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-700">
+      <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700">
         <CheckCircle2 size={13} />
         Đã xác nhận thanh toán
       </span>
@@ -125,187 +161,419 @@ function SyncPaymentButton({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       <button
         onClick={() => void handleSync()}
         disabled={syncing}
-        className="inline-flex items-center gap-1.5 rounded-[8px] border border-amber-300 bg-amber-50 px-3 py-1.5 text-[12px] font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-[8px] border border-amber-300 bg-amber-50 px-3.5 py-2 text-[12.5px] font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 transition-colors"
       >
-        {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+        {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
         {syncing ? "Đang đồng bộ…" : "Đồng bộ thanh toán"}
       </button>
       {result === "pending" && (
-        <p className="text-[11px] text-amber-700">
-          Chưa nhận được xác nhận thanh toán. Nếu bạn vừa thanh toán, vui lòng đợi 1–2 phút rồi thử lại.
+        <p className="text-[11.5px] text-amber-700">
+          Chưa nhận được xác nhận. Nếu bạn vừa thanh toán, hãy đợi 1–2 phút rồi thử lại.
         </p>
       )}
       {result === "error" && (
-        <p className="text-[11px] text-red-600">
-          Không kiểm tra được trạng thái. Vui lòng kiểm tra kết nối và thử lại.
+        <p className="text-[11.5px] text-red-600">
+          Không kiểm tra được trạng thái. Vui lòng thử lại sau.
         </p>
       )}
     </div>
   );
 }
 
-// ---- BookingCard ----------------------------------------------------------
+// ---- Skeleton card ---------------------------------------------------------
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden animate-pulse">
+      <div className="h-[3px] w-full bg-surface-container-high" />
+      <div className="flex flex-col gap-4 p-5">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-surface-container-high shrink-0" />
+          <div className="flex-1">
+            <div className="h-3.5 w-3/5 rounded-full bg-surface-container-high mb-2" />
+            <div className="h-3 w-2/5 rounded-full bg-surface-container-high" />
+          </div>
+          <div className="h-6 w-24 rounded-full bg-surface-container-high shrink-0" />
+        </div>
+        <div>
+          <div className="flex justify-between mb-2">
+            <div className="h-3 w-28 rounded-full bg-surface-container-high" />
+            <div className="h-3 w-16 rounded-full bg-surface-container-high" />
+          </div>
+          <div className="h-2 w-full rounded-full bg-surface-container-high" />
+        </div>
+        <div className="h-9 w-full rounded-[10px] bg-surface-container-high" />
+        <div className="grid grid-cols-3 gap-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-12 rounded-[10px] bg-surface-container-high" />
+          ))}
+        </div>
+        <div className="h-[1px] w-full bg-surface-container-high" />
+        <div className="h-9 w-full rounded-[8px] bg-surface-container-high" />
+      </div>
+    </div>
+  );
+}
+
+// ---- Summary stat cards ----------------------------------------------------
+
+interface SummaryStats {
+  active: number;
+  remainingSessions: number;
+  pendingPayment: number;
+  completed: number;
+}
+
+function SummaryCards({
+  stats,
+  shouldAnimate,
+}: {
+  stats: SummaryStats;
+  shouldAnimate: boolean;
+}) {
+  const cards = [
+    {
+      label: "Đang hoạt động",
+      value: stats.active,
+      unit: "gói",
+      bg: "bg-gradient-to-br from-primary/[0.08] to-[#7d6dff]/[0.05]",
+      iconBg: "from-primary to-[#7d6dff]",
+      icon: Dumbbell,
+      valueColor: "text-primary",
+    },
+    {
+      label: "Buổi còn lại",
+      value: stats.remainingSessions,
+      unit: "buổi",
+      bg: "bg-gradient-to-br from-emerald-500/[0.07] to-emerald-400/[0.04]",
+      iconBg: "from-emerald-500 to-emerald-400",
+      icon: CalendarDays,
+      valueColor: "text-emerald-700",
+    },
+    {
+      label: "Chờ thanh toán",
+      value: stats.pendingPayment,
+      unit: "gói",
+      bg: "bg-gradient-to-br from-amber-500/[0.08] to-amber-400/[0.04]",
+      iconBg: "from-amber-500 to-amber-400",
+      icon: CreditCard,
+      valueColor: "text-amber-700",
+    },
+    {
+      label: "Hoàn thành",
+      value: stats.completed,
+      unit: "gói",
+      bg: "bg-gradient-to-br from-slate-500/[0.06] to-slate-400/[0.03]",
+      iconBg: "from-slate-500 to-slate-400",
+      icon: CheckCircle2,
+      valueColor: "text-slate-600",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {cards.map((c, i) => (
+        <motion.div
+          key={c.label}
+          initial={shouldAnimate ? { opacity: 0, y: 10 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, delay: i * 0.05, ease: EASE }}
+          className={cn(
+            "flex flex-col gap-2.5 rounded-[14px] border border-[var(--color-border-soft)] p-4",
+            c.bg,
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-[8px] bg-gradient-to-br",
+              c.iconBg,
+            )}
+          >
+            <c.icon size={15} className="text-white" />
+          </div>
+          <div>
+            <p className={cn("text-[24px] font-bold tabular-nums leading-none", c.valueColor)}>
+              {c.value}
+            </p>
+            <p className="mt-0.5 text-[11px] text-on-surface-variant">{c.unit}</p>
+          </div>
+          <p className="text-[12px] font-medium text-on-surface">{c.label}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Booking card ----------------------------------------------------------
+
+interface CoachProfile {
+  name: string;
+  avatarUrl?: string;
+}
 
 function BookingCard({
   booking,
   index,
+  coachProfile,
+  shouldAnimate,
   onBookSession,
   onSynced,
 }: {
   booking: Booking;
   index: number;
+  coachProfile?: CoachProfile | null;
+  shouldAnimate: boolean;
   onBookSession: (b: Booking) => void;
   onSynced?: () => void;
 }) {
-  const { label, chip, icon: StatusIcon } = statusInfo(booking.status);
-  const status = booking.status?.toLowerCase();
+  const cfg = statusCfg(booking.status);
+  const StatusIcon = cfg.icon;
+  const status = (booking.status ?? "").toLowerCase();
   const isActive = status === "active";
   const isPendingPayment = status === "pending_payment";
-  const isTerminal = status === "completed" || status === "cancelled";
+  const isCompleted = status === "completed";
+  const isCancelled = status === "cancelled";
 
   const progress =
     booking.totalSessions > 0
       ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
       : 0;
+  const remaining = Math.max(0, booking.totalSessions - booking.completedSessions);
+
+  const coachName = coachProfile?.name;
+  const coachAvatar = coachProfile?.avatarUrl ?? avatarFor(booking.coachId);
+
+  const paymentPaid = !!(booking.paidAt || isActive || isCompleted);
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 16 }}
+      initial={shouldAnimate ? { opacity: 0, y: 16 } : false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.06, ease: EASE }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.3), ease: EASE }}
       className={cn(
-        "group flex flex-col gap-4 rounded-[16px] border bg-surface-container-lowest p-5 transition-all",
+        "group flex flex-col overflow-hidden rounded-[16px] border bg-surface-container-lowest transition-all",
         isActive
-          ? "border-primary/20 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_8px_28px_-12px_rgba(53,37,205,0.22)]"
-          : "border-[var(--color-border-soft)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-10px_rgba(15,15,30,0.12)]",
+          ? "border-emerald-200/70 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_8px_24px_-10px_rgba(16,185,129,0.2)]"
+          : isPendingPayment
+          ? "border-amber-200/60 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-[0_6px_20px_-10px_rgba(245,158,11,0.18)]"
+          : "border-[var(--color-border-soft)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-10px_rgba(15,15,30,0.1)]",
       )}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
-            isActive ? "bg-gradient-to-br from-primary/15 to-[#7d6dff]/10" : "bg-surface-container-low",
-          )}>
-            <Dumbbell size={18} className={isActive ? "text-primary" : "text-on-surface-variant"} />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold text-on-surface">
-              {booking.title}
-            </p>
-            <p className="text-[12px] text-on-surface-variant">
-              Đặt ngày {new Date(booking.createdAt).toLocaleDateString("vi-VN")}
-            </p>
-          </div>
-        </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-            chip,
-          )}
-        >
-          <StatusIcon size={12} />
-          {label}
-        </span>
-      </div>
+      {/* Accent bar */}
+      <div className={cn("h-[3px] w-full bg-gradient-to-r", cfg.accentBar)} />
 
-      {/* Progress bar */}
-      <div>
-        <div className="mb-1.5 flex items-center justify-between text-[12px]">
-          <span className="text-on-surface-variant">Tiến độ buổi tập</span>
-          <span className="font-semibold text-on-surface tabular-nums">
-            {booking.completedSessions}/{booking.totalSessions} buổi
+      <div className="flex flex-col gap-4 p-5">
+        {/* Header: coach avatar + package name + status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative shrink-0">
+              <img
+                src={coachAvatar}
+                alt={coachName ?? "Coach"}
+                className="h-11 w-11 rounded-full object-cover ring-2 ring-[var(--color-border-soft)]"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = avatarFor(booking.coachId);
+                }}
+              />
+              {isActive && (
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-surface-container-lowest bg-emerald-500" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-semibold text-on-surface">
+                {booking.title}
+              </p>
+              <p
+                className={cn(
+                  "truncate text-[12px]",
+                  coachName ? "text-on-surface-variant" : "italic text-on-surface-variant/60",
+                )}
+              >
+                {coachName ? `HLV: ${coachName}` : "Chưa có thông tin coach"}
+              </p>
+            </div>
+          </div>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+              cfg.chip,
+            )}
+          >
+            <StatusIcon size={11} />
+            {cfg.label}
           </span>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all",
-              isActive ? "bg-gradient-to-r from-primary to-[#7d6dff]" : "bg-on-surface/20",
-            )}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="mt-1 text-right text-[11px] tabular-nums text-on-surface-variant">
-          {progress}% hoàn thành
-        </p>
-      </div>
 
-      {/* Footer */}
-      <div className="flex flex-col gap-3 border-t border-[var(--color-border-soft)] pt-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3 text-[12px] text-on-surface-variant">
-            <span className="inline-flex items-center gap-1">
-              <CalendarDays size={13} />
-              {booking.totalSessions} buổi
+        {/* Session progress */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
+            <span className="font-medium text-on-surface">Tiến độ buổi tập</span>
+            <span className="tabular-nums font-semibold text-on-surface">
+              {booking.completedSessions}/{booking.totalSessions} buổi
             </span>
-            {booking.totalAmount > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <ShoppingBag size={13} />
-                {new Intl.NumberFormat("vi-VN").format(booking.totalAmount)}đ
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                isActive
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                  : isCompleted
+                  ? "bg-gradient-to-r from-primary to-[#7d6dff]"
+                  : "bg-on-surface/20",
+              )}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between text-[12px] text-on-surface-variant">
+            <span className="tabular-nums">{progress}% hoàn thành</span>
+            {remaining > 0 && isActive && (
+              <span className="tabular-nums text-emerald-700 font-medium">
+                Còn {remaining} buổi
               </span>
             )}
+            {remaining === 0 && booking.totalSessions > 0 && !isCancelled && (
+              <span className="font-semibold text-primary">Đã hoàn thành tất cả buổi</span>
+            )}
           </div>
+        </div>
 
-          {/* Primary CTA per status */}
+        {/* Next session row */}
+        <div
+          className={cn(
+            "flex items-center gap-2 rounded-[10px] px-3 py-2 text-[12.5px]",
+            isActive
+              ? "border border-emerald-100 bg-emerald-50/60"
+              : "border border-[var(--color-border-soft)] bg-surface-container-low",
+          )}
+        >
+          <CalendarDays
+            size={13}
+            className={cn("shrink-0", isActive ? "text-emerald-600" : "text-on-surface-variant")}
+          />
+          <span className={isActive ? "text-emerald-800" : "text-on-surface-variant"}>
+            Buổi tiếp theo:{" "}
+            <strong className="font-semibold">Chưa có buổi sắp tới</strong>
+          </span>
+        </div>
+
+        {/* Metadata grid */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col gap-0.5 rounded-[10px] bg-surface-container-low px-2.5 py-2">
+            <span className="text-[10.5px] text-on-surface-variant">Ngày mua</span>
+            <span className="text-[12px] font-semibold tabular-nums text-on-surface">
+              {formatDateVi(booking.createdAt)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-[10px] bg-surface-container-low px-2.5 py-2">
+            <span className="text-[10.5px] text-on-surface-variant">Thanh toán</span>
+            <span
+              className={cn(
+                "text-[11.5px] font-semibold",
+                paymentPaid ? "text-emerald-700" : "text-amber-700",
+              )}
+            >
+              {paymentPaid ? "Đã TT" : "Chưa TT"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-[10px] bg-surface-container-low px-2.5 py-2">
+            <span className="text-[10.5px] text-on-surface-variant">Tổng tiền</span>
+            <span className="text-[11px] font-semibold tabular-nums text-on-surface">
+              {booking.totalAmount > 0 ? formatCurrencyVnd(booking.totalAmount) : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* Terminal status info row */}
+        {isCancelled && booking.cancelledAt && (
+          <div className="flex items-center gap-2 rounded-[10px] border border-red-100 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+            <XCircle size={13} className="shrink-0" />
+            Đã hủy ngày {formatDateVi(booking.cancelledAt)}
+          </div>
+        )}
+        {isCompleted && booking.completedAt && (
+          <div className="flex items-center gap-2 rounded-[10px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700">
+            <CheckCircle2 size={13} className="shrink-0" />
+            Hoàn thành ngày {formatDateVi(booking.completedAt)}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 border-t border-[var(--color-border-soft)] pt-3">
+          {isPendingPayment && (
+            <>
+              <div className="flex items-start gap-2 rounded-[10px] border border-amber-100 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                <CreditCard size={13} className="mt-0.5 shrink-0" />
+                <span>
+                  Nếu bạn đã thanh toán, nhấn{" "}
+                  <strong>Đồng bộ</strong> để cập nhật trạng thái.
+                </span>
+              </div>
+              <SyncPaymentButton bookingId={booking.id} onSynced={onSynced} />
+            </>
+          )}
+
           {isActive && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => onBookSession(booking)}
-                className="inline-flex items-center gap-1.5 rounded-[8px] bg-gradient-to-br from-primary to-[#5b4ee8] px-3.5 py-1.5 text-[12.5px] font-semibold text-on-primary shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] bg-gradient-to-br from-emerald-500 to-teal-500 px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-[0_3px_10px_-2px_rgba(16,185,129,0.35)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <CalendarPlus size={13} />
                 Đặt buổi tập
               </button>
               <Link
                 href={`/learner/plan?booking=${booking.id}`}
-                className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-1.5 text-[12px] font-medium text-on-surface hover:bg-surface-container-low transition-colors"
+                className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[12px] font-medium text-on-surface hover:bg-surface-container-low transition-colors"
               >
-                Lộ trình
+                Xem lộ trình
                 <ArrowRight size={12} />
               </Link>
             </div>
           )}
 
-          {!isActive && !isPendingPayment && !isTerminal && (
-            <Link
-              href={`/learner/plan?booking=${booking.id}`}
-              className="inline-flex items-center gap-1 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8]"
-            >
-              Xem lộ trình
-              <ArrowRight size={13} />
-            </Link>
+          {isCompleted && (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/learner/plan?booking=${booking.id}`}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[12.5px] font-medium text-on-surface hover:bg-surface-container-low transition-colors"
+              >
+                <BookOpen size={13} />
+                Xem nhật ký tập
+              </Link>
+              <Link
+                href={`/learner/coaches/${booking.coachId}`}
+                className="inline-flex items-center gap-1 rounded-[8px] border border-primary/20 bg-primary/5 px-3 py-2 text-[12px] font-medium text-primary hover:bg-primary/10 transition-colors"
+              >
+                <Star size={12} />
+                Đánh giá coach
+              </Link>
+            </div>
           )}
 
-          {isTerminal && (
-            <Link
-              href={`/learner/plan?booking=${booking.id}`}
-              className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors"
-            >
-              Xem lộ trình
-              <ArrowRight size={13} />
-            </Link>
+          {isCancelled && (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/learner/plan?booking=${booking.id}`}
+                className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[12px] font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              >
+                Xem chi tiết
+                <ArrowRight size={12} />
+              </Link>
+              <Link
+                href="/learner/coaches"
+                className="inline-flex items-center gap-1.5 rounded-[8px] bg-surface-container-low px-3 py-2 text-[12px] font-medium text-on-surface hover:bg-surface-container transition-colors"
+              >
+                Mua lại gói
+                <ShoppingBag size={12} />
+              </Link>
+            </div>
           )}
         </div>
-
-        {/* Pending payment sync */}
-        {isPendingPayment && (
-          <SyncPaymentButton bookingId={booking.id} onSynced={onSynced} />
-        )}
-
-        {/* Learner prompt for active booking with no sessions yet */}
-        {isActive && booking.completedSessions === 0 && booking.totalSessions > 0 && (
-          <div className="flex items-start gap-2 rounded-[10px] bg-primary/[0.05] border border-primary/10 px-3 py-2 text-[12px] text-primary/80">
-            <CalendarPlus size={13} className="mt-0.5 shrink-0" />
-            <span>
-              Nhấn <strong>Đặt buổi tập</strong> để chọn lịch với huấn luyện viên của bạn.
-            </span>
-          </div>
-        )}
       </div>
     </motion.article>
   );
@@ -314,6 +582,9 @@ function BookingCard({
 // ---- Page -----------------------------------------------------------------
 
 export default function LearnerBookingsPage() {
+  const prefersReducedMotion = useReducedMotion();
+  const shouldAnimate = !prefersReducedMotion;
+
   const {
     data: bookingsData,
     loading,
@@ -321,118 +592,294 @@ export default function LearnerBookingsPage() {
     refetch,
   } = useApiResource(() => api.fetchMyBookings(), []);
 
-  const bookings = useMemo(() => bookingsData ?? [], [bookingsData]);
-
-  const activeBookings = useMemo(
-    () => bookings.filter((b) => b.status?.toLowerCase() === "active"),
-    [bookings],
-  );
-  const pendingBookings = useMemo(
-    () => bookings.filter((b) => b.status?.toLowerCase() === "pending_payment"),
-    [bookings],
-  );
-  const otherBookings = useMemo(
-    () => bookings.filter(
-      (b) =>
-        b.status?.toLowerCase() !== "active" &&
-        b.status?.toLowerCase() !== "pending_payment",
-    ),
-    [bookings],
-  );
-
+  const allBookings = useMemo(() => bookingsData ?? [], [bookingsData]);
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [bookSessionTarget, setBookSessionTarget] = useState<Booking | null>(null);
+
+  // Batch-fetch coach profiles for all unique coachIds once bookings load
+  const [coachProfiles, setCoachProfiles] = useState<Map<string, CoachProfile>>(new Map());
+
+  useEffect(() => {
+    if (!allBookings.length) return;
+    const uniqueIds = [
+      ...new Set(allBookings.map((b) => b.coachId).filter((id): id is string => !!id)),
+    ];
+    if (!uniqueIds.length) return;
+
+    Promise.allSettled(
+      uniqueIds.map((id) =>
+        api.fetchUserProfile(id).then((profile) => ({ id, profile })),
+      ),
+    ).then((results) => {
+      const m = new Map<string, CoachProfile>();
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.profile) {
+          m.set(r.value.id, {
+            name: r.value.profile.name,
+            avatarUrl: r.value.profile.avatarUrl,
+          });
+        }
+      }
+      if (m.size) setCoachProfiles(m);
+    });
+  }, [allBookings]);
+
+  // Summary stats (computed from real booking data only)
+  const stats = useMemo<SummaryStats>(() => {
+    const active = allBookings.filter((b) => b.status?.toLowerCase() === "active");
+    return {
+      active: active.length,
+      remainingSessions: active.reduce(
+        (sum, b) => sum + Math.max(0, b.totalSessions - b.completedSessions),
+        0,
+      ),
+      pendingPayment: allBookings.filter(
+        (b) => b.status?.toLowerCase() === "pending_payment",
+      ).length,
+      completed: allBookings.filter((b) => b.status?.toLowerCase() === "completed").length,
+    };
+  }, [allBookings]);
+
+  // Tab counts
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: allBookings.length };
+    for (const b of allBookings) {
+      const s = b.status?.toLowerCase();
+      if (s) counts[s] = (counts[s] ?? 0) + 1;
+    }
+    return counts;
+  }, [allBookings]);
+
+  // Filter + sort
+  const filteredBookings = useMemo(() => {
+    let result = allBookings;
+    if (activeTab !== "all") {
+      result = result.filter((b) => b.status?.toLowerCase() === activeTab);
+    }
+    switch (sortKey) {
+      case "remaining":
+        result = [...result].sort(
+          (a, b) =>
+            b.totalSessions - b.completedSessions - (a.totalSessions - a.completedSessions),
+        );
+        break;
+      case "action": {
+        const priority = (s: string) => {
+          if (s === "pending_payment") return 0;
+          if (s === "active") return 1;
+          if (s === "completed") return 2;
+          return 3;
+        };
+        result = [...result].sort(
+          (a, b) => priority(a.status?.toLowerCase()) - priority(b.status?.toLowerCase()),
+        );
+        break;
+      }
+      default:
+        result = [...result].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+    }
+    return result;
+  }, [allBookings, activeTab, sortKey]);
 
   return (
     <AppShell role="learner" title="Gói tập của tôi">
-      <div className="mx-auto max-w-[880px] space-y-6">
+      <div className="mx-auto max-w-[960px] space-y-6">
         {/* Page header */}
-        <header className="flex flex-col gap-1">
+        <motion.header
+          initial={shouldAnimate ? { opacity: 0, y: -8 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, ease: EASE }}
+          className="flex flex-col gap-1"
+        >
           <h1 className="text-[26px] font-bold tracking-tight text-on-surface">
             Gói tập của tôi
           </h1>
           <p className="text-[14px] text-on-surface-variant">
-            Quản lý các gói đã mua, đặt buổi tập, và theo dõi tiến độ của bạn.
+            Theo dõi gói đã mua, lịch tập, thanh toán và tiến độ của bạn.
           </p>
-        </header>
+        </motion.header>
 
-        {loading && <LoadingState label="Đang tải gói tập…" />}
-        {error && (
-          <ErrorState
-            message="Không tải được danh sách gói tập."
-            onRetry={refetch}
-            className="mx-auto max-w-md"
-          />
-        )}
-
-        {/* Empty */}
-        {!loading && !error && bookings.length === 0 && (
-          <div className="flex flex-col items-center gap-4 rounded-[16px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest px-6 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-low">
-              <ShoppingBag size={24} className="text-on-surface-variant" />
+        {/* Loading state — skeleton layout */}
+        {loading && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-[108px] rounded-[14px] bg-surface-container-low animate-pulse" />
+              ))}
             </div>
-            <div>
-              <p className="text-[16px] font-semibold text-on-surface">
-                Chưa có gói tập nào
-              </p>
-              <p className="mt-1 text-[14px] text-on-surface-variant">
-                Khám phá các huấn luyện viên và chọn gói tập phù hợp với bạn.
-              </p>
+            <div className="h-10 w-full rounded-[12px] bg-surface-container-low animate-pulse" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[...Array(4)].map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
-            <Link
-              href="/learner/coaches"
-              className="inline-flex items-center gap-2 rounded-[8px] bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8]"
-            >
-              Tìm huấn luyện viên
-              <ArrowRight size={14} />
-            </Link>
           </div>
         )}
 
-        {/* Pending payment */}
-        {pendingBookings.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.07em] text-amber-600">
-              Chờ thanh toán ({pendingBookings.length})
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {pendingBookings.map((b, i) => (
-                <BookingCard key={b.id} booking={b} index={i} onBookSession={setBookSessionTarget} onSynced={refetch} />
-              ))}
+        {/* Error state */}
+        {!loading && error && (
+          <div className="flex flex-col items-center gap-4 rounded-[16px] border border-red-100 bg-red-50/60 px-6 py-14 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <XCircle size={22} className="text-red-600" />
             </div>
-          </section>
+            <div>
+              <p className="text-[16px] font-semibold text-on-surface">
+                Không thể tải danh sách gói tập
+              </p>
+              <p className="mt-1 text-[14px] text-on-surface-variant">
+                Vui lòng thử lại sau.
+              </p>
+            </div>
+            <button
+              onClick={refetch}
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-200 bg-white px-4 py-2 text-[13px] font-semibold text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <RotateCcw size={14} />
+              Thử lại
+            </button>
+          </div>
         )}
 
-        {/* Active bookings */}
-        {activeBookings.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.07em] text-emerald-700">
-              Đang học ({activeBookings.length})
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {activeBookings.map((b, i) => (
-                <BookingCard key={b.id} booking={b} index={i} onBookSession={setBookSessionTarget} />
-              ))}
-            </div>
-          </section>
-        )}
+        {!loading && !error && (
+          <>
+            {/* Summary cards */}
+            {allBookings.length > 0 && (
+              <SummaryCards stats={stats} shouldAnimate={shouldAnimate} />
+            )}
 
-        {/* History */}
-        {otherBookings.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.07em] text-on-surface-variant">
-              Lịch sử ({otherBookings.length})
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {otherBookings.map((b, i) => (
-                <BookingCard
-                  key={b.id}
-                  booking={b}
-                  index={activeBookings.length + pendingBookings.length + i}
-                  onBookSession={setBookSessionTarget}
-                />
-              ))}
+            {/* Filter tabs + sort row */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {/* Animated tab pills */}
+              <div className="flex items-center gap-1 overflow-x-auto rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-low p-1">
+                {TABS.map((tab) => {
+                  const count = tabCounts[tab.key] ?? 0;
+                  const isCurrent = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={cn(
+                        "relative shrink-0 inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+                        isCurrent
+                          ? "text-on-surface"
+                          : "text-on-surface-variant hover:text-on-surface",
+                      )}
+                    >
+                      {isCurrent && (
+                        <motion.span
+                          layoutId="tab-active-pill"
+                          className="absolute inset-0 rounded-[8px] bg-surface-container-lowest shadow-[0_1px_3px_rgba(0,0,0,0.07)]"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.38 }}
+                        />
+                      )}
+                      <span className="relative">{tab.label}</span>
+                      {count > 0 && (
+                        <span
+                          className={cn(
+                            "relative inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] tabular-nums font-semibold",
+                            isCurrent
+                              ? "bg-primary/10 text-primary"
+                              : "bg-on-surface/10 text-on-surface-variant",
+                          )}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sort dropdown */}
+              {allBookings.length > 1 && (
+                <select
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as SortKey)}
+                  className="h-9 shrink-0 cursor-pointer appearance-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest pl-3 pr-8 text-[12.5px] font-medium text-on-surface outline-none transition-colors hover:border-primary/40 focus:border-primary"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-          </section>
+
+            {/* Empty — no packages at all */}
+            {allBookings.length === 0 && (
+              <motion.div
+                initial={shouldAnimate ? { opacity: 0, scale: 0.98 } : false}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, ease: EASE }}
+                className="flex flex-col items-center gap-5 rounded-[20px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest px-6 py-16 text-center"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-[#7d6dff]/10">
+                  <Dumbbell size={28} className="text-primary/60" />
+                </div>
+                <div>
+                  <p className="text-[17px] font-bold text-on-surface">
+                    Bạn chưa mua gói tập nào
+                  </p>
+                  <p className="mt-1.5 max-w-xs mx-auto text-[14px] text-on-surface-variant">
+                    Khám phá huấn luyện viên phù hợp và bắt đầu lộ trình tập luyện của bạn.
+                  </p>
+                </div>
+                <Link
+                  href="/learner/coaches"
+                  className="inline-flex items-center gap-2 rounded-[10px] bg-gradient-to-br from-primary to-[#5b4ee8] px-5 py-2.5 text-[13.5px] font-semibold text-on-primary shadow-[0_4px_14px_-4px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-4px_rgba(53,37,205,0.5)] hover:scale-[1.02] active:scale-[0.99] transition-all"
+                >
+                  Tìm huấn luyện viên
+                  <ArrowRight size={15} />
+                </Link>
+              </motion.div>
+            )}
+
+            {/* Empty — no packages matching current filter */}
+            {allBookings.length > 0 && filteredBookings.length === 0 && (
+              <div className="flex flex-col items-center gap-4 rounded-[16px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest px-6 py-12 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-container-low">
+                  <BookOpen size={20} className="text-on-surface-variant" />
+                </div>
+                <div>
+                  <p className="text-[15px] font-semibold text-on-surface">
+                    Không có gói nào trong trạng thái này
+                  </p>
+                  <p className="mt-1 text-[13.5px] text-on-surface-variant">
+                    Thử chọn bộ lọc khác để xem toàn bộ gói tập.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("all")}
+                  className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-border-soft)] px-4 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-low transition-colors"
+                >
+                  Xem tất cả
+                </button>
+              </div>
+            )}
+
+            {/* Package cards grid */}
+            {filteredBookings.length > 0 && (
+              <AnimatePresence mode="popLayout">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {filteredBookings.map((b, i) => (
+                    <BookingCard
+                      key={b.id}
+                      booking={b}
+                      index={i}
+                      coachProfile={coachProfiles.get(b.coachId) ?? null}
+                      shouldAnimate={shouldAnimate}
+                      onBookSession={setBookSessionTarget}
+                      onSynced={refetch}
+                    />
+                  ))}
+                </div>
+              </AnimatePresence>
+            )}
+          </>
         )}
       </div>
 

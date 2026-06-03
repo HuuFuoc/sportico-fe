@@ -170,6 +170,10 @@ export const backendEndpoints = {
   adminResolveReviewReport: (id: string) =>
     `/api/admin/review-reports/${encodeURIComponent(id)}/resolve`,
 
+  // ---- Admin user management --------------------------------------------
+  adminUsers: "/api/admin/users",
+  adminUserById: (id: string) => `/api/admin/users/${encodeURIComponent(id)}`,
+
   // ---- Admin moderation queues ------------------------------------------
   adminPendingPosts: "/api/admin/posts/pending",
   adminApprovePost: (id: string) =>

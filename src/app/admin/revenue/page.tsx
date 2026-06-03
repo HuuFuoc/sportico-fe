@@ -195,7 +195,7 @@ export default function AdminRevenuePage() {
     error: string | null;
   } | null>(null);
 
-  const runAction = async (id: string, fn: () => Promise<void>) => {
+  const runAction = async (id: string, fn: () => Promise<unknown>) => {
     setActionLoading(id);
     try {
       await fn();

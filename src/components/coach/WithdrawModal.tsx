@@ -12,7 +12,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrencyVnd } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { messageForApiError } from "@/lib/errors-vi";
 import { useApiResource } from "@/lib/hooks/useApiResource";
@@ -29,9 +29,8 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 interface WithdrawModalProps {
   open: boolean;
   onClose: () => void;
-  /** Available balance to withdraw against (defaults shown to the coach). */
+  /** Available balance to withdraw against (VND). */
   available: number;
-  currency?: string;
   /** Called after a successful withdrawal so the parent can refresh its data. */
   onSuccess?: () => void;
 }
@@ -42,7 +41,6 @@ export function WithdrawModal({
   open,
   onClose,
   available,
-  currency = "VND",
   onSuccess,
 }: WithdrawModalProps) {
   const reduce = useReducedMotion();
@@ -175,12 +173,12 @@ export function WithdrawModal({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-[16px] font-bold tracking-tight">
-                Withdraw Funds
+                Rút tiền
               </h3>
               <p className="text-[12.5px] text-on-surface-variant mt-0.5">
-                Available:{" "}
+                Số dư khả dụng:{" "}
                 <span className="font-semibold text-on-surface tabular-nums">
-                  {formatCurrency(available, currency)}
+                  {formatCurrencyVnd(available)}
                 </span>
               </p>
             </div>
@@ -351,7 +349,7 @@ export function WithdrawModal({
                   ) : (
                     <>
                       <ArrowDownToLine size={15} />
-                      Rút {amount ? formatCurrency(amountNum, currency) : "tiền"}
+                      Rút {amount ? formatCurrencyVnd(amountNum) : "tiền"}
                     </>
                   )}
                 </button>
@@ -363,10 +361,10 @@ export function WithdrawModal({
                 <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-[#10b981] to-[#34d399] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.4)]">
                   <CheckCircle2 size={26} className="text-white" />
                 </div>
-                <h4 className="text-[16px] font-bold">Đã gửi yêu cầu rút tiền</h4>
+                <h4 className="text-[16px] font-bold">Yêu cầu rút tiền đã được gửi</h4>
                 <p className="text-[12.5px] text-on-surface-variant mt-1 max-w-xs mx-auto">
-                  {formatCurrency(amountNum, currency)} sẽ được chuyển tới{" "}
-                  {account?.bankName ?? "ngân hàng của bạn"} sau khi được duyệt.
+                  {formatCurrencyVnd(amountNum)} đã được tạm giữ và đang chờ quản trị viên duyệt.
+                  Tiền sẽ được chuyển tới {account?.bankName ?? "tài khoản ngân hàng"} sau khi được duyệt.
                 </p>
                 <button
                   onClick={onClose}

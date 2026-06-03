@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
@@ -24,7 +25,8 @@ import {
   Target,
   Timer,
   TrendingDown,
-  User,
+  Trophy,
+  X,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -32,8 +34,8 @@ import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
-import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import { cn, formatCurrency, avatarFor } from "@/lib/utils";
+import { ErrorState } from "@/components/common/AsyncStates";
+import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
 import type {
   Booking,
   LearnerAssessment,
@@ -43,365 +45,33 @@ import type {
 } from "@/types";
 
 // ============================================================================
-// Entry
+// Helpers
 // ============================================================================
 
-export default function LearnerPlanPage() {
-  return (
-    <Suspense fallback={null}>
-      <LearnerPlanContent />
-    </Suspense>
-  );
-}
+const UNNAMED_PKG = "Gói tập chưa có tên";
 
-// ============================================================================
-// Root content
-// ============================================================================
-
-type PlanTab = "assessment" | "plan" | "checkins";
-
-function LearnerPlanContent() {
-  const {
-    data: bookingsData,
-    loading,
-    error,
-    refetch,
-  } = useApiResource(() => api.fetchMyBookings(), []);
-  const bookings = useMemo(() => bookingsData ?? [], [bookingsData]);
-
-  const searchParams = useSearchParams();
-  const paramBookingId = searchParams.get("booking") ?? "";
-  const paramTab = (searchParams.get("tab") as PlanTab) ?? "assessment";
-
-  const [bookingId, setBookingId] = useState(paramBookingId);
-  const [activeTab, setActiveTab] = useState<PlanTab>(paramTab);
-
-  useEffect(() => {
-    if (!bookings.length) return;
-    if (bookingId && bookings.some((b) => b.id === bookingId)) return;
-    setBookingId(bookings[0].id);
-  }, [bookings, bookingId]);
-
-  if (loading) {
-    return (
-      <AppShell role="learner" title="Lộ trình">
-        <LoadingState label="Đang tải lộ trình…" />
-      </AppShell>
-    );
+function formatDateVi(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "";
   }
-
-  if (error) {
-    return (
-      <AppShell role="learner" title="Lộ trình">
-        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
-      </AppShell>
-    );
-  }
-
-  const selectedBooking = bookings.find((b) => b.id === bookingId) ?? null;
-
-  return (
-    <AppShell role="learner" title="Lộ trình">
-      <div className="max-w-[880px] mx-auto space-y-5 pb-10">
-        <PageHeader
-          bookings={bookings}
-          selectedBookingId={bookingId}
-          onSelectBooking={setBookingId}
-        />
-
-        {bookings.length === 0 ? (
-          <NoBookingsState />
-        ) : selectedBooking ? (
-          <>
-            <PackageOverviewCard
-              booking={selectedBooking}
-              onCheckIn={() => setActiveTab("checkins")}
-              onAssess={() => setActiveTab("assessment")}
-            />
-            <CoachContextStrip booking={selectedBooking} />
-            <QuickStatusCards
-              bookingId={bookingId}
-              onTabChange={setActiveTab}
-            />
-            <TabNav activeTab={activeTab} onChange={setActiveTab} />
-            <TabPanels
-              key={bookingId}
-              bookingId={bookingId}
-              activeTab={activeTab}
-            />
-          </>
-        ) : null}
-      </div>
-    </AppShell>
-  );
 }
 
-// ============================================================================
-// Page Header
-// ============================================================================
-
-function PageHeader({
-  bookings,
-  selectedBookingId,
-  onSelectBooking,
-}: {
-  bookings: Booking[];
-  selectedBookingId: string;
-  onSelectBooking: (id: string) => void;
-}) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.header
-      initial={reduce ? false : { opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
-    >
-      <div>
-        <h1 className="text-[26px] font-bold tracking-tight text-on-surface">
-          Lộ trình tập luyện
-        </h1>
-        <p className="text-body-sm text-on-surface-variant mt-1">
-          Theo dõi đánh giá ban đầu, kế hoạch tập và tiến độ của bạn
-        </p>
-      </div>
-      {bookings.length > 1 && (
-        <div className="relative shrink-0">
-          <select
-            value={selectedBookingId}
-            onChange={(e) => onSelectBooking(e.target.value)}
-            className="appearance-none h-9 pl-3 pr-8 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[8px] text-body-sm outline-none focus:border-primary transition-colors shadow-sm"
-          >
-            {bookings.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.title}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={13}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant"
-          />
-        </div>
-      )}
-    </motion.header>
-  );
+function getPackageDisplayName(booking: Booking, coachName?: string): string {
+  if (booking.title && booking.title !== UNNAMED_PKG) return booking.title;
+  if (coachName) return `Gói tập với ${coachName}`;
+  if (booking.createdAt) return `Gói tập ${formatDateVi(booking.createdAt)}`;
+  return `Gói #${booking.id.slice(0, 6).toUpperCase()}`;
 }
 
-// ============================================================================
-// Coach Context Strip — shows HLV info + payment meta below overview card
-// ============================================================================
+type StatusVariant = "active" | "completed" | "cancelled" | "draft" | "expired" | "pending";
 
-function CoachContextStrip({ booking }: { booking: Booking }) {
-  const { data: coach } = useApiResource(
-    () => api.fetchCoach(booking.coachId),
-    [booking.coachId],
-  );
-
-  const coachName =
-    coach?.name ?? `Coach ${booking.coachId.slice(0, 4).toUpperCase()}`;
-  const coachAvatar = coach?.avatarUrl ?? avatarFor(booking.coachId);
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-4 py-3">
-      {/* HLV phụ trách */}
-      <div className="flex items-center gap-2.5">
-        <img
-          src={coachAvatar}
-          alt={coachName}
-          className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-[var(--color-border-soft)]"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = avatarFor(booking.coachId);
-          }}
-        />
-        <div>
-          <p className="text-[10.5px] text-on-surface-variant">HLV phụ trách</p>
-          <p className="text-[13px] font-semibold text-on-surface leading-tight">
-            {coachName}
-          </p>
-        </div>
-      </div>
-
-      <div className="h-7 w-px bg-[var(--color-border-soft)] hidden sm:block" />
-
-      {/* Ngày thanh toán */}
-      <div>
-        <p className="text-[10.5px] text-on-surface-variant">Ngày thanh toán</p>
-        <p className="text-[13px] font-semibold text-on-surface tabular-nums leading-tight">
-          {booking.paidAt
-            ? new Date(booking.paidAt).toLocaleDateString("vi-VN")
-            : "Chưa cập nhật"}
-        </p>
-      </div>
-
-      <div className="h-7 w-px bg-[var(--color-border-soft)] hidden sm:block" />
-
-      {/* Tổng thanh toán */}
-      <div>
-        <p className="text-[10.5px] text-on-surface-variant">Tổng thanh toán</p>
-        <p className="text-[13px] font-semibold text-on-surface tabular-nums leading-tight">
-          {booking.totalAmount > 0
-            ? formatCurrency(booking.totalAmount)
-            : "Chưa cập nhật"}
-        </p>
-      </div>
-
-      {/* Learner identity (fallback) — hidden visually, useful for debugging */}
-      {booking.learnerId && (
-        <>
-          <div className="h-7 w-px bg-[var(--color-border-soft)] hidden sm:block" />
-          <div className="flex items-center gap-2">
-            <User size={13} className="text-on-surface-variant shrink-0" />
-            <p className="text-[12px] text-on-surface-variant font-mono tabular-nums">
-              #{booking.learnerId.slice(0, 8).toUpperCase()}
-            </p>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// Quick Status Cards — 3 tiles showing assessment / plan / check-in status
-// ============================================================================
-
-function QuickStatusCards({
-  bookingId,
-  onTabChange,
-}: {
-  bookingId: string;
-  onTabChange: (tab: PlanTab) => void;
-}) {
-  const reduce = useReducedMotion();
-
-  const { data: assessment, loading: aLoading } = useApiResource(
-    () => api.fetchAssessment(bookingId),
-    [bookingId],
-  );
-  const { data: plan, loading: pLoading } = useApiResource(
-    () => api.fetchTrainingPlan(bookingId),
-    [bookingId],
-  );
-  const { data: checkInsData, loading: cLoading } = useApiResource(
-    () => api.fetchProgressCheckIns(bookingId, { pageSize: 1 }),
-    [bookingId],
-  );
-
-  const checkInCount = checkInsData?.totalCount ?? 0;
-  const latestCheckIn = checkInsData?.items[0];
-  const planStatus = plan?.status?.toLowerCase() ?? null;
-
-  type TileStatus = "ok" | "warn" | "missing" | "info";
-  const TILE_COLOR: Record<TileStatus, string> = {
-    ok: "text-emerald-700 bg-emerald-50 border-emerald-100",
-    warn: "text-amber-700 bg-amber-50 border-amber-100",
-    missing: "text-on-surface-variant bg-surface-container-low border-[var(--color-border-soft)]",
-    info: "text-primary bg-primary/[0.07] border-primary/10",
-  };
-
-  const getPlanLabel = (): { label: string; sub?: string; tileStatus: TileStatus } => {
-    if (pLoading) return { label: "Đang tải…", tileStatus: "missing" };
-    if (!plan) return { label: "Chưa có kế hoạch", sub: "Đang chờ HLV tạo", tileStatus: "warn" };
-    switch (planStatus) {
-      case "active": return { label: "Đang thực hiện", tileStatus: "ok" };
-      case "completed": return { label: "Đã hoàn thành", tileStatus: "info" };
-      case "draft": return { label: "Bản nháp", sub: "HLV đang soạn", tileStatus: "warn" };
-      case "cancelled": return { label: "Đã hủy", tileStatus: "missing" };
-      default: return { label: planStatus ?? "Không rõ", tileStatus: "missing" };
-    }
-  };
-
-  const planMeta = getPlanLabel();
-
-  const tiles: {
-    icon: LucideIcon;
-    label: string;
-    value: string;
-    sub?: string;
-    tileStatus: TileStatus;
-    tab: PlanTab;
-  }[] = [
-    {
-      icon: Target,
-      label: "Đánh giá ban đầu",
-      value: aLoading ? "Đang tải…" : assessment ? "Đã hoàn thành" : "Chưa có",
-      sub: !aLoading && !assessment ? "Nhấn để điền đánh giá" : undefined,
-      tileStatus: aLoading ? "missing" : assessment ? "ok" : "warn",
-      tab: "assessment",
-    },
-    {
-      icon: ClipboardList,
-      label: "Kế hoạch tập",
-      value: pLoading
-        ? "Đang tải…"
-        : !plan && assessment
-          ? "Đang soạn kế hoạch"
-          : planMeta.label,
-      sub: pLoading
-        ? undefined
-        : !plan && assessment
-          ? "HLV đang chuẩn bị lộ trình"
-          : planMeta.sub,
-      tileStatus: pLoading
-        ? "missing"
-        : !plan && assessment
-          ? "info"
-          : planMeta.tileStatus,
-      tab: "plan",
-    },
-    {
-      icon: HeartPulse,
-      label: "Check-in tiến độ",
-      value: cLoading ? "Đang tải…" : `${checkInCount} lần`,
-      sub: !cLoading
-        ? latestCheckIn
-          ? `Gần nhất: ${new Date(latestCheckIn.checkInDate).toLocaleDateString("vi-VN")}`
-          : checkInCount === 0
-            ? "Chưa check-in lần nào"
-            : undefined
-        : undefined,
-      tileStatus: cLoading ? "missing" : checkInCount > 0 ? "ok" : "missing",
-      tab: "checkins",
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {tiles.map(({ icon: Icon, label, value, sub, tileStatus, tab }, i) => (
-        <motion.button
-          key={label}
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 + i * 0.05, duration: 0.25 }}
-          onClick={() => onTabChange(tab)}
-          className={cn(
-            "group text-left rounded-[12px] border p-3.5 transition-all hover:-translate-y-[1px] hover:shadow-sm",
-            TILE_COLOR[tileStatus],
-          )}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Icon size={14} className="shrink-0" />
-            <p className="text-[11.5px] font-medium opacity-80">{label}</p>
-          </div>
-          <p className="text-[14px] font-semibold leading-snug">{value}</p>
-          {sub && (
-            <p className="text-[11px] mt-0.5 opacity-70 leading-tight">{sub}</p>
-          )}
-        </motion.button>
-      ))}
-    </div>
-  );
-}
-
-// ============================================================================
-// Package Overview Card
-// ============================================================================
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; color: string; bg: string; dot: string }
-> = {
+const STATUS_CFG: Record<StatusVariant | string, { label: string; color: string; bg: string; dot: string }> = {
   active: {
     label: "Đang hoạt động",
     color: "text-emerald-700",
@@ -432,25 +102,508 @@ const STATUS_CONFIG: Record<
     bg: "bg-surface-container-high",
     dot: "bg-on-surface-variant",
   },
+  pending: {
+    label: "Chờ thanh toán",
+    color: "text-amber-700",
+    bg: "bg-amber-50",
+    dot: "bg-amber-500",
+  },
+  pending_payment: {
+    label: "Chờ thanh toán",
+    color: "text-amber-700",
+    bg: "bg-amber-50",
+    dot: "bg-amber-500",
+  },
+  pendingpayment: {
+    label: "Chờ thanh toán",
+    color: "text-amber-700",
+    bg: "bg-amber-50",
+    dot: "bg-amber-500",
+  },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status.toLowerCase()] ?? STATUS_CONFIG.active;
+function getStatusCfg(status: string) {
+  const key = status.toLowerCase().replace(/_/g, "");
+  return (
+    STATUS_CFG[status.toLowerCase()] ??
+    STATUS_CFG[key] ??
+    STATUS_CFG.active
+  );
+}
+
+function getPaymentLabel(booking: Booking): {
+  label: string;
+  variant: "paid" | "pending" | "unknown";
+} {
+  if (booking.paidAt) return { label: "Đã thanh toán", variant: "paid" };
+  const key = booking.status.toLowerCase().replace(/_/g, "");
+  if (key.includes("pendingpayment") || key.includes("pending")) {
+    return { label: "Chờ thanh toán", variant: "pending" };
+  }
+  return { label: "Chưa xác nhận", variant: "unknown" };
+}
+
+// ============================================================================
+// Shared: StatusBadge
+// ============================================================================
+
+function StatusBadge({
+  status,
+  compact = false,
+}: {
+  status: string;
+  compact?: boolean;
+}) {
+  const cfg = getStatusCfg(status);
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
+        "inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap shrink-0",
+        compact ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[11px]",
         cfg.bg,
         cfg.color,
       )}
     >
-      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
+      <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
       {cfg.label}
     </span>
   );
 }
 
-function PackageOverviewCard({
+// ============================================================================
+// Entry
+// ============================================================================
+
+export default function LearnerPlanPage() {
+  return (
+    <Suspense fallback={null}>
+      <LearnerPlanContent />
+    </Suspense>
+  );
+}
+
+// ============================================================================
+// Root content — state manager
+// ============================================================================
+
+type PlanTab = "assessment" | "plan" | "checkins";
+
+function LearnerPlanContent() {
+  const {
+    data: bookingsData,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(() => api.fetchMyBookings(), []);
+  const bookings = useMemo(() => bookingsData ?? [], [bookingsData]);
+
+  const searchParams = useSearchParams();
+  const paramBookingId = searchParams.get("booking") ?? "";
+  const paramTab = (searchParams.get("tab") as PlanTab) ?? "assessment";
+
+  const [bookingId, setBookingId] = useState(paramBookingId);
+  const [activeTab, setActiveTab] = useState<PlanTab>(paramTab);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (!bookings.length) return;
+    if (bookingId && bookings.some((b) => b.id === bookingId)) return;
+    setBookingId(bookings[0].id);
+  }, [bookings, bookingId]);
+
+  if (loading) {
+    return (
+      <AppShell role="learner" title="Lộ trình">
+        <JourneySkeleton />
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell role="learner" title="Lộ trình">
+        <div className="max-w-[880px] mx-auto pt-8">
+          <ErrorState onRetry={refetch} className="mx-auto max-w-md" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  const selectedBooking = bookings.find((b) => b.id === bookingId) ?? null;
+
+  return (
+    <AppShell role="learner" title="Lộ trình">
+      <div className="max-w-[1040px] mx-auto pb-10">
+        {/* ---- Page header ---- */}
+        <PageHeader
+          hasMultiple={bookings.length > 1}
+          selectedBooking={selectedBooking}
+          onOpenSheet={() => setSheetOpen(true)}
+        />
+
+        {bookings.length === 0 ? (
+          <NoBookingsState />
+        ) : (
+          <>
+            {/* Mobile bottom sheet */}
+            <MobilePackageSheet
+              open={sheetOpen}
+              bookings={bookings}
+              selectedId={bookingId}
+              onSelect={(id) => {
+                setBookingId(id);
+                setSheetOpen(false);
+              }}
+              onClose={() => setSheetOpen(false)}
+            />
+
+            {/* ---- 2-col layout: left navigator + right detail ---- */}
+            <div className="flex gap-5 items-start">
+              {/* Left: sticky navigator (desktop only) */}
+              <div className="hidden lg:block w-[300px] xl:w-[320px] shrink-0">
+                <div className="sticky top-[84px]">
+                  <PackageNavigator
+                    bookings={bookings}
+                    selectedId={bookingId}
+                    onSelect={setBookingId}
+                  />
+                </div>
+              </div>
+
+              {/* Right: journey detail */}
+              <div className="flex-1 min-w-0 space-y-4">
+                {selectedBooking ? (
+                  <>
+                    <SelectedPackageOverview
+                      booking={selectedBooking}
+                      onCheckIn={() => setActiveTab("checkins")}
+                      onAssess={() => setActiveTab("assessment")}
+                    />
+                    <CoachPaymentSummary booking={selectedBooking} />
+                    <TrainingJourneySteps
+                      bookingId={bookingId}
+                      onStepClick={setActiveTab}
+                    />
+                    <TabNav activeTab={activeTab} onChange={setActiveTab} />
+                    <TabPanels
+                      key={bookingId}
+                      bookingId={bookingId}
+                      activeTab={activeTab}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+// ============================================================================
+// Page Header
+// ============================================================================
+
+function PageHeader({
+  hasMultiple,
+  selectedBooking,
+  onOpenSheet,
+}: {
+  hasMultiple: boolean;
+  selectedBooking: Booking | null;
+  onOpenSheet: () => void;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.header
+      initial={reduce ? false : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5"
+    >
+      <div>
+        <h1 className="text-[26px] font-bold tracking-tight text-on-surface">
+          Lộ trình tập luyện
+        </h1>
+        <p className="text-body-sm text-on-surface-variant mt-1">
+          Theo dõi đánh giá ban đầu, kế hoạch tập và tiến độ của bạn.
+        </p>
+      </div>
+      {/* Mobile-only: "Đổi gói tập" button */}
+      {hasMultiple && (
+        <button
+          onClick={onOpenSheet}
+          className="lg:hidden inline-flex items-center gap-2 self-start sm:self-auto h-9 pl-3.5 pr-3 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest text-[13px] font-medium text-on-surface hover:border-primary/40 hover:text-primary transition-all shadow-sm"
+        >
+          <span>
+            {selectedBooking ? "Đổi gói tập" : "Chọn gói tập"}
+          </span>
+          <ChevronDown size={14} />
+        </button>
+      )}
+    </motion.header>
+  );
+}
+
+// ============================================================================
+// Mobile Package Sheet (bottom sheet)
+// ============================================================================
+
+function MobilePackageSheet({
+  open,
+  bookings,
+  selectedId,
+  onSelect,
+  onClose,
+}: {
+  open: boolean;
+  bookings: Booking[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="pkg-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+            onClick={onClose}
+          />
+          <motion.div
+            key="pkg-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 280 }}
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] bg-surface-container-lowest border-t border-[var(--color-border-soft)] max-h-[80vh] flex flex-col lg:hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[var(--color-border-soft)] shrink-0">
+              <div>
+                <p className="text-[15px] font-semibold text-on-surface">
+                  Gói tập của bạn
+                </p>
+                <p className="text-[11px] text-on-surface-variant mt-0.5">
+                  {bookings.length} gói đã mua
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors"
+              >
+                <X size={16} className="text-on-surface-variant" />
+              </button>
+            </div>
+            {/* Package list */}
+            <div className="overflow-y-auto p-4 space-y-2.5">
+              {bookings.map((b) => (
+                <PackageOptionCard
+                  key={b.id}
+                  booking={b}
+                  selected={b.id === selectedId}
+                  onSelect={onSelect}
+                />
+              ))}
+            </div>
+            <div className="h-4 shrink-0" />
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function PackageOptionCard({
+  booking,
+  selected,
+  onSelect,
+}: {
+  booking: Booking;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const { data: coach } = useApiResource(
+    () => api.fetchCoach(booking.coachId),
+    [booking.coachId],
+  );
+  const coachName = coach?.name;
+  const displayName = getPackageDisplayName(booking, coachName);
+  const pct = booking.totalSessions
+    ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
+    : 0;
+
+  return (
+    <button
+      onClick={() => onSelect(booking.id)}
+      className={cn(
+        "w-full text-left rounded-[12px] p-3.5 border transition-all",
+        selected
+          ? "border-primary/30 bg-primary/[0.05]"
+          : "border-[var(--color-border-soft)] hover:border-primary/20 hover:bg-surface-container-low",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className="text-[13px] font-semibold text-on-surface leading-snug">
+          {displayName}
+        </p>
+        <StatusBadge status={booking.status} compact />
+      </div>
+      {coachName && (
+        <p className="text-[11.5px] text-on-surface-variant mb-2">
+          HLV: {coachName}
+        </p>
+      )}
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-[11px] text-on-surface-variant tabular-nums">
+          {booking.completedSessions}/{booking.totalSessions} buổi
+        </span>
+        <div className="flex-1 h-1 rounded-full bg-surface-container-high overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff]"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-[11px] text-on-surface-variant tabular-nums">
+          {pct}%
+        </span>
+      </div>
+      {booking.createdAt && (
+        <p className="text-[11px] text-on-surface-variant/60 mt-1.5">
+          Mua ngày {formatDateVi(booking.createdAt)}
+        </p>
+      )}
+    </button>
+  );
+}
+
+// ============================================================================
+// Desktop Package Navigator (left column)
+// ============================================================================
+
+function PackageNavigator({
+  bookings,
+  selectedId,
+  onSelect,
+}: {
+  bookings: Booking[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_4px_16px_-8px_rgba(15,15,30,0.05)]">
+      <div className="px-4 py-3.5 border-b border-[var(--color-border-soft)]">
+        <p className="text-[13px] font-semibold text-on-surface">
+          Gói tập của bạn
+        </p>
+        <p className="text-[11px] text-on-surface-variant mt-0.5">
+          {bookings.length} gói đã mua
+        </p>
+      </div>
+      <div className="p-2 space-y-1 max-h-[calc(100vh-180px)] overflow-y-auto">
+        {bookings.map((b) => (
+          <PackageNavCard
+            key={b.id}
+            booking={b}
+            selected={b.id === selectedId}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PackageNavCard({
+  booking,
+  selected,
+  onSelect,
+}: {
+  booking: Booking;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const { data: coach } = useApiResource(
+    () => api.fetchCoach(booking.coachId),
+    [booking.coachId],
+  );
+  const coachName = coach?.name;
+  const displayName = getPackageDisplayName(booking, coachName);
+  const pct = booking.totalSessions
+    ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
+    : 0;
+
+  return (
+    <button
+      onClick={() => onSelect(booking.id)}
+      className={cn(
+        "w-full text-left rounded-[11px] p-3 transition-all relative group",
+        selected
+          ? "bg-primary/[0.06] border border-primary/20"
+          : "border border-transparent hover:bg-surface-container-low",
+      )}
+    >
+      {/* Left accent bar for selected */}
+      {selected && (
+        <motion.span
+          layoutId="pkg-nav-accent"
+          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-primary"
+          transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
+        />
+      )}
+      <div className="pl-3">
+        {/* Title + status */}
+        <div className="flex items-start gap-1.5 justify-between mb-1">
+          <p
+            className={cn(
+              "text-[12.5px] font-semibold leading-snug flex-1 min-w-0 line-clamp-2",
+              selected ? "text-primary" : "text-on-surface",
+            )}
+          >
+            {displayName}
+          </p>
+          <StatusBadge status={booking.status} compact />
+        </div>
+        {/* Coach */}
+        {coachName && (
+          <p className="text-[11px] text-on-surface-variant truncate">
+            {coachName}
+          </p>
+        )}
+        {/* Progress bar */}
+        <div className="flex items-center gap-2 mt-2">
+          <div className="flex-1 h-1 rounded-full bg-surface-container-high overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff] transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-[10.5px] text-on-surface-variant tabular-nums shrink-0">
+            {booking.completedSessions}/{booking.totalSessions}
+          </span>
+        </div>
+        {/* Date */}
+        {booking.createdAt && (
+          <p className="text-[10.5px] text-on-surface-variant/60 mt-1 leading-tight">
+            {formatDateVi(booking.createdAt)}
+          </p>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ============================================================================
+// Selected Package Overview (hero card)
+// ============================================================================
+
+function SelectedPackageOverview({
   booking,
   onCheckIn,
   onAssess,
@@ -460,6 +613,13 @@ function PackageOverviewCard({
   onAssess: () => void;
 }) {
   const reduce = useReducedMotion();
+  const { data: coach } = useApiResource(
+    () => api.fetchCoach(booking.coachId),
+    [booking.coachId],
+  );
+  const coachName =
+    coach?.name ?? `Coach ${booking.coachId.slice(0, 4).toUpperCase()}`;
+  const displayName = getPackageDisplayName(booking, coachName);
   const pct = booking.totalSessions
     ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
     : 0;
@@ -472,17 +632,20 @@ function PackageOverviewCard({
       transition={{ duration: 0.35, delay: 0.05 }}
       className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_4px_16px_-8px_rgba(15,15,30,0.06)]"
     >
+      {/* Gradient top bar */}
       <div className="h-1 w-full bg-gradient-to-r from-primary via-[#7d6dff] to-[#c084fc]" />
       <div className="p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-2.5 flex-1 min-w-0">
+            {/* Title + status */}
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-[16px] font-semibold text-on-surface truncate">
-                {booking.title}
+              <h2 className="text-[16px] font-semibold text-on-surface">
+                {displayName}
               </h2>
               <StatusBadge status={booking.status} />
             </div>
 
+            {/* Meta row */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-body-sm text-on-surface-variant">
               <span className="flex items-center gap-1.5">
                 <Dumbbell size={13} className="text-primary shrink-0" />
@@ -500,21 +663,19 @@ function PackageOverviewCard({
               {booking.paidAt && (
                 <span className="flex items-center gap-1.5">
                   <CreditCard size={13} className="shrink-0" />
-                  <span>
-                    Thanh toán{" "}
-                    <span className="tabular-nums text-on-surface font-medium">
-                      {new Date(booking.paidAt).toLocaleDateString("vi-VN")}
-                    </span>
+                  <span className="tabular-nums text-on-surface font-medium">
+                    {formatDateVi(booking.paidAt)}
                   </span>
                 </span>
               )}
               {booking.totalAmount > 0 && (
-                <span className="flex items-center gap-1.5 tabular-nums font-semibold text-on-surface">
-                  {formatCurrency(booking.totalAmount)}
+                <span className="tabular-nums font-semibold text-on-surface">
+                  {formatCurrencyVnd(booking.totalAmount)}
                 </span>
               )}
             </div>
 
+            {/* Progress bar */}
             <div className="space-y-1 w-full sm:max-w-[280px]">
               <div className="flex justify-between text-[11px] text-on-surface-variant">
                 <span>Tiến độ hoàn thành</span>
@@ -537,6 +698,7 @@ function PackageOverviewCard({
             </div>
           </div>
 
+          {/* CTAs */}
           <div className="flex flex-row sm:flex-col items-center sm:items-stretch gap-2 shrink-0">
             <button
               onClick={onCheckIn}
@@ -560,13 +722,339 @@ function PackageOverviewCard({
 }
 
 // ============================================================================
+// Coach + Payment Summary (3 mini-cards)
+// ============================================================================
+
+function CoachPaymentSummary({ booking }: { booking: Booking }) {
+  const { data: coach } = useApiResource(
+    () => api.fetchCoach(booking.coachId),
+    [booking.coachId],
+  );
+  const coachName =
+    coach?.name ?? `Coach ${booking.coachId.slice(0, 4).toUpperCase()}`;
+  const coachAvatar = coach?.avatarUrl ?? avatarFor(booking.coachId);
+  const payment = getPaymentLabel(booking);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Coach */}
+      <div className="flex items-center gap-3 rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-4 py-3">
+        <img
+          src={coachAvatar}
+          alt={coachName}
+          className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-[var(--color-border-soft)]"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = avatarFor(booking.coachId);
+          }}
+        />
+        <div className="min-w-0">
+          <p className="text-[10.5px] text-on-surface-variant">HLV phụ trách</p>
+          <p className="text-[13px] font-semibold text-on-surface truncate">
+            {coachName}
+          </p>
+        </div>
+      </div>
+
+      {/* Payment status */}
+      <div className="flex items-center gap-3 rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-4 py-3">
+        <div
+          className={cn(
+            "w-9 h-9 rounded-[9px] flex items-center justify-center shrink-0",
+            payment.variant === "paid"
+              ? "bg-emerald-50"
+              : payment.variant === "pending"
+                ? "bg-amber-50"
+                : "bg-surface-container-low",
+          )}
+        >
+          <CreditCard
+            size={16}
+            className={cn(
+              payment.variant === "paid"
+                ? "text-emerald-600"
+                : payment.variant === "pending"
+                  ? "text-amber-600"
+                  : "text-on-surface-variant",
+            )}
+          />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10.5px] text-on-surface-variant">Thanh toán</p>
+          <p
+            className={cn(
+              "text-[13px] font-semibold",
+              payment.variant === "paid"
+                ? "text-emerald-700"
+                : payment.variant === "pending"
+                  ? "text-amber-700"
+                  : "text-on-surface",
+            )}
+          >
+            {payment.label}
+          </p>
+          {booking.paidAt && (
+            <p className="text-[11px] text-on-surface-variant tabular-nums">
+              {formatDateVi(booking.paidAt)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Total amount */}
+      <div className="flex items-center gap-3 rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-4 py-3">
+        <div className="w-9 h-9 rounded-[9px] bg-primary/[0.07] flex items-center justify-center shrink-0">
+          <Scale size={16} className="text-primary" />
+        </div>
+        <div>
+          <p className="text-[10.5px] text-on-surface-variant">Tổng thanh toán</p>
+          <p className="text-[13px] font-semibold text-on-surface tabular-nums">
+            {booking.totalAmount > 0
+              ? formatCurrencyVnd(booking.totalAmount)
+              : "Chưa cập nhật"}
+          </p>
+          <p className="text-[11px] text-on-surface-variant">
+            {booking.totalSessions} buổi
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Training Journey Steps (4-step horizontal stepper)
+// ============================================================================
+
+type StepState = "done" | "current" | "missing" | "locked";
+
+const STEP_COLORS: Record<
+  StepState,
+  { icon: string; line: string; label: string; sub: string }
+> = {
+  done: {
+    icon: "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white",
+    line: "bg-emerald-300",
+    label: "text-on-surface font-medium",
+    sub: "text-emerald-600",
+  },
+  current: {
+    icon: "bg-gradient-to-br from-primary to-[#7d6dff] text-white shadow-[0_2px_8px_-2px_rgba(53,37,205,0.4)]",
+    line: "bg-primary/20",
+    label: "text-primary font-semibold",
+    sub: "text-primary/70",
+  },
+  missing: {
+    icon: "bg-surface-container-high text-on-surface-variant",
+    line: "bg-[var(--color-border-soft)]",
+    label: "text-on-surface",
+    sub: "text-amber-600",
+  },
+  locked: {
+    icon: "bg-surface-container-low text-on-surface-variant/40",
+    line: "bg-[var(--color-border-soft)]",
+    label: "text-on-surface-variant",
+    sub: "text-on-surface-variant/50",
+  },
+};
+
+function TrainingJourneySteps({
+  bookingId,
+  onStepClick,
+}: {
+  bookingId: string;
+  onStepClick: (tab: PlanTab) => void;
+}) {
+  const reduce = useReducedMotion();
+
+  const { data: assessment, loading: aLoading } = useApiResource(
+    () => api.fetchAssessment(bookingId),
+    [bookingId],
+  );
+  const { data: plan, loading: pLoading } = useApiResource(
+    () => api.fetchTrainingPlan(bookingId),
+    [bookingId],
+  );
+  const { data: checkInsData, loading: cLoading } = useApiResource(
+    () => api.fetchProgressCheckIns(bookingId, { pageSize: 1 }),
+    [bookingId],
+  );
+
+  const checkInCount = checkInsData?.totalCount ?? 0;
+  const planStatus = plan?.status?.toLowerCase() ?? null;
+  const isLoading = aLoading || pLoading || cLoading;
+
+  type StepDef = {
+    id: string;
+    tab?: PlanTab;
+    label: string;
+    sub: string;
+    icon: LucideIcon;
+    state: StepState;
+  };
+
+  const steps: StepDef[] = [
+    {
+      id: "assessment",
+      tab: "assessment",
+      label: "Đánh giá ban đầu",
+      sub: isLoading ? "Đang tải…" : assessment ? "Đã hoàn thành" : "Chưa có",
+      icon: Target,
+      state: isLoading ? "missing" : assessment ? "done" : "missing",
+    },
+    {
+      id: "plan",
+      tab: "plan",
+      label: "Kế hoạch tập",
+      sub: isLoading
+        ? "Đang tải…"
+        : !plan
+          ? "Chưa có"
+          : planStatus === "active"
+            ? "Đang thực hiện"
+            : planStatus === "completed"
+              ? "Đã xong"
+              : planStatus === "draft"
+                ? "Đang soạn"
+                : "Có kế hoạch",
+      icon: ClipboardList,
+      state: isLoading
+        ? "missing"
+        : !plan
+          ? "missing"
+          : planStatus === "active" || planStatus === "draft"
+            ? "current"
+            : "done",
+    },
+    {
+      id: "checkins",
+      tab: "checkins",
+      label: "Nhật ký tiến độ",
+      sub: isLoading
+        ? "Đang tải…"
+        : checkInCount > 0
+          ? `${checkInCount} lần check-in`
+          : "Chưa check-in",
+      icon: HeartPulse,
+      state: isLoading ? "missing" : checkInCount > 0 ? "current" : "missing",
+    },
+    {
+      id: "complete",
+      label: "Hoàn thành",
+      sub:
+        !isLoading && assessment && plan && checkInCount > 0
+          ? "Hành trình đầy đủ"
+          : "Đang tiến hành",
+      icon: Trophy,
+      state:
+        !isLoading && assessment && plan && checkInCount > 0 ? "done" : "locked",
+    },
+  ];
+
+  return (
+    <div className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-5 py-4 shadow-[0_1px_2px_rgba(15,15,30,0.03)]">
+      <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-4">
+        Tiến trình hành trình
+      </p>
+
+      {/* Stepper row */}
+      <div className="flex items-start">
+        {steps.map((step, i) => {
+          const isLast = i === steps.length - 1;
+          const colors = STEP_COLORS[step.state];
+          const clickable = !!step.tab;
+
+          return (
+            <Fragment key={step.id}>
+              {/* Step */}
+              <motion.div
+                initial={reduce ? false : { opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 + i * 0.07, duration: 0.25 }}
+                className="flex flex-col items-center shrink-0"
+                style={{ minWidth: 64 }}
+              >
+                {/* Icon button */}
+                <button
+                  onClick={() => step.tab && onStepClick(step.tab)}
+                  disabled={!clickable}
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center transition-transform relative z-[1]",
+                    colors.icon,
+                    clickable
+                      ? "hover:-translate-y-[1px] cursor-pointer"
+                      : "cursor-default",
+                  )}
+                >
+                  {step.state === "done" ? (
+                    <CheckCircle2 size={16} />
+                  ) : (
+                    <step.icon size={15} />
+                  )}
+                </button>
+
+                {/* Label */}
+                <div className="text-center mt-2 w-full px-1">
+                  <p
+                    className={cn(
+                      "text-[11px] leading-snug",
+                      colors.label,
+                    )}
+                  >
+                    {step.label}
+                  </p>
+                  <p
+                    className={cn(
+                      "text-[10px] mt-0.5 leading-tight hidden sm:block",
+                      colors.sub,
+                    )}
+                  >
+                    {step.sub}
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Connector */}
+              {!isLast && (
+                <div className="flex-1 mt-[17px] mx-1">
+                  <div className={cn("h-[2px] w-full rounded-full", colors.line)} />
+                </div>
+              )}
+            </Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Tab Navigation
 // ============================================================================
 
-const TABS: { id: PlanTab; label: string; shortLabel: string; icon: LucideIcon }[] = [
-  { id: "assessment", label: "Đánh giá ban đầu", shortLabel: "Đánh giá", icon: Target },
-  { id: "plan", label: "Kế hoạch tập", shortLabel: "Kế hoạch", icon: ClipboardList },
-  { id: "checkins", label: "Nhật ký tiến độ", shortLabel: "Nhật ký", icon: HeartPulse },
+const TABS: {
+  id: PlanTab;
+  label: string;
+  shortLabel: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    id: "assessment",
+    label: "Đánh giá ban đầu",
+    shortLabel: "Đánh giá",
+    icon: Target,
+  },
+  {
+    id: "plan",
+    label: "Kế hoạch tập",
+    shortLabel: "Kế hoạch",
+    icon: ClipboardList,
+  },
+  {
+    id: "checkins",
+    label: "Nhật ký tiến độ",
+    shortLabel: "Nhật ký",
+    icon: HeartPulse,
+  },
 ];
 
 function TabNav({
@@ -655,6 +1143,16 @@ function AssessmentTab({ bookingId }: { bookingId: string }) {
     );
   }
 
+  // No assessment yet and not in create mode → show informational empty state
+  if (!data && !editing) {
+    return (
+      <SectionShell icon={Target} title="Đánh giá ban đầu">
+        <AssessmentEmptyState onStart={() => setEditing(true)} />
+      </SectionShell>
+    );
+  }
+
+  // Creating new or editing existing → show form
   if (editing || !data) {
     return (
       <SectionShell
@@ -712,6 +1210,41 @@ function safeBodyFat(v: number | undefined): number | undefined {
 function safeDuration(v: number | undefined): number | undefined {
   if (v == null || isNaN(v) || v <= 0 || v > 300) return undefined;
   return v;
+}
+
+// ---- Assessment empty state ----
+
+function AssessmentEmptyState({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="flex flex-col items-center py-12 text-center">
+      <div className="w-14 h-14 mb-4 rounded-[14px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center shadow-[0_4px_16px_-4px_rgba(53,37,205,0.35)]">
+        <Target size={24} className="text-white" />
+      </div>
+      <p className="text-[15px] font-semibold text-on-surface">
+        Chưa có đánh giá ban đầu
+      </p>
+      <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[320px]">
+        Đánh giá ban đầu giúp HLV hiểu mục tiêu, thể trạng và trình độ của bạn để xây dựng kế hoạch phù hợp nhất.
+      </p>
+      <div className="mt-5 flex flex-col items-center gap-3">
+        <div className="flex flex-col gap-1.5 text-left">
+          {["Mục tiêu tập luyện", "Thể trạng hiện tại", "Lịch tập phù hợp", "Thiết bị có sẵn"].map((item) => (
+            <div key={item} className="flex items-center gap-2 text-[12.5px] text-on-surface-variant">
+              <CheckCircle2 size={13} className="text-primary shrink-0" />
+              {item}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={onStart}
+          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-4px_rgba(53,37,205,0.5)] hover:bg-[#2d20b8] transition-colors"
+        >
+          <Plus size={14} />
+          Tạo đánh giá ban đầu
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ---- Assessment View ----
@@ -1036,9 +1569,6 @@ function PlanTab({ bookingId }: { bookingId: string }) {
     () => api.fetchTrainingPlan(bookingId),
     [bookingId],
   );
-  // Use assessment as a proxy to distinguish "draft plan exists" from "no plan yet".
-  // Backend hides draft plans from learners, so if plan=null we check assessment
-  // to show the appropriate message.
   const { data: assessment, loading: assessmentLoading } = useApiResource(
     () => api.fetchAssessment(bookingId),
     [bookingId],
@@ -1076,10 +1606,10 @@ function PlanEmptyState({ hasAssessment }: { hasAssessment: boolean }) {
       {hasAssessment ? (
         <>
           <p className="text-[15px] font-semibold text-on-surface">
-            HLV đang soạn kế hoạch tập cho bạn
+            HLV đang chuẩn bị kế hoạch cho bạn
           </p>
           <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[300px]">
-            Khi lộ trình được kích hoạt, nội dung sẽ hiển thị tại đây.
+            Khi lộ trình được kích hoạt, nội dung chi tiết sẽ hiển thị tại đây.
           </p>
           <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/[0.07] border border-primary/20 text-[11.5px] text-primary font-medium">
             <Sparkles size={12} />
@@ -1092,11 +1622,11 @@ function PlanEmptyState({ hasAssessment }: { hasAssessment: boolean }) {
             Chưa có kế hoạch tập luyện
           </p>
           <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[300px]">
-            HLV sẽ tạo kế hoạch sau khi xem đánh giá ban đầu của bạn. Hãy điền đánh giá để bắt đầu.
+            HLV sẽ tạo kế hoạch sau khi xem đánh giá ban đầu của bạn. Hãy điền đánh giá ở tab bên cạnh để bắt đầu.
           </p>
           <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-[11.5px] text-amber-700 font-medium">
             <Clock size={12} />
-            Cần điền đánh giá ban đầu
+            Cần điền đánh giá ban đầu trước
           </div>
         </>
       )}
@@ -1134,8 +1664,8 @@ function PlanView({ plan }: { plan: TrainingPlan }) {
           </div>
           {plan.startDate && (
             <div className="text-[11px] text-on-surface-variant tabular-nums whitespace-nowrap">
-              {new Date(plan.startDate).toLocaleDateString("vi-VN")} —{" "}
-              {new Date(plan.endDate).toLocaleDateString("vi-VN")}
+              {formatDateVi(plan.startDate)} —{" "}
+              {formatDateVi(plan.endDate)}
             </div>
           )}
         </div>
@@ -1338,13 +1868,15 @@ function CheckInsTab({ bookingId }: { bookingId: string }) {
       icon={HeartPulse}
       title="Nhật ký tiến độ"
       action={
-        <button
-          onClick={() => setAdding((a) => !a)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] bg-primary text-on-primary text-[12px] font-semibold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.4)] hover:bg-[#2d20b8] transition-colors"
-        >
-          <Plus size={13} />
-          Thêm check-in
-        </button>
+        allCheckIns.length > 0 || adding ? (
+          <button
+            onClick={() => setAdding((a) => !a)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] bg-primary text-on-primary text-[12px] font-semibold shadow-[0_2px_8px_-2px_rgba(53,37,205,0.4)] hover:bg-[#2d20b8] transition-colors"
+          >
+            <Plus size={13} />
+            Thêm check-in
+          </button>
+        ) : undefined
       }
     >
       {allCheckIns.length > 0 && !loading && (
@@ -1464,19 +1996,28 @@ function StatTile({
 
 function CheckInsEmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex flex-col items-center py-10 text-center">
-      <div className="w-12 h-12 mb-3 rounded-[12px] bg-gradient-to-br from-[#f43f5e] to-[#fb7185] flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(244,63,94,0.4)]">
-        <HeartPulse size={20} className="text-white" />
+    <div className="flex flex-col items-center py-12 text-center">
+      <div className="w-14 h-14 mb-4 rounded-[14px] bg-gradient-to-br from-[#f43f5e] to-[#fb7185] flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(244,63,94,0.4)]">
+        <HeartPulse size={22} className="text-white" />
       </div>
-      <p className="text-[14.5px] font-semibold text-on-surface">
+      <p className="text-[15px] font-semibold text-on-surface">
         Chưa có lần check-in nào
       </p>
-      <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[260px]">
-        Ghi lại cân nặng, cảm giác và tiến độ để theo dõi hành trình tập luyện.
+      <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[300px]">
+        Ghi lại cân nặng, cảm nhận và tiến độ để HLV theo dõi hành trình tập luyện của bạn.
       </p>
+      {/* What to track */}
+      <div className="mt-4 grid grid-cols-2 gap-1.5 text-left max-w-[260px]">
+        {["Cân nặng", "Mức năng lượng", "Cảm nhận sau buổi tập", "Ghi chú cho HLV"].map((item) => (
+          <div key={item} className="flex items-center gap-1.5 text-[11.5px] text-on-surface-variant">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e] shrink-0" />
+            {item}
+          </div>
+        ))}
+      </div>
       <button
         onClick={onAdd}
-        className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-4px_rgba(53,37,205,0.5)] hover:bg-[#2d20b8] transition-colors"
+        className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-4px_rgba(53,37,205,0.5)] hover:bg-[#2d20b8] transition-colors"
       >
         <Plus size={14} />
         Thêm check-in đầu tiên
@@ -1688,21 +2229,72 @@ function CheckInForm({
 }
 
 // ============================================================================
-// No Bookings
+// Empty / Loading / Error states
 // ============================================================================
 
 function NoBookingsState() {
   return (
-    <div className="rounded-[16px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest py-16 text-center">
+    <div className="rounded-[16px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest py-20 text-center">
       <div className="w-14 h-14 mx-auto mb-4 rounded-[14px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center shadow-[0_4px_16px_-4px_rgba(53,37,205,0.35)]">
         <Dumbbell size={22} className="text-white" />
       </div>
       <p className="text-[15px] font-semibold text-on-surface">
-        Chưa có gói tập nào
+        Bạn chưa có gói tập nào
       </p>
       <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[280px] mx-auto">
-        Đặt một gói huấn luyện để bắt đầu lộ trình của bạn.
+        Hãy chọn một HLV phù hợp để bắt đầu lộ trình tập luyện của bạn.
       </p>
+      <Link
+        href="/learner/coaches"
+        className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-4px_rgba(53,37,205,0.5)] hover:bg-[#2d20b8] transition-colors"
+      >
+        Tìm huấn luyện viên
+      </Link>
+    </div>
+  );
+}
+
+function JourneySkeleton() {
+  return (
+    <div className="max-w-[1040px] mx-auto pb-10">
+      {/* Header skeleton */}
+      <div className="mb-5 space-y-2">
+        <div className="h-7 w-48 rounded-[8px] bg-surface-container-high animate-pulse" />
+        <div className="h-4 w-72 rounded-[6px] bg-surface-container-high animate-pulse" />
+      </div>
+      <div className="flex gap-5">
+        {/* Left navigator skeleton */}
+        <div className="hidden lg:block w-[300px] shrink-0">
+          <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3 space-y-2">
+            <div className="h-4 w-28 rounded bg-surface-container-high animate-pulse mb-3" />
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-[11px] border border-[var(--color-border-soft)] p-3 space-y-2"
+              >
+                <div className="h-3 w-32 rounded bg-surface-container-high animate-pulse" />
+                <div className="h-2 w-20 rounded bg-surface-container-high animate-pulse" />
+                <div className="h-1 w-full rounded-full bg-surface-container-high animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Right detail skeleton */}
+        <div className="flex-1 space-y-4">
+          <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest h-36 animate-pulse" />
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest h-16 animate-pulse"
+              />
+            ))}
+          </div>
+          <div className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest h-20 animate-pulse" />
+          <div className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest h-12 animate-pulse" />
+          <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest h-48 animate-pulse" />
+        </div>
+      </div>
     </div>
   );
 }

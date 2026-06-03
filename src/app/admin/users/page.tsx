@@ -1,75 +1,40 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
-  ArrowUpRight,
   Ban,
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Clock,
-  Download,
-  Filter,
-  Flag,
-  MessageCircle,
-  MoreHorizontal,
+  Eye,
+  Loader2,
   Pencil,
   Search,
   ShieldAlert,
   Sparkles,
-  Star,
-  Trash2,
-  TrendingUp,
   UserCheck,
   UserPlus,
   Users,
   UserX,
-  X,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { ClientOnly } from "@/components/common/ClientOnly";
-import { cn, formatNumber } from "@/lib/utils";
-import { api } from "@/lib/api";
-import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { cn, formatNumber, initials } from "@/lib/utils";
+import { useApiResource } from "@/lib/hooks/useApiResource";
+import * as adminUserService from "@/lib/admin/adminUserService";
+import type { AdminUserItem } from "@/lib/types/admin-user";
+import { UserFormModal } from "./_components/UserFormModal";
+import { UserDetailModal } from "./_components/UserDetailModal";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-type Tab = "all" | "learners" | "coaches";
-type Status = "active" | "inactive" | "pending" | "flagged";
-type Role = "learner" | "coach";
-type SortKey = "name" | "joinedAt" | "activity" | "status";
+// ---- Status / role meta -----------------------------------------------------
 
-interface Row {
-  id: string;
-  name: string;
-  avatar: string;
-  email: string;
-  role: Role;
-  joinedAt: string;
-  activity: number;
-  metric: string;
-  rating?: number;
-  status: Status;
-}
-
-const STATUS_META: Record<
-  Status,
-  { label: string; pill: string; dot: string }
-> = {
+const STATUS_META: Record<string, { label: string; pill: string; dot: string }> = {
   active: {
     label: "Đang hoạt động",
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
@@ -85,175 +50,167 @@ const STATUS_META: Record<
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     dot: "bg-[#f59e0b]",
   },
-  flagged: {
-    label: "Bị gắn cờ",
-    pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
-    dot: "bg-[#ef4444]",
-  },
 };
 
-function seedSpark(seed: number, base: number, jitter: number, len = 8) {
-  return Array.from({ length: len }, (_, i) => {
-    const noise = Math.sin(i * 1.4 + seed) * jitter;
-    return { i, v: Math.max(0, base + i * (jitter / 5) + noise) };
-  });
+/** Normalise the role field — backend may send `role: string` or `roles: string[]`. */
+function getPrimaryRole(u: AdminUserItem): string {
+  const raw =
+    (u.role && u.role.trim()) ||
+    (Array.isArray(u.roles) && u.roles.length > 0 ? u.roles[0] : "") ||
+    "";
+  return raw.trim().toLowerCase();
 }
 
-export default function AdminUsersPage() {
-  const { data, loading, error, refetch } = useApiResource(
-    () => Promise.all([api.fetchLearners(), api.fetchCoaches()]),
-    [],
+function statusMeta(s: string) {
+  return (
+    STATUS_META[s?.toLowerCase()] ?? {
+      label: s,
+      pill: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
+      dot: "bg-on-surface-variant/40",
+    }
   );
-  const learnersData = useMemo(() => data?.[0] ?? [], [data]);
-  const coachesData = useMemo(() => data?.[1] ?? [], [data]);
+}
 
+/** Accepts the already-lowercased result of getPrimaryRole(). */
+function rolePill(lower: string) {
+  if (lower === "admin")  return "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]";
+  if (lower === "coach")  return "bg-primary/8 text-primary border-primary/20";
+  return "bg-[#8b5cf6]/8 text-[#7c3aed] border-[#8b5cf6]/20";
+}
+
+function roleLabel(lower: string) {
+  if (lower === "admin")  return "Quản trị";
+  if (lower === "coach")  return "Huấn luyện viên";
+  return "Học viên";
+}
+
+// ---- Sort -------------------------------------------------------------------
+
+type SortKey = "fullName" | "role" | "status" | "createdAt";
+
+// ============================================================================
+// Page
+// ============================================================================
+
+export default function AdminUsersPage() {
   const reduce = useReducedMotion();
-  const [tab, setTab] = useState<Tab>("all");
-  const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
-  const [sortKey, setSortKey] = useState<SortKey>("joinedAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // ---- Query state -----------------------------------------------------------
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Build deterministic rows once
-  const allRows: Row[] = useMemo(() => {
-    const learners: Row[] = learnersData.map((l, i) => ({
-      id: l.id,
-      name: l.name,
-      avatar: l.avatarUrl,
-      email: l.email,
-      role: "learner",
-      joinedAt: l.joinedAt,
-      activity: l.totalHoursTrained,
-      metric: `${l.totalHoursTrained}h trained`,
-      status:
-        i % 11 === 0
-          ? "flagged"
-          : i % 7 === 0
-            ? "pending"
-            : l.streakDays > 0
-              ? "active"
-              : "inactive",
-    }));
-    const coaches: Row[] = coachesData.map((c, i) => ({
-      id: c.id,
-      name: c.name,
-      avatar: c.avatarUrl,
-      email: c.email,
-      role: "coach",
-      joinedAt: c.joinedAt,
-      activity: c.activeLearners,
-      metric: `${c.activeLearners} learners`,
-      rating: c.rating,
-      status: c.verified
-        ? "active"
-        : i % 5 === 0
-          ? "pending"
-          : "inactive",
-    }));
-    return [...learners, ...coaches];
-  }, [learnersData, coachesData]);
+  // ---- Modals ----------------------------------------------------------------
+  const [formOpen, setFormOpen] = useState(false);
+  const [editUser, setEditUser] = useState<AdminUserItem | null>(null);
+  const [detailUser, setDetailUser] = useState<AdminUserItem | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<AdminUserItem | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
-  // Apply tab + role + status + search
-  const filtered = useMemo(() => {
-    let list = allRows;
-    if (tab === "learners") list = list.filter((r) => r.role === "learner");
-    if (tab === "coaches") list = list.filter((r) => r.role === "coach");
-    if (roleFilter !== "all") list = list.filter((r) => r.role === roleFilter);
-    if (statusFilter !== "all")
-      list = list.filter((r) => r.status === statusFilter);
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (r) =>
-          r.name.toLowerCase().includes(q) ||
-          r.email.toLowerCase().includes(q),
-      );
-    }
-    // Sort
-    list = [...list].sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
-      else if (sortKey === "joinedAt")
-        cmp = new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime();
-      else if (sortKey === "activity") cmp = a.activity - b.activity;
-      else cmp = a.status.localeCompare(b.status);
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return list;
-  }, [allRows, tab, roleFilter, statusFilter, query, sortKey, sortDir]);
+  // ---- Toast -----------------------------------------------------------------
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const showToast = useCallback((msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 2800);
+  }, []);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
+  // ---- Debounce search -------------------------------------------------------
+  const handleSearchChange = (v: string) => {
+    setSearch(v);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(v.trim());
+      setPage(1);
+    }, 400);
+  };
+
+  // ---- Summary stats (parallel, once on mount) -------------------------------
+  const { data: statsData } = useApiResource(
+    () =>
+      Promise.all([
+        adminUserService.getUsers({ pageSize: 1 }),
+        adminUserService.getUsers({ status: "active", pageSize: 1 }),
+        adminUserService.getUsers({ role: "learner", pageSize: 1 }),
+        adminUserService.getUsers({ role: "coach", pageSize: 1 }),
+      ]),
+    [],
+  );
+  const [totalAll, totalActive, totalLearners, totalCoaches] = statsData ?? [];
+
+  // ---- Main table data -------------------------------------------------------
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useApiResource(
+    () =>
+      adminUserService.getUsers({
+        search: debouncedSearch || undefined,
+        role: roleFilter !== "all" ? roleFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        pageNumber: page,
+        pageSize,
+      }),
+    [debouncedSearch, roleFilter, statusFilter, page, pageSize],
   );
 
-  // Summary stats
-  const counts = useMemo(() => {
-    const total = allRows.length;
-    const active = allRows.filter((r) => r.status === "active").length;
-    const inactive = allRows.filter((r) => r.status === "inactive").length;
-    const pending = allRows.filter(
-      (r) => r.status === "pending" || r.status === "flagged",
-    ).length;
-    return { total, active, inactive, pending };
-  }, [allRows]);
+  const items = data?.items ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const totalCount = data?.totalCount ?? 0;
 
-  const toggleAll = () => {
-    if (paged.every((r) => selected.has(r.id))) {
-      const next = new Set(selected);
-      paged.forEach((r) => next.delete(r.id));
-      setSelected(next);
-    } else {
-      const next = new Set(selected);
-      paged.forEach((r) => next.add(r.id));
-      setSelected(next);
-    }
-  };
-  const toggleOne = (id: string) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelected(next);
-  };
-  const clearSelection = () => setSelected(new Set());
-
-  const allOnPageSelected =
-    paged.length > 0 && paged.every((r) => selected.has(r.id));
+  // Client-side sort of the current page slice
+  const sorted = [...items].sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === "fullName")
+      cmp = (a.fullName ?? "").localeCompare(b.fullName ?? "", "vi");
+    else if (sortKey === "role")
+      cmp = getPrimaryRole(a).localeCompare(getPrimaryRole(b));
+    else if (sortKey === "status")
+      cmp = (a.status ?? "").localeCompare(b.status ?? "");
+    else
+      cmp = new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime();
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   const handleSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(k);
-      setSortDir("asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+
+  // ---- Deactivate ------------------------------------------------------------
+  const confirmDeactivate = async () => {
+    if (!deactivateTarget || deactivating) return;
+    setDeactivating(true);
+    try {
+      await adminUserService.deactivateUser(deactivateTarget.id);
+      showToast(`Đã vô hiệu hóa "${deactivateTarget.fullName}".`);
+      refetch();
+    } catch {
+      showToast("Vô hiệu hóa thất bại. Vui lòng thử lại.", false);
+    } finally {
+      setDeactivating(false);
+      setDeactivateTarget(null);
     }
   };
 
-  if (loading) {
-    return (
-      <AppShell role="admin" title="User Management">
-        <LoadingState label="Đang tải người dùng…" />
-      </AppShell>
-    );
-  }
+  // ---- Reset page on filter change -------------------------------------------
+  useEffect(() => {
+    setPage(1);
+  }, [roleFilter, statusFilter]);
 
-  if (error) {
-    return (
-      <AppShell role="admin" title="User Management">
-        <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
-      </AppShell>
-    );
-  }
-
+  // ============================================================================
   return (
-    <AppShell role="admin" title="User Management">
+    <AppShell role="admin" title="Quản lý người dùng">
       <div className="max-w-[1440px] mx-auto pb-24 space-y-6">
+
         {/* ============ HEADER ============ */}
         <motion.header
           initial={{ opacity: 0, y: 10 }}
@@ -267,8 +224,8 @@ export default function AdminUsersPage() {
                 <Users size={11} />
                 Quản trị người dùng
               </span>
-              <span className="text-[12px] text-on-surface-variant">
-                {formatNumber(counts.total)} tài khoản trên nền tảng
+              <span className="text-[12px] text-on-surface-variant tabular-nums">
+                {formatNumber(totalAll?.totalCount ?? 0)} tài khoản trên nền tảng
               </span>
             </div>
             <h1 className="text-[30px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
@@ -278,293 +235,126 @@ export default function AdminUsersPage() {
               Xem xét, quản lý và kiểm duyệt mọi tài khoản trên Sportico.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button className="h-11 px-4 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13.5px] font-medium transition-colors">
-              <Download size={15} />
-              Xuất CSV
-            </button>
-            <button className="h-11 px-5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
-              <UserPlus size={15} strokeWidth={2.5} />
-              Mời người dùng
-            </button>
-          </div>
+          <button
+            onClick={() => { setEditUser(null); setFormOpen(true); }}
+            className="h-11 px-5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
+          >
+            <UserPlus size={15} strokeWidth={2.5} />
+            Tạo người dùng
+          </button>
         </motion.header>
 
         {/* ============ SUMMARY CARDS ============ */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <SummaryCard
+          <KpiCard
             icon={Users}
             label="Tổng người dùng"
-            value={formatNumber(counts.total)}
-            trend="+12%"
-            trendLabel="so tháng trước"
+            value={formatNumber(totalAll?.totalCount ?? 0)}
             accent="indigo"
-            spark={seedSpark(1, counts.total / 5, 8)}
             delay={0.05}
             reduce={reduce ?? false}
           />
-          <SummaryCard
+          <KpiCard
             icon={UserCheck}
             label="Đang hoạt động"
-            value={formatNumber(counts.active)}
-            trend="+8%"
-            trendLabel="tuần này"
+            value={formatNumber(totalActive?.totalCount ?? 0)}
             accent="emerald"
-            spark={seedSpark(2, counts.active / 4, 6)}
             delay={0.1}
             reduce={reduce ?? false}
           />
-          <SummaryCard
+          <KpiCard
             icon={UserX}
-            label="Không hoạt động"
-            value={formatNumber(counts.inactive)}
-            trend="−4%"
-            trendLabel="cần tái kết nối"
-            accent="neutral"
-            spark={seedSpark(3, counts.inactive / 4, 5)}
+            label="Học viên"
+            value={formatNumber(totalLearners?.totalCount ?? 0)}
+            accent="violet"
             delay={0.15}
             reduce={reduce ?? false}
           />
-          <SummaryCard
+          <KpiCard
             icon={ShieldAlert}
-            label="Đang chờ duyệt"
-            value={formatNumber(counts.pending)}
-            trend={`${counts.pending} mở`}
-            trendLabel="cần xử lý"
+            label="Huấn luyện viên"
+            value={formatNumber(totalCoaches?.totalCount ?? 0)}
             accent="amber"
-            spark={seedSpark(4, counts.pending / 2 || 3, 3)}
             delay={0.2}
             reduce={reduce ?? false}
           />
         </section>
 
-        {/* ============ 2-COLUMN (Table + Sidebar) ============ */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
-          {/* ============ LEFT: TABLE COLUMN ============ */}
-          <div className="space-y-4 min-w-0">
-            {/* Tabs + filter bar (sticky) */}
-            <div className="sticky top-16 z-20 -mx-2 px-2 pt-2 pb-1 bg-surface/80 backdrop-blur-md">
-              <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3 shadow-[0_2px_8px_-4px_rgba(15,15,30,0.06)] space-y-3">
-                {/* Tabs */}
-                <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px] w-fit">
-                  {(
-                    [
-                      {
-                        id: "all" as Tab,
-                        label: "Tất cả",
-                        count: allRows.length,
-                      },
-                      {
-                        id: "learners" as Tab,
-                        label: "Học viên",
-                        count: learnersData.length,
-                      },
-                      {
-                        id: "coaches" as Tab,
-                        label: "HLV",
-                        count: coachesData.length,
-                      },
-                    ]
-                  ).map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setTab(t.id);
-                        setPage(1);
-                      }}
-                      className={cn(
-                        "relative inline-flex items-center gap-1.5 px-3 h-8 text-[12.5px] font-medium rounded-[7px] transition-colors",
-                        tab === t.id
-                          ? "text-on-surface"
-                          : "text-on-surface-variant hover:text-on-surface",
-                      )}
-                    >
-                      {tab === t.id && (
-                        <motion.span
-                          layoutId="usersTabPill"
-                          className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
-                          transition={{
-                            type: "spring",
-                            duration: reduce ? 0 : 0.4,
-                            bounce: 0.2,
-                          }}
-                        />
-                      )}
-                      <span className="relative">{t.label}</span>
-                      <span
-                        className={cn(
-                          "relative inline-flex items-center justify-center px-1.5 h-4 rounded-full text-[10px] font-semibold tabular-nums",
-                          tab === t.id
-                            ? "bg-primary/15 text-primary"
-                            : "bg-surface-container-high text-on-surface-variant",
-                        )}
-                      >
-                        {t.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Filters */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Search */}
-                  <div className="relative flex-1 min-w-[200px]">
-                    <Search
-                      size={14}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
-                    />
-                    <input
-                      value={query}
-                      onChange={(e) => {
-                        setQuery(e.target.value);
-                        setPage(1);
-                      }}
-                      placeholder="Tìm theo tên hoặc email…"
-                      className="w-full h-10 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[13px] placeholder:text-on-surface-variant transition-all"
-                    />
-                  </div>
-
-                  <FilterSelect
-                    label="Vai trò"
-                    value={roleFilter}
-                    onChange={(v) => {
-                      setRoleFilter(v as Role | "all");
-                      setPage(1);
-                    }}
-                    options={[
-                      { value: "all", label: "Tất cả vai trò" },
-                      { value: "learner", label: "Học viên" },
-                      { value: "coach", label: "HLV" },
-                    ]}
-                  />
-                  <FilterSelect
-                    label="Trạng thái"
-                    value={statusFilter}
-                    onChange={(v) => {
-                      setStatusFilter(v as Status | "all");
-                      setPage(1);
-                    }}
-                    options={[
-                      { value: "all", label: "Tất cả trạng thái" },
-                      { value: "active", label: "Đang hoạt động" },
-                      { value: "inactive", label: "Không hoạt động" },
-                      { value: "pending", label: "Đang chờ" },
-                      { value: "flagged", label: "Bị gắn cờ" },
-                    ]}
-                  />
-                  <FilterSelect
-                    label="Sắp xếp"
-                    value={sortKey}
-                    onChange={(v) => setSortKey(v as SortKey)}
-                    options={[
-                      { value: "joinedAt", label: "Ngày tham gia" },
-                      { value: "name", label: "Tên" },
-                      { value: "activity", label: "Hoạt động" },
-                      { value: "status", label: "Trạng thái" },
-                    ]}
-                  />
-                  <button
-                    onClick={() => setAdvancedOpen((v) => !v)}
-                    className={cn(
-                      "h-10 px-3 inline-flex items-center gap-1.5 rounded-[10px] border text-[12.5px] font-medium transition-colors",
-                      advancedOpen
-                        ? "border-primary/40 bg-primary/[0.04] text-primary"
-                        : "border-[var(--color-border-soft)] hover:bg-surface-container-low",
-                    )}
-                  >
-                    <Filter size={13} />
-                    More
-                  </button>
-                  <div className="ml-auto text-[11.5px] text-on-surface-variant whitespace-nowrap">
-                    {formatNumber(filtered.length)} of{" "}
-                    {formatNumber(allRows.length)} shown
-                  </div>
-                </div>
-
-                {/* Advanced filters */}
-                <AnimatePresence>
-                  {advancedOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: reduce ? 0 : 0.25, ease: EASE }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--color-border-soft)]">
-                        <ChipFilter
-                          icon={Calendar}
-                          label="Ngày tham gia"
-                          value="Bất kỳ"
-                        />
-                        <ChipFilter
-                          icon={Clock}
-                          label="Hoạt động cuối"
-                          value="Bất kỳ"
-                        />
-                        <ChipFilter icon={Star} label="Đánh giá" value="Bất kỳ" />
-                        <ChipFilter
-                          icon={Flag}
-                          label="Khu vực"
-                          value="Toàn cầu"
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+        {/* ============ FILTER BAR ============ */}
+        <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3 shadow-[0_2px_8px_-4px_rgba(15,15,30,0.06)]">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <input
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Tìm theo tên hoặc email…"
+                className="w-full h-10 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-[10px] outline-none text-[13px] placeholder:text-on-surface-variant transition-all"
+              />
             </div>
 
-            {/* Table */}
-            <motion.section
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: reduce ? 0 : 0.5, delay: 0.25, ease: EASE }}
-              className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-            >
+            {/* Role filter */}
+            <FilterSelect
+              label="Vai trò"
+              value={roleFilter}
+              onChange={setRoleFilter}
+              options={[
+                { value: "all", label: "Tất cả vai trò" },
+                { value: "learner", label: "Học viên" },
+                { value: "coach", label: "Huấn luyện viên" },
+                { value: "admin", label: "Quản trị" },
+              ]}
+            />
+
+            {/* Status filter */}
+            <FilterSelect
+              label="Trạng thái"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "all", label: "Tất cả trạng thái" },
+                { value: "active", label: "Đang hoạt động" },
+                { value: "inactive", label: "Không hoạt động" },
+                { value: "pending", label: "Đang chờ" },
+              ]}
+            />
+
+            <div className="ml-auto text-[11.5px] text-on-surface-variant whitespace-nowrap tabular-nums">
+              {formatNumber(totalCount)} kết quả
+            </div>
+          </div>
+        </div>
+
+        {/* ============ TABLE ============ */}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduce ? 0 : 0.5, delay: 0.25, ease: EASE }}
+          className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+        >
+          {loading ? (
+            <LoadingState label="Đang tải người dùng…" />
+          ) : error ? (
+            <ErrorState onRetry={refetch} className="m-6" />
+          ) : (
+            <>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[10.5px] uppercase tracking-wider text-on-surface-variant">
                     <tr>
-                      <th className="pl-5 sm:pl-6 pr-2 py-3 w-10">
-                        <Checkbox
-                          checked={allOnPageSelected}
-                          onChange={toggleAll}
-                          aria-label="Select all on page"
-                        />
+                      <th className="pl-5 sm:pl-6 pr-3 py-3 font-semibold">
+                        <SortHeader label="Người dùng" active={sortKey === "fullName"} dir={sortDir} onClick={() => handleSort("fullName")} />
+                      </th>
+                      <th className="px-3 py-3 font-semibold hidden sm:table-cell">Điện thoại</th>
+                      <th className="px-3 py-3 font-semibold">
+                        <SortHeader label="Vai trò" active={sortKey === "role"} dir={sortDir} onClick={() => handleSort("role")} />
                       </th>
                       <th className="px-3 py-3 font-semibold">
-                        <SortHeader
-                          label="Người dùng"
-                          active={sortKey === "name"}
-                          dir={sortDir}
-                          onClick={() => handleSort("name")}
-                        />
+                        <SortHeader label="Trạng thái" active={sortKey === "status"} dir={sortDir} onClick={() => handleSort("status")} />
                       </th>
-                      <th className="px-3 py-3 font-semibold">Vai trò</th>
-                      <th className="px-3 py-3 font-semibold">
-                        <SortHeader
-                          label="Tham gia"
-                          active={sortKey === "joinedAt"}
-                          dir={sortDir}
-                          onClick={() => handleSort("joinedAt")}
-                        />
-                      </th>
-                      <th className="px-3 py-3 font-semibold">
-                        <SortHeader
-                          label="Hoạt động"
-                          active={sortKey === "activity"}
-                          dir={sortDir}
-                          onClick={() => handleSort("activity")}
-                        />
-                      </th>
-                      <th className="px-3 py-3 font-semibold">
-                        <SortHeader
-                          label="Trạng thái"
-                          active={sortKey === "status"}
-                          dir={sortDir}
-                          onClick={() => handleSort("status")}
-                        />
+                      <th className="px-3 py-3 font-semibold hidden lg:table-cell">
+                        <SortHeader label="Ngày tạo" active={sortKey === "createdAt"} dir={sortDir} onClick={() => handleSort("createdAt")} />
                       </th>
                       <th className="pr-5 sm:pr-6 pl-3 py-3 font-semibold text-right">
                         Thao tác
@@ -572,169 +362,123 @@ export default function AdminUsersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paged.length === 0 && (
+                    {sorted.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-6 py-14 text-center">
+                        <td colSpan={6} className="px-6 py-14 text-center">
                           <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-surface-container-low flex items-center justify-center">
-                            <Search
-                              size={16}
-                              className="text-on-surface-variant"
-                            />
+                            <Search size={16} className="text-on-surface-variant" />
                           </div>
-                          <p className="text-[13.5px] font-semibold">
-                            No users match your filters
-                          </p>
+                          <p className="text-[13.5px] font-semibold">Không tìm thấy người dùng</p>
                           <p className="text-[12px] text-on-surface-variant mt-1">
-                            Try clearing search or selecting a broader status.
+                            Thử xóa tìm kiếm hoặc chọn bộ lọc khác.
                           </p>
                         </td>
                       </tr>
                     )}
-                    {paged.map((r, i) => {
-                      const status = STATUS_META[r.status];
-                      const isSelected = selected.has(r.id);
+                    {sorted.map((u, i) => {
+                      const sm = statusMeta(u.status);
                       return (
-                        <tr
-                          key={r.id}
-                          onClick={() => toggleOne(r.id)}
+                        <motion.tr
+                          key={u.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: reduce ? 0 : 0.25, delay: reduce ? 0 : i * 0.03 }}
                           className={cn(
-                            "border-b border-[var(--color-border-soft)] last:border-b-0 transition-colors cursor-pointer group",
-                            i % 2 === 1 && !isSelected && "bg-surface-container-low/15",
-                            isSelected
-                              ? "bg-primary/[0.05] hover:bg-primary/[0.08]"
-                              : "hover:bg-primary/[0.03]",
+                            "border-b border-[var(--color-border-soft)] last:border-b-0 transition-colors group",
+                            i % 2 === 1 && "bg-surface-container-low/15",
+                            "hover:bg-primary/[0.03]",
                           )}
                         >
-                          <td
-                            className="pl-5 sm:pl-6 pr-2 py-3"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              onChange={() => toggleOne(r.id)}
-                              aria-label={`Select ${r.name}`}
-                            />
-                          </td>
-                          <td className="px-3 py-3">
+                          {/* User */}
+                          <td className="pl-5 sm:pl-6 pr-3 py-3">
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative shrink-0">
-                                <img
-                                  src={r.avatar}
-                                  alt={r.name}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                />
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/60 to-[#7d6dff]/60 flex items-center justify-center text-on-primary text-[13px] font-semibold">
+                                  {initials(u.fullName ?? "?")}
+                                </div>
                                 <span
                                   className={cn(
                                     "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-surface-container-lowest",
-                                    status.dot,
+                                    sm.dot,
                                   )}
                                 />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[13.5px] font-semibold truncate">
-                                  {r.name}
-                                </p>
-                                <p className="text-[11.5px] text-on-surface-variant truncate">
-                                  {r.email}
-                                </p>
+                                <p className="text-[13.5px] font-semibold truncate">{u.fullName ?? "—"}</p>
+                                <p className="text-[11.5px] text-on-surface-variant truncate">{u.email}</p>
                               </div>
                             </div>
                           </td>
+
+                          {/* Phone */}
+                          <td className="px-3 py-3 hidden sm:table-cell">
+                            <p className="text-[12.5px] text-on-surface-variant tabular-nums">
+                              {u.phoneNumber || "—"}
+                            </p>
+                          </td>
+
+                          {/* Role */}
                           <td className="px-3 py-3">
                             <span
                               className={cn(
                                 "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border",
-                                r.role === "coach"
-                                  ? "bg-primary/8 text-primary border-primary/20"
-                                  : "bg-[#8b5cf6]/8 text-[#7c3aed] border-[#8b5cf6]/20",
+                                rolePill(getPrimaryRole(u)),
                               )}
                             >
-                              {r.role === "coach" ? "HLV" : "Học viên"}
+                              {roleLabel(getPrimaryRole(u))}
                             </span>
                           </td>
-                          <td className="px-3 py-3">
-                            <p className="text-[12.5px] text-on-surface">
-                              {new Date(r.joinedAt).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )}
-                            </p>
-                            <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-                              {relativeJoined(r.joinedAt)}
-                            </p>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2 min-w-[120px]">
-                              <div className="flex-1 h-1 rounded-full bg-surface-container-low overflow-hidden max-w-[80px]">
-                                <div
-                                  className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff]"
-                                  style={{
-                                    width: `${Math.min(100, (r.activity / 100) * 100)}%`,
-                                  }}
-                                />
-                              </div>
-                              <p className="text-[11.5px] text-on-surface-variant truncate">
-                                {r.metric}
-                              </p>
-                            </div>
-                            {r.rating && (
-                              <p className="text-[10.5px] text-on-surface-variant inline-flex items-center gap-0.5 mt-0.5">
-                                <Star
-                                  size={9}
-                                  className="fill-[#f59e0b] stroke-[#f59e0b]"
-                                />
-                                {r.rating.toFixed(1)}
-                              </p>
-                            )}
-                          </td>
+
+                          {/* Status */}
                           <td className="px-3 py-3">
                             <span
                               className={cn(
                                 "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border",
-                                status.pill,
+                                sm.pill,
                               )}
                             >
-                              <span
-                                className={cn(
-                                  "w-1.5 h-1.5 rounded-full",
-                                  status.dot,
-                                )}
-                              />
-                              {status.label}
+                              <span className={cn("w-1.5 h-1.5 rounded-full", sm.dot)} />
+                              {sm.label}
                             </span>
                           </td>
+
+                          {/* Created */}
+                          <td className="px-3 py-3 hidden lg:table-cell">
+                            <p className="text-[12.5px] text-on-surface tabular-nums">
+                              {new Date(u.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </td>
+
+                          {/* Actions */}
                           <td
                             className="pr-5 sm:pr-6 pl-3 py-3 text-right"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <div className="inline-flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                              <RowAction
+                                icon={Eye}
+                                label="Xem chi tiết"
+                                tone="default"
+                                onClick={() => setDetailUser(u)}
+                              />
                               <RowAction
                                 icon={Pencil}
                                 label="Chỉnh sửa"
                                 tone="default"
-                              />
-                              <RowAction
-                                icon={MessageCircle}
-                                label="Nhắn tin"
-                                tone="default"
+                                onClick={() => { setEditUser(u); setFormOpen(true); }}
                               />
                               <RowAction
                                 icon={Ban}
                                 label="Vô hiệu hóa"
                                 tone="danger"
-                              />
-                              <RowAction
-                                icon={MoreHorizontal}
-                                label="Thêm"
-                                tone="default"
+                                onClick={() => setDeactivateTarget(u)}
                               />
                             </div>
                           </td>
-                        </tr>
+                        </motion.tr>
                       );
                     })}
                   </tbody>
@@ -743,107 +487,179 @@ export default function AdminUsersPage() {
 
               {/* Pagination */}
               <Pagination
-                page={currentPage}
+                page={page}
                 totalPages={totalPages}
                 pageSize={pageSize}
-                setPageSize={(s) => {
-                  setPageSize(s);
-                  setPage(1);
-                }}
+                setPageSize={(s) => { setPageSize(s); setPage(1); }}
                 setPage={setPage}
-                shown={paged.length}
-                total={filtered.length}
+                shown={sorted.length}
+                total={totalCount}
               />
-            </motion.section>
-          </div>
-
-          {/* ============ RIGHT: INSIGHTS SIDEBAR ============ */}
-          <aside className="space-y-5">
-            <InsightsCard rows={allRows} reduce={reduce ?? false} />
-            <RecentJoins rows={allRows} reduce={reduce ?? false} />
-            <QuickActions reduce={reduce ?? false} />
-          </aside>
-        </div>
+            </>
+          )}
+        </motion.section>
       </div>
 
-      {/* ============ BULK ACTION BAR ============ */}
+      {/* ============ MODALS ============ */}
+      <UserFormModal
+        open={formOpen}
+        user={editUser}
+        onClose={() => { setFormOpen(false); setEditUser(null); }}
+        onSuccess={(msg) => { showToast(msg); refetch(); }}
+      />
+
+      <UserDetailModal
+        open={detailUser !== null}
+        user={detailUser}
+        onClose={() => setDetailUser(null)}
+        onEdit={(u) => { setEditUser(u); setFormOpen(true); }}
+      />
+
+      {/* ============ DEACTIVATE CONFIRM ============ */}
       <AnimatePresence>
-        {selected.size > 0 && (
-          <BulkActionBar
-            count={selected.size}
-            onClear={clearSelection}
-            reduce={reduce ?? false}
-          />
+        {deactivateTarget && (
+          <motion.div
+            key="deactivate-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[3px]"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: reduce ? 0 : 0.22, ease: EASE }}
+              className="w-full max-w-sm rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-6 shadow-[0_20px_60px_-10px_rgba(15,15,30,0.35)]"
+            >
+              <div className="w-12 h-12 rounded-[14px] bg-[#ffdad6] flex items-center justify-center mb-4">
+                <Ban size={20} className="text-[#ba1a1a]" />
+              </div>
+              <h3 className="text-[16px] font-bold mb-1">Vô hiệu hóa người dùng?</h3>
+              <p className="text-[13px] text-on-surface-variant mb-5">
+                Tài khoản{" "}
+                <span className="font-semibold text-on-surface">
+                  {deactivateTarget.fullName}
+                </span>{" "}
+                sẽ bị vô hiệu hóa. Thao tác này có thể hoàn tác sau.
+              </p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setDeactivateTarget(null)}
+                  disabled={deactivating}
+                  className="h-9 px-4 rounded-[8px] border border-[var(--color-border-soft)] text-[13px] font-medium hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDeactivate}
+                  disabled={deactivating}
+                  className="h-9 px-4 rounded-[8px] bg-[#ba1a1a] text-white text-[13px] font-semibold inline-flex items-center gap-1.5 hover:bg-[#9b1515] transition-colors disabled:opacity-60"
+                >
+                  {deactivating && <Loader2 size={13} className="animate-spin" />}
+                  Vô hiệu hóa
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ============ TOAST ============ */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            transition={{ duration: reduce ? 0 : 0.22, ease: EASE }}
+            className={cn(
+              "fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-[12px] px-4 py-3 text-[13px] font-semibold shadow-[0_8px_24px_-4px_rgba(15,15,30,0.25)]",
+              toast.ok
+                ? "bg-on-surface/95 text-white"
+                : "bg-[#ba1a1a]/95 text-white",
+            )}
+          >
+            {toast.ok ? (
+              <span className="w-5 h-5 rounded-full bg-[#10b981] flex items-center justify-center shrink-0">
+                <span className="text-white text-[10px] font-bold">✓</span>
+              </span>
+            ) : (
+              <Ban size={14} className="shrink-0" />
+            )}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Insights fab — only in non-loading state */}
+      {!loading && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: reduce ? 0 : 0.4, delay: 0.5, ease: EASE }}
+          className="fixed bottom-5 left-[calc(16rem+1.5rem)] z-30 hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-primary/[0.08] to-[#7d6dff]/[0.08] border border-primary/15 text-[12px] font-medium text-primary shadow-[0_2px_8px_-2px_rgba(53,37,205,0.15)]"
+        >
+          <Sparkles size={12} />
+          {formatNumber(totalAll?.totalCount ?? 0)} người dùng được quản lý
+        </motion.div>
+      )}
     </AppShell>
   );
 }
 
 // ============================================================================
-// Summary Card
+// KPI Card
 // ============================================================================
 
-const SUMMARY_ACCENTS = {
+const KPI_ACCENTS = {
   indigo: {
     iconBg: "bg-gradient-to-br from-primary to-[#7d6dff]",
     glow: "shadow-[0_4px_14px_-3px_rgba(53,37,205,0.4)]",
     decor: "from-primary/15 to-primary/0",
-    stroke: "#4f46e5",
-    trend: "text-primary",
   },
   emerald: {
     iconBg: "bg-gradient-to-br from-[#10b981] to-[#34d399]",
     glow: "shadow-[0_4px_14px_-3px_rgba(16,185,129,0.4)]",
     decor: "from-[#34d399]/15 to-[#34d399]/0",
-    stroke: "#10b981",
-    trend: "text-[#1f7a4d]",
   },
   amber: {
     iconBg: "bg-gradient-to-br from-[#f59e0b] to-[#fb923c]",
     glow: "shadow-[0_4px_14px_-3px_rgba(245,158,11,0.4)]",
     decor: "from-[#f59e0b]/15 to-[#f59e0b]/0",
-    stroke: "#f59e0b",
-    trend: "text-[#b45309]",
   },
-  neutral: {
-    iconBg: "bg-gradient-to-br from-[#64748b] to-[#94a3b8]",
-    glow: "shadow-[0_4px_14px_-3px_rgba(100,116,139,0.3)]",
-    decor: "from-[#94a3b8]/15 to-[#94a3b8]/0",
-    stroke: "#64748b",
-    trend: "text-on-surface-variant",
+  violet: {
+    iconBg: "bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]",
+    glow: "shadow-[0_4px_14px_-3px_rgba(139,92,246,0.4)]",
+    decor: "from-[#8b5cf6]/15 to-[#8b5cf6]/0",
   },
 } as const;
 
-function SummaryCard({
+function KpiCard({
   icon: Icon,
   label,
   value,
-  trend,
-  trendLabel,
   accent,
-  spark,
   delay,
   reduce,
 }: {
   icon: typeof Users;
   label: string;
   value: string;
-  trend?: string;
-  trendLabel?: string;
-  accent: keyof typeof SUMMARY_ACCENTS;
-  spark: { i: number; v: number }[];
+  accent: keyof typeof KPI_ACCENTS;
   delay: number;
   reduce: boolean;
 }) {
-  const a = SUMMARY_ACCENTS[accent];
+  const a = KPI_ACCENTS[accent];
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduce ? 0 : 0.5, delay, ease: EASE }}
       whileHover={reduce ? {} : { y: -3 }}
-      className="group relative overflow-hidden rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_20px_-12px_rgba(15,15,30,0.08)] hover:shadow-[0_2px_4px_rgba(15,15,30,0.04),0_16px_36px_-12px_rgba(15,15,30,0.14)] transition-shadow cursor-pointer"
+      className="group relative overflow-hidden rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_20px_-12px_rgba(15,15,30,0.08)] hover:shadow-[0_2px_4px_rgba(15,15,30,0.04),0_16px_36px_-12px_rgba(15,15,30,0.14)] transition-shadow"
     >
       <div
         className={cn(
@@ -852,20 +668,14 @@ function SummaryCard({
         )}
       />
       <div className="relative">
-        <div className="flex items-start justify-between mb-3">
-          <div
-            className={cn(
-              "w-10 h-10 rounded-[12px] flex items-center justify-center text-white transition-transform group-hover:scale-105",
-              a.iconBg,
-              a.glow,
-            )}
-          >
-            <Icon size={17} strokeWidth={2.25} />
-          </div>
-          <ArrowUpRight
-            size={15}
-            className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
-          />
+        <div
+          className={cn(
+            "w-10 h-10 rounded-[12px] flex items-center justify-center text-white mb-3",
+            a.iconBg,
+            a.glow,
+          )}
+        >
+          <Icon size={17} strokeWidth={2.25} />
         </div>
         <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant">
           {label}
@@ -873,49 +683,13 @@ function SummaryCard({
         <p className="text-[24px] sm:text-[26px] leading-none font-bold tracking-tight tabular-nums mt-1">
           {value}
         </p>
-        <div className="h-7 mt-2.5 -mx-1">
-          <ClientOnly fallback={<div className="h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={spark}
-                margin={{ top: 2, right: 4, bottom: 0, left: 4 }}
-              >
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke={a.stroke}
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={!reduce}
-                  animationDuration={reduce ? 0 : 1100}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-        </div>
-        <div className="flex items-center gap-1.5 mt-1 text-[11px]">
-          {trend && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-0.5 font-semibold",
-                a.trend,
-              )}
-            >
-              <TrendingUp size={10} />
-              {trend}
-            </span>
-          )}
-          {trendLabel && (
-            <span className="text-on-surface-variant">{trendLabel}</span>
-          )}
-        </div>
       </div>
     </motion.div>
   );
 }
 
 // ============================================================================
-// Filter primitives
+// Filter select
 // ============================================================================
 
 function FilterSelect({
@@ -942,68 +716,16 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <ChevronDown
-        size={12}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant"
-      />
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">
+        ▾
+      </span>
     </div>
   );
 }
 
-function ChipFilter({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Calendar;
-  label: string;
-  value: string;
-}) {
-  return (
-    <button className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-dashed border-[var(--color-border-soft)] hover:border-primary/30 hover:bg-primary/[0.04] text-[12px] font-medium text-on-surface-variant transition-colors">
-      <Icon size={12} />
-      <span className="text-on-surface">{label}:</span>
-      <span>{value}</span>
-    </button>
-  );
-}
-
 // ============================================================================
-// Table primitives
+// Sort header
 // ============================================================================
-
-function Checkbox({
-  checked,
-  onChange,
-  ...rest
-}: {
-  checked: boolean;
-  onChange: () => void;
-} & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className="inline-flex items-center cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className="peer sr-only"
-        {...rest}
-      />
-      <span
-        className={cn(
-          "w-4 h-4 rounded-[5px] border-2 flex items-center justify-center transition-all",
-          checked
-            ? "bg-gradient-to-br from-primary to-[#5b4ee8] border-primary shadow-[0_2px_6px_-1px_rgba(53,37,205,0.4)]"
-            : "border-[var(--color-outline-variant)] bg-surface-container-lowest hover:border-primary/50",
-        )}
-      >
-        {checked && (
-          <CheckCircle2 size={11} className="text-white" strokeWidth={3} />
-        )}
-      </span>
-    </label>
-  );
-}
 
 function SortHeader({
   label,
@@ -1027,11 +749,7 @@ function SortHeader({
       {label}
       <span className="inline-flex flex-col items-center">
         {active ? (
-          dir === "asc" ? (
-            <ArrowUp size={10} />
-          ) : (
-            <ArrowDown size={10} />
-          )
+          dir === "asc" ? <ArrowUp size={10} /> : <ArrowDown size={10} />
         ) : (
           <span className="w-2.5 h-2.5 opacity-30">
             <ArrowDown size={10} />
@@ -1042,18 +760,25 @@ function SortHeader({
   );
 }
 
+// ============================================================================
+// Row action
+// ============================================================================
+
 function RowAction({
   icon: Icon,
   label,
   tone,
+  onClick,
 }: {
   icon: typeof Pencil;
   label: string;
   tone: "default" | "danger";
+  onClick: () => void;
 }) {
   return (
     <button
       aria-label={label}
+      onClick={onClick}
       className={cn(
         "w-8 h-8 rounded-lg hover:bg-surface-container-low transition-colors flex items-center justify-center",
         tone === "danger"
@@ -1090,7 +815,6 @@ function Pagination({
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = (page - 1) * pageSize + shown;
 
-  // Build page button list — show first, last, current ±1
   const pageList: (number | "…")[] = [];
   const push = (n: number) => {
     if (!pageList.includes(n) && n >= 1 && n <= totalPages) pageList.push(n);
@@ -1107,59 +831,41 @@ function Pagination({
     <div className="px-5 sm:px-6 py-3 border-t border-[var(--color-border-soft)] flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px]">
       <div className="flex items-center gap-3">
         <span className="text-on-surface-variant">
-          Showing{" "}
+          Hiển thị{" "}
           <span className="text-on-surface font-semibold tabular-nums">
             {start}–{end}
           </span>{" "}
-          of{" "}
+          trong{" "}
           <span className="text-on-surface font-semibold tabular-nums">
             {formatNumber(total)}
           </span>
         </span>
         <span className="text-on-surface-variant/40">·</span>
         <div className="inline-flex items-center gap-1.5">
-          <span className="text-on-surface-variant">Rows</span>
+          <span className="text-on-surface-variant">Hàng</span>
           <div className="relative">
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
               className="appearance-none h-7 pl-2 pr-6 rounded-md border border-[var(--color-border-soft)] bg-surface-container-lowest text-[12px] font-medium outline-none focus:border-primary/40 cursor-pointer"
             >
-              {[10, 25, 50, 100].map((n) => (
+              {[10, 25, 50].map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>
               ))}
             </select>
-            <ChevronDown
-              size={11}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant"
-            />
+            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">▾</span>
           </div>
         </div>
       </div>
 
       <div className="flex items-center gap-1">
-        <PageNav
-          icon={ChevronsLeft}
-          disabled={page === 1}
-          onClick={() => setPage(1)}
-          label="Đầu"
-        />
-        <PageNav
-          icon={ChevronLeft}
-          disabled={page === 1}
-          onClick={() => setPage(page - 1)}
-          label="Trước"
-        />
+        <PageNav icon={ChevronsLeft} disabled={page === 1} onClick={() => setPage(1)} label="Đầu" />
+        <PageNav icon={ChevronLeft} disabled={page === 1} onClick={() => setPage(page - 1)} label="Trước" />
         {pageList.map((p, i) =>
           p === "…" ? (
-            <span
-              key={`e${i}`}
-              className="px-1.5 text-[11px] text-on-surface-variant"
-            >
-              …
-            </span>
+            <span key={`e${i}`} className="px-1.5 text-[11px] text-on-surface-variant">…</span>
           ) : (
             <button
               key={p}
@@ -1175,18 +881,8 @@ function Pagination({
             </button>
           ),
         )}
-        <PageNav
-          icon={ChevronRight}
-          disabled={page === totalPages}
-          onClick={() => setPage(page + 1)}
-          label="Sau"
-        />
-        <PageNav
-          icon={ChevronsRight}
-          disabled={page === totalPages}
-          onClick={() => setPage(totalPages)}
-          label="Cuối"
-        />
+        <PageNav icon={ChevronRight} disabled={page === totalPages} onClick={() => setPage(page + 1)} label="Sau" />
+        <PageNav icon={ChevronsRight} disabled={page === totalPages} onClick={() => setPage(totalPages)} label="Cuối" />
       </div>
     </div>
   );
@@ -1215,368 +911,3 @@ function PageNav({
   );
 }
 
-// ============================================================================
-// Bulk action bar
-// ============================================================================
-
-function BulkActionBar({
-  count,
-  onClear,
-  reduce,
-}: {
-  count: number;
-  onClear: () => void;
-  reduce: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 80, opacity: 0 }}
-      transition={{
-        type: "spring",
-        duration: reduce ? 0 : 0.4,
-        bounce: 0.15,
-      }}
-      className="fixed bottom-5 left-4 right-4 lg:left-[calc(16rem+1.5rem)] lg:right-6 z-40"
-    >
-      <div className="max-w-[1340px] mx-auto rounded-[16px] bg-on-surface/95 backdrop-blur-md text-white p-3 pl-5 flex items-center justify-between gap-3 shadow-[0_12px_32px_-8px_rgba(15,15,30,0.4),0_4px_12px_-4px_rgba(15,15,30,0.15)]">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[#7d6dff] text-on-primary text-[12.5px] font-bold tabular-nums shadow-[0_3px_10px_-2px_rgba(53,37,205,0.45)]">
-            {count}
-          </span>
-          <div className="min-w-0">
-            <p className="text-[13.5px] font-semibold leading-tight">
-              {count} đã chọn
-            </p>
-            <p className="text-[11px] text-white/60 truncate">
-              Áp dụng thao tác hàng loạt bên dưới
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <BulkBtn icon={Ban} label="Vô hiệu hóa" />
-          <BulkBtn icon={Download} label="Xuất" />
-          <BulkBtn icon={MessageCircle} label="Nhắn tin" />
-          <BulkBtn icon={Trash2} label="Xóa" danger />
-          <button
-            onClick={onClear}
-            aria-label="Clear selection"
-            className="ml-2 w-9 h-9 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors flex items-center justify-center"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function BulkBtn({
-  icon: Icon,
-  label,
-  danger,
-}: {
-  icon: typeof Ban;
-  label: string;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      className={cn(
-        "h-9 px-3 inline-flex items-center gap-1.5 rounded-lg text-[12.5px] font-semibold transition-colors",
-        danger
-          ? "bg-[#ef4444]/20 text-[#fca5a5] hover:bg-[#ef4444]/30 hover:text-white"
-          : "bg-white/10 text-white hover:bg-white/15",
-      )}
-    >
-      <Icon size={13} />
-      <span className="hidden sm:inline">{label}</span>
-    </button>
-  );
-}
-
-// ============================================================================
-// Insights Sidebar
-// ============================================================================
-
-function InsightsCard({
-  rows,
-  reduce,
-}: {
-  rows: Row[];
-  reduce: boolean;
-}) {
-  const inactive = rows.filter((r) => r.status === "inactive").length;
-  const flagged = rows.filter((r) => r.status === "flagged").length;
-  const pending = rows.filter((r) => r.status === "pending").length;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.15, ease: EASE }}
-      className="relative overflow-hidden rounded-[20px] border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-surface-container-lowest to-[#7d6dff]/[0.06] p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_10px_28px_-16px_rgba(53,37,205,0.25)]"
-    >
-      <div className="absolute -top-14 -right-14 w-44 h-44 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl pointer-events-none" />
-
-      <div className="relative">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary inline-flex items-center gap-1.5">
-            <Sparkles size={11} />
-            Admin Insights
-          </span>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-            Live
-          </span>
-        </div>
-
-        <p className="text-[13px] text-on-surface font-medium leading-snug mb-3">
-          <span className="text-[#b95000]">{pending + flagged}</span> accounts
-          need your attention right now.
-        </p>
-
-        <ul className="space-y-2">
-          <InsightRow
-            icon={UserX}
-            label="Không hoạt động 30d+"
-            value={inactive}
-            tone="neutral"
-            action="Tái kết nối"
-          />
-          <InsightRow
-            icon={Flag}
-            label="Tài khoản bị gắn cờ"
-            value={flagged}
-            tone="danger"
-            action="Xem xét"
-          />
-          <InsightRow
-            icon={ShieldAlert}
-            label="Hoạt động đáng ngờ"
-            value={2}
-            tone="danger"
-            action="Điều tra"
-          />
-          <InsightRow
-            icon={Clock}
-            label="Đang chờ duyệt"
-            value={pending}
-            tone="warn"
-            action="Duyệt"
-          />
-        </ul>
-      </div>
-    </motion.div>
-  );
-}
-
-function InsightRow({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  action,
-}: {
-  icon: typeof UserX;
-  label: string;
-  value: number;
-  tone: "neutral" | "warn" | "danger";
-  action: string;
-}) {
-  const toneClass =
-    tone === "danger"
-      ? "text-[#ba1a1a]"
-      : tone === "warn"
-        ? "text-[#b95000]"
-        : "text-on-surface-variant";
-  return (
-    <li className="group flex items-center gap-3 p-3 rounded-[12px] bg-surface-container-lowest/80 backdrop-blur-sm border border-[var(--color-border-soft)] hover:border-primary/20 transition-colors cursor-pointer">
-      <Icon size={14} className={toneClass} />
-      <div className="flex-1 min-w-0">
-        <p className="text-[12.5px] font-medium text-on-surface truncate">
-          {label}
-        </p>
-      </div>
-      <span className={cn("text-[15px] font-bold tabular-nums", toneClass)}>
-        {value}
-      </span>
-      <span className="text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-        {action}
-      </span>
-    </li>
-  );
-}
-
-function RecentJoins({
-  rows,
-  reduce,
-}: {
-  rows: Row[];
-  reduce: boolean;
-}) {
-  const recent = useMemo(
-    () =>
-      [...rows]
-        .sort(
-          (a, b) =>
-            new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime(),
-        )
-        .slice(0, 4),
-    [rows],
-  );
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.22, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[15px] font-semibold tracking-tight">
-          Recent Joins
-        </h3>
-        <span className="text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
-          24h
-        </span>
-      </div>
-      <ul className="space-y-2">
-        {recent.map((r, i) => (
-          <motion.li
-            key={r.id}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{
-              duration: reduce ? 0 : 0.35,
-              delay: reduce ? 0 : 0.27 + i * 0.05,
-              ease: EASE,
-            }}
-            whileHover={reduce ? {} : { x: 2 }}
-            className="group flex items-center gap-3 p-2 rounded-[12px] hover:bg-surface-container-low/60 transition-colors cursor-pointer"
-          >
-            <img
-              src={r.avatar}
-              alt={r.name}
-              className="w-8 h-8 rounded-full object-cover shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-[12.5px] font-semibold truncate">{r.name}</p>
-              <p className="text-[10.5px] text-on-surface-variant truncate">
-                {r.role === "coach" ? "HLV" : "Học viên"} ·{" "}
-                {relativeJoined(r.joinedAt)}
-              </p>
-            </div>
-            <ChevronRight
-              size={12}
-              className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
-            />
-          </motion.li>
-        ))}
-      </ul>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// Quick Actions
-// ============================================================================
-
-function QuickActions({ reduce }: { reduce: boolean }) {
-  const items = [
-    {
-      icon: UserPlus,
-      label: "Mời người dùng",
-      desc: "Gửi link đăng ký",
-      accent: "indigo" as const,
-    },
-    {
-      icon: Download,
-      label: "Xuất danh sách",
-      desc: "CSV · Excel",
-      accent: "violet" as const,
-    },
-    {
-      icon: ShieldAlert,
-      label: "Nhật ký kiểm toán",
-      desc: "Thao tác gần đây",
-      accent: "amber" as const,
-    },
-  ];
-  const QA = {
-    indigo: "from-primary to-[#7d6dff]",
-    violet: "from-[#8b5cf6] to-[#c084fc]",
-    amber: "from-[#f59e0b] to-[#fb923c]",
-  } as const;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.3, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      <h3 className="text-[15px] font-semibold tracking-tight mb-3">
-        Thao tác nhanh
-      </h3>
-      <div className="space-y-2">
-        {items.map((q, i) => {
-          const Icon = q.icon;
-          return (
-            <motion.button
-              key={q.label}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: reduce ? 0 : 0.35,
-                delay: reduce ? 0 : 0.35 + i * 0.05,
-                ease: EASE,
-              }}
-              whileHover={reduce ? {} : { x: 2 }}
-              className="group w-full flex items-center gap-3 p-3 rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent transition-all text-left"
-            >
-              <div
-                className={cn(
-                  "w-9 h-9 rounded-[10px] bg-gradient-to-br flex items-center justify-center text-white shadow-[0_3px_10px_-2px_rgba(15,15,30,0.18)] shrink-0",
-                  QA[q.accent],
-                )}
-              >
-                <Icon size={14} strokeWidth={2.25} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold leading-tight">
-                  {q.label}
-                </p>
-                <p className="text-[10.5px] text-on-surface-variant mt-0.5">
-                  {q.desc}
-                </p>
-              </div>
-              <ChevronRight
-                size={13}
-                className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
-              />
-            </motion.button>
-          );
-        })}
-      </div>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function relativeJoined(iso: string) {
-  const date = new Date(iso);
-  const diff = Date.now() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days < 1) return "today";
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
-}
-
-// Silence unused imports kept for reserved actions
-void Fragment;
-void AlertTriangle;

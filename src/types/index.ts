@@ -155,6 +155,10 @@ export interface Booking {
   totalAmount: number;
   /** ISO datetime when payment was confirmed. May be null for pending_payment bookings. */
   paidAt?: string;
+  /** ISO datetime when the booking was cancelled. Only present for cancelled bookings. */
+  cancelledAt?: string;
+  /** ISO datetime when the booking was marked completed. Only present for completed bookings. */
+  completedAt?: string;
   createdAt: string;
 }
 
@@ -303,6 +307,11 @@ export interface Payout {
   status: "paid" | "pending" | "approved" | "processing" | "failed" | "rejected";
   date: string; // ISO
   method: string;
+  payOsPayoutId?: string;
+  payOsReferenceId?: string;
+  payOsPayoutStatus?: string;
+  failureReason?: string;
+  adminNote?: string;
 }
 
 export interface PayoutAccount {

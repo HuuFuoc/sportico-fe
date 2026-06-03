@@ -40,6 +40,7 @@ import type {
   ProgressCheckInResponse,
   PublicCoachDetailResponse,
   PublicCoachListItemResponse,
+  PublicUserResponseDto,
   PurchasePayOsResponse,
   ReconcilePayOsResponse,
   ResolveReviewReportRequest,
@@ -178,9 +179,9 @@ export const backend = {
   async updateMe(body: UpdateMeRequest) {
     return unwrap(await PUT<CurrentUserResponse>(ep.usersMe, body));
   },
-  /** GET /api/users/{id} — look up any user's public profile. Throws on 404/403. */
+  /** GET /api/users/{id} — look up any user's public profile (AllowAnonymous). Throws on 404. */
   async userById(id: string) {
-    return unwrap(await GET<CurrentUserResponse>(ep.userById(id)));
+    return unwrap(await GET<PublicUserResponseDto>(ep.userById(id)));
   },
   async changePassword(body: ChangePasswordRequest) {
     const result = await POST<unknown>(ep.auth.changePassword, body);

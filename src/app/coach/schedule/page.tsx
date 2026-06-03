@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -46,15 +46,17 @@ import { getCurrentUserId } from "@/lib/auth-session";
 import { devUserIdForRole } from "@/lib/auth";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type { AvailabilitySlot, Learner, Session } from "@/types";
+import type { AvailabilitySlot, Session } from "@/types";
 
 // Use real current date — the mock clock is only for static demo fixtures.
 const NOW = new Date();
 
+type LearnerProfile = { name: string; avatarUrl?: string };
+
 // Page-local learner lookup so calendar blocks and rows can resolve a session's
 // learner without each one fetching (or importing mock data) individually.
-const LearnerLookupContext = createContext<Map<string, Learner>>(new Map());
-function useLearner(id: string): Learner | undefined {
+const LearnerLookupContext = createContext<Map<string, LearnerProfile>>(new Map());
+function useLearner(id: string): LearnerProfile | undefined {
   return useContext(LearnerLookupContext).get(id);
 }
 
@@ -103,12 +105,36 @@ export default function CoachSchedulePage() {
   const [showCreateSlot, setShowCreateSlot] = useState(false);
   const [detailSlot, setDetailSlot] = useState<AvailabilitySlot | null>(null);
 
-  // Learner lookup map (single fetch) provided to calendar blocks via context.
-  const { data: learnersData } = useApiResource(() => api.fetchLearners(), []);
-  const learnerById = useMemo(
-    () => new Map((learnersData ?? []).map((l) => [l.id, l])),
+  // Learner lookup: mock mode uses mock fixture; live mode resolves via
+  // GET /api/users/{id} (AllowAnonymous) for each unique learnerId in sessions.
+  const { data: learnersData } = useApiResource(
+    () => isMockMode() ? api.fetchLearners() : Promise.resolve([]),
+    [],
+  );
+  const mockLearnerMap = useMemo(
+    () => new Map((learnersData ?? []).map((l) => [l.id, { name: l.name, avatarUrl: l.avatarUrl }])),
     [learnersData],
   );
+  const [liveProfiles, setLiveProfiles] = useState<Map<string, LearnerProfile>>(new Map());
+  useEffect(() => {
+    if (isMockMode() || sessions.length === 0) return;
+    const ids = [...new Set(sessions.map((s) => s.learnerId).filter((id): id is string => !!id))];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    Promise.allSettled(ids.map((id) => api.fetchUserProfile(id).then((p) => ({ id, profile: p }))))
+      .then((results) => {
+        if (cancelled) return;
+        setLiveProfiles((prev) => {
+          const next = new Map(prev);
+          results.forEach((r) => {
+            if (r.status === "fulfilled" && r.value.profile) next.set(r.value.id, r.value.profile);
+          });
+          return next;
+        });
+      });
+    return () => { cancelled = true; };
+  }, [sessions]);
+  const learnerById = isMockMode() ? mockLearnerMap : liveProfiles;
 
   const reduce = useReducedMotion();
 

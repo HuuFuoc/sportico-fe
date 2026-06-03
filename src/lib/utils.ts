@@ -14,6 +14,30 @@ export function formatCurrency(value: number, currency: string = "USD") {
   }).format(value);
 }
 
+/** Format a Vietnamese Dong amount: e.g. 1.500.000 ₫ */
+export function formatCurrencyVnd(amount: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * Compact VND formatter for chart axes only.
+ * 1.500.000 → "1,5 tr" | 500.000 → "500 k" | 999 → "999"
+ */
+export function formatCurrencyVndCompact(amount: number): string {
+  if (amount >= 1_000_000) {
+    const tr = amount / 1_000_000;
+    return `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(tr)} tr`;
+  }
+  if (amount >= 1_000) {
+    return `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(amount / 1_000)} k`;
+  }
+  return new Intl.NumberFormat("vi-VN").format(amount);
+}
+
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }

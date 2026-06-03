@@ -1283,6 +1283,35 @@ function ReviewsSection({
   const reviews = reviewsData?.items ?? [];
   const hasNext = reviewsData?.hasNext ?? false;
 
+  // Enrich reviews where the backend omitted reviewer info
+  const [profileMap, setProfileMap] = useState<Map<string, { name: string; avatarUrl?: string }>>(new Map());
+  useEffect(() => {
+    if (isMockMode()) return;
+    const missing = reviews.filter((r) => !r.learnerName && r.learnerId);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.allSettled(
+      missing.map((r) => api.fetchUserProfile(r.learnerId).then((p) => ({ id: r.learnerId, profile: p })))
+    ).then((results) => {
+      if (cancelled) return;
+      setProfileMap((prev) => {
+        const next = new Map(prev);
+        results.forEach((res) => {
+          if (res.status === "fulfilled" && res.value.profile) next.set(res.value.id, res.value.profile);
+        });
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [reviews]);
+
+  const enrichReview = (r: Review): Review => {
+    if (r.learnerName) return r;
+    const p = profileMap.get(r.learnerId);
+    if (!p) return r;
+    return { ...r, learnerName: p.name, learnerAvatarUrl: p.avatarUrl };
+  };
+
   // My review (learner only)
   const [myReview, setMyReview] = useState<Review | null | undefined>(undefined);
   const [myReviewLoading, setMyReviewLoading] = useState(false);
@@ -1470,7 +1499,11 @@ function ReviewsSection({
                 Đánh giá của bạn
               </p>
               <ReviewCard
-                review={myReview}
+                review={{
+                  ...myReview,
+                  learnerName: myReview.learnerName ?? authUser?.fullName ?? undefined,
+                  learnerAvatarUrl: myReview.learnerAvatarUrl ?? authUser?.avatarUrl ?? undefined,
+                }}
                 isOwn
                 onEdit={() => openEdit(myReview)}
                 onDelete={() => setShowDeleteConfirm(true)}
@@ -1629,11 +1662,12 @@ function ReviewsSection({
       {!listLoading && reviews.length > 0 && (
         <div className="space-y-2">
           {reviews.map((r) => {
+            const enriched = enrichReview(r);
             const isOwn = !!authUser && r.learnerId === authUser.id;
             return (
               <ReviewCard
                 key={r.id}
-                review={r}
+                review={enriched}
                 isOwn={isOwn}
                 onEdit={() => openEdit(r)}
                 onDelete={() => setShowDeleteConfirm(true)}

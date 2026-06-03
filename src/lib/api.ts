@@ -53,6 +53,7 @@ import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
 import * as map from "@/lib/backend/mappers";
 import { NOW } from "@/lib/mock/clock";
+import { getPublicUserCached, setPublicUserCached, seedPublicUserCache } from "@/lib/public-user-cache";
 import type {
   BookingResponse,
   CreateDayRequest,
@@ -113,12 +114,14 @@ import {
 } from "@/lib/mock/wellness";
 
 export interface EarningsTotal {
-  gross: number;
-  net: number;
-  /** Balance that can be withdrawn immediately. */
-  available: number;
-  /** Balance still awaiting settlement (sessions completed, not yet credited). */
-  pending: number;
+  /** Tổng thu nhập đã ghi nhận vào ví — maps to CoachWalletResponse.totalEarned */
+  totalEarned: number;
+  /** Số dư có thể rút ngay — maps to CoachWalletResponse.availableBalance */
+  availableBalance: number;
+  /** Đang chờ quyết toán — maps to CoachWalletResponse.pendingBalance */
+  pendingBalance: number;
+  /** Đã rút về ngân hàng (lịch sử tích lũy) — maps to CoachWalletResponse.totalWithdrawn */
+  totalWithdrawn: number;
   sessions: number;
 }
 
@@ -236,25 +239,31 @@ export const api = {
 
   // ---- User profile lookup (any user by id) -----------------------------
   /** Resolve a user's display name + avatar by their id.
-   *  Returns null if the endpoint 403s, 404s, or is unavailable (safe fallback).
-   *  Used by coach pages to resolve learner identity from learnerId. */
+   *  GET /api/users/{id} is AllowAnonymous — works even when not signed in.
+   *  Returns null on 404/network error (safe fallback for UI enrichment). */
   fetchUserProfile: (
     userId: string,
-  ): Promise<{ name: string; avatarUrl?: string } | null> =>
-    liveAuthed(
+  ): Promise<{ name: string; avatarUrl?: string } | null> => {
+    if (!userId) return Promise.resolve(null);
+    const cached = getPublicUserCached(userId);
+    if (cached) return Promise.resolve(cached);
+    return live(
       async () => {
         try {
           const u = await backend.userById(userId);
-          return {
-            name: u.fullName?.trim() || `Người dùng #${userId.slice(0, 6).toUpperCase()}`,
+          const result = {
+            name: u.fullName?.trim() || "Người dùng",
             avatarUrl: u.avatarUrl ?? undefined,
           };
+          setPublicUserCached(userId, result);
+          return result;
         } catch {
           return null;
         }
       },
       () => null,
-    ),
+    );
+  },
 
   // ---- Current user (settings page) -------------------------------------
   /** Load the signed-in learner via `/api/users/me`. Falls back to the dev
@@ -572,25 +581,66 @@ export const api = {
       const rooms = await backend.chatRooms();
       const me = getCurrentUserId();
 
-      // Build a participant map from the public coaches list.
-      // Coaches are the most common chat counterpart; best-effort (never blocks
-      // thread rendering even if this call fails or returns no results).
-      const coachMap = new Map<string, { name: string; avatarUrl?: string }>();
+      // Step 1: seed participant map from the public coaches list (batch-efficient).
+      const participantMap = new Map<string, { name: string; avatarUrl?: string }>();
       try {
         const page = await backend.publicCoaches({ pageSize: 50 });
+        const seeds: Array<{ id: string; name: string; avatarUrl?: string }> = [];
         for (const c of page.items ?? []) {
-          coachMap.set(c.coachId, {
+          const entry = {
             name: c.fullName?.trim() || `Coach ${c.coachId.slice(0, 4).toUpperCase()}`,
             avatarUrl: c.avatarUrl ?? undefined,
-          });
+          };
+          participantMap.set(c.coachId, entry);
+          seeds.push({ id: c.coachId, ...entry });
         }
+        seedPublicUserCache(seeds);
       } catch {
-        // Participant lookup is best-effort; missing it just shows initials.
+        // Best-effort; missing it just shows initials.
+      }
+
+      // Step 2: collect participant IDs not yet resolved (non-coaches, learners, etc.).
+      const unknownIds = [
+        ...new Set(
+          rooms
+            .map((r) => (r.user1Id === me ? r.user2Id : r.user1Id))
+            .filter((id) => !!id && id !== me && !participantMap.has(id)),
+        ),
+      ];
+
+      // Step 3: try cache first, then GET /api/users/{id} for each still-unknown id.
+      // Promise.allSettled — one missing user must not break the entire list.
+      if (unknownIds.length > 0) {
+        const results = await Promise.allSettled(
+          unknownIds.map(async (id) => {
+            const cached = getPublicUserCached(id);
+            if (cached) return { id, ...cached };
+            try {
+              const u = await backend.userById(id);
+              const entry = {
+                name: u.fullName?.trim() || "Người dùng",
+                avatarUrl: u.avatarUrl ?? undefined,
+              };
+              setPublicUserCached(id, entry);
+              return { id, ...entry };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (const r of results) {
+          if (r.status === "fulfilled" && r.value) {
+            participantMap.set(r.value.id, {
+              name: r.value.name,
+              avatarUrl: r.value.avatarUrl,
+            });
+          }
+        }
       }
 
       return rooms.map((r) => {
         const otherId = r.user1Id === me ? r.user2Id : r.user1Id;
-        const participant = coachMap.get(otherId);
+        const participant = otherId ? participantMap.get(otherId) : undefined;
         return map.roomToThread(r, me, undefined, participant);
       });
     }, () => getThreadsForUser(userId)),
@@ -714,10 +764,19 @@ export const api = {
       const page = await backend.allWithdrawals({ pageSize: 100, status });
       return (page.items ?? []).map(map.withdrawalToPayout);
     }, () => getPayouts()),
-  approveWithdrawal: (id: string): Promise<void> =>
-    liveAuthed<void>(async () => {
-      await backend.approveWithdrawal(id);
-    }, () => undefined),
+  approveWithdrawal: (id: string): Promise<Payout> =>
+    liveAuthed<Payout>(
+      async () => map.withdrawalToPayout(await backend.approveWithdrawal(id)),
+      () => ({
+        id,
+        coachId: "",
+        amount: 0,
+        currency: "VND",
+        status: "approved",
+        date: new Date().toISOString(),
+        method: "Chuyển khoản ngân hàng",
+      }),
+    ),
   rejectWithdrawal: (id: string, note: string): Promise<void> =>
     liveAuthed<void>(async () => {
       await backend.rejectWithdrawal(id, note);
@@ -760,10 +819,16 @@ export const api = {
     ),
   markPaidWithdrawal: (id: string): Promise<void> =>
     liveAuthed<void>(async () => { await backend.markPaidWithdrawal(id); }, () => undefined),
-  refreshPayoutStatus: (id: string): Promise<void> =>
-    liveAuthed<void>(async () => { await backend.refreshPayoutStatus(id); }, () => undefined),
-  retryPayout: (id: string): Promise<void> =>
-    liveAuthed<void>(async () => { await backend.retryPayout(id); }, () => undefined),
+  refreshPayoutStatus: (id: string): Promise<Payout> =>
+    liveAuthed<Payout>(
+      async () => map.withdrawalToPayout(await backend.refreshPayoutStatus(id)),
+      () => ({ id, coachId: "", amount: 0, currency: "VND", status: "processing", date: new Date().toISOString(), method: "Chuyển khoản ngân hàng" }),
+    ),
+  retryPayout: (id: string): Promise<Payout> =>
+    liveAuthed<Payout>(
+      async () => map.withdrawalToPayout(await backend.retryPayout(id)),
+      () => ({ id, coachId: "", amount: 0, currency: "VND", status: "failed", date: new Date().toISOString(), method: "Chuyển khoản ngân hàng" }),
+    ),
 
   fetchPayoutAccount: (): Promise<PayoutAccount | null> =>
     liveAuthed<PayoutAccount | null>(

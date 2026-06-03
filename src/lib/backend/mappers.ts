@@ -44,6 +44,7 @@ import type {
   ProgressCheckInResponse,
   PublicCoachDetailResponse,
   PublicCoachListItemResponse,
+  PublicUserResponseDto,
   ReviewReportResponse,
   ReviewResponse,
   TrainingPackageResponse,
@@ -80,6 +81,43 @@ export function toSport(name?: string | null): Sport {
 /** Short, stable display name derived from a coach id (no name endpoint). */
 function coachDisplayName(coachId: string): string {
   return `Coach ${coachId.slice(0, 4).toUpperCase()}`;
+}
+
+// ---- Public user profile (GET /api/users/{id}) → UI mini-profile ------------
+
+/** UI shape for a public user resolved from GET /api/users/{id}. */
+export interface PublicUserUi {
+  name: string;
+  avatarUrl?: string;
+  roles: string[];
+  /** Coach-only: short bio headline. */
+  headline?: string;
+  /** Coach-only: average rating (null → not yet rated). */
+  rating?: number;
+  /** Coach-only: total review count. */
+  totalReviews: number;
+  /** Learner-only: training goal. */
+  goal?: string;
+}
+
+/**
+ * Map GET /api/users/{id} response to a safe, display-ready shape.
+ * All fields defensive: null/missing → sensible defaults.
+ * NEVER exposes email, phone, dateOfBirth, status, tokens.
+ */
+export function publicUserToUi(u: PublicUserResponseDto): PublicUserUi {
+  return {
+    name: u.fullName?.trim() || "Người dùng",
+    avatarUrl: u.avatarUrl ?? undefined,
+    roles: u.roles ?? [],
+    headline: u.coachProfile?.headline?.trim() || undefined,
+    rating:
+      u.coachProfile?.rating != null && u.coachProfile.rating > 0
+        ? u.coachProfile.rating
+        : undefined,
+    totalReviews: u.coachProfile?.totalReviews ?? 0,
+    goal: u.learnerProfile?.goal?.trim() || undefined,
+  };
 }
 
 // ---- Public coach directory → Coach ----------------------------------------
@@ -184,10 +222,21 @@ export function publicCoachDetailToCoach(c: PublicCoachDetailResponse): Coach {
 }
 
 // ---- Booking → UI ----------------------------------------------------------
+
+/** Guard against numeric-only titles — happens when backend sends totalAmount
+ *  or another numeric field as trainingPackageTitle due to a mapping bug. */
+function safePackageTitle(raw?: string | null): string {
+  if (!raw) return "Gói tập chưa có tên";
+  const trimmed = raw.trim();
+  if (!trimmed) return "Gói tập chưa có tên";
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return "Gói tập chưa có tên";
+  return trimmed;
+}
+
 export function bookingToUi(b: BookingResponse): Booking {
   return {
     id: b.id,
-    title: b.trainingPackageTitle ?? "Gói huấn luyện",
+    title: safePackageTitle(b.trainingPackageTitle),
     coachId: b.coachId,
     learnerId: b.learnerId,
     trainingPackageId: b.trainingPackageId,
@@ -196,6 +245,8 @@ export function bookingToUi(b: BookingResponse): Booking {
     status: b.status ?? "Active",
     totalAmount: b.totalAmount,
     paidAt: b.paidAt ?? undefined,
+    cancelledAt: b.cancelledAt ?? undefined,
+    completedAt: b.completedAt ?? undefined,
     createdAt: b.createdAt,
   };
 }
@@ -446,10 +497,10 @@ export function transactionsToEarnings(
 
 export function walletToTotal(w: CoachWalletResponse) {
   return {
-    gross: w.totalEarned,
-    net: w.availableBalance + w.pendingBalance,
-    available: w.availableBalance,
-    pending: w.pendingBalance,
+    totalEarned: w.totalEarned,
+    availableBalance: w.availableBalance,
+    pendingBalance: w.pendingBalance,
+    totalWithdrawn: w.totalWithdrawn,
     sessions: 0,
   };
 }
@@ -493,6 +544,11 @@ export function withdrawalToPayout(w: WithdrawalRequestResponse): Payout {
     status: toPayoutStatus(w.status),
     date: w.createdAt,
     method: "Chuyển khoản ngân hàng",
+    payOsPayoutId: w.payOsPayoutId ?? undefined,
+    payOsReferenceId: w.payOsReferenceId ?? undefined,
+    payOsPayoutStatus: w.payOsPayoutStatus ?? undefined,
+    failureReason: w.failureReason ?? undefined,
+    adminNote: w.adminNote ?? undefined,
   };
 }
 

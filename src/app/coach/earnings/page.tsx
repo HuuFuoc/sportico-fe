@@ -9,8 +9,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -19,143 +17,157 @@ import {
   YAxis,
 } from "recharts";
 import {
+  AlertCircle,
   ArrowDownToLine,
-  ArrowUpRight,
   Banknote,
   Building2,
-  CalendarRange,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
-  Circle,
   Clock,
-  Download,
   ExternalLink,
-  FileText,
-  Filter,
   Hourglass,
-  Lightbulb,
+  Info,
   Loader2,
   Receipt,
   Search,
-  Send,
-  Sparkles,
-  Target,
-  TrendingDown,
-  TrendingUp,
+  ShieldCheck,
   Wallet,
   X,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { WithdrawModal } from "@/components/coach/WithdrawModal";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrencyVnd, formatCurrencyVndCompact } from "@/lib/utils";
 import { api } from "@/lib/api";
-import type { WithdrawalReceiptResponse } from "@/lib/api";
-import { getCurrentUserId } from "@/lib/auth-session";
+import type { WithdrawalReceiptResponse, EarningsTotal } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type { EarningPoint, Payout } from "@/types";
+import type { EarningPoint, Payout, PayoutAccount } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const RANGE_OPTIONS = ["3M", "6M", "1Y", "All"] as const;
+const RANGE_OPTIONS = ["3T", "6T", "1N", "Tất cả"] as const;
 type Range = (typeof RANGE_OPTIONS)[number];
 
-function seedSpark(seed: number, base: number, jitter: number, len = 8) {
-  return Array.from({ length: len }, (_, i) => {
-    const noise = Math.sin(i * 1.4 + seed) * jitter;
-    return { i, v: Math.max(0, base + i * (jitter / 5) + noise) };
-  });
+// ---- Helpers ----------------------------------------------------------------
+
+function maskAccountNumber(num: string | undefined): string {
+  if (!num) return "—";
+  if (num.length <= 4) return num;
+  return `••••${num.slice(-4)}`;
 }
+
+function isAccountVerified(account: PayoutAccount | null): boolean {
+  if (!account) return false;
+  const s = (account.status ?? "").toLowerCase();
+  return s === "verified" || s === "approved";
+}
+
+function getWithdrawBlockReason(
+  earningsTotal: EarningsTotal | undefined,
+  payoutAccount: PayoutAccount | null,
+): string | null {
+  if (!earningsTotal || earningsTotal.availableBalance <= 0)
+    return "Bạn chưa có số dư có thể rút.";
+  if (!payoutAccount?.bankAccountNumber)
+    return "Bạn chưa thiết lập tài khoản nhận tiền.";
+  if (!isAccountVerified(payoutAccount))
+    return "Tài khoản nhận tiền chưa được xác minh.";
+  return null;
+}
+
+// ---- Status metadata --------------------------------------------------------
 
 const STATUS_META: Record<
   Payout["status"],
-  { label: string; pill: string; dot: string; icon: typeof CheckCircle2 }
+  { label: string; pill: string; icon: typeof CheckCircle2 }
 > = {
   paid: {
     label: "Đã trả",
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
-    dot: "bg-[#10b981]",
     icon: CheckCircle2,
   },
   pending: {
     label: "Đang chờ",
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
-    dot: "bg-[#f59e0b]",
     icon: Clock,
   },
   approved: {
     label: "Đã duyệt",
     pill: "bg-blue-50 text-blue-700 border-blue-200",
-    dot: "bg-blue-500",
     icon: Hourglass,
   },
   processing: {
     label: "Đang xử lý",
     pill: "bg-primary/10 text-primary border-primary/20",
-    dot: "bg-primary",
     icon: Hourglass,
   },
   failed: {
     label: "Thất bại",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
-    dot: "bg-[#ef4444]",
     icon: XCircle,
   },
   rejected: {
     label: "Đã từ chối",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
-    dot: "bg-[#ef4444]",
     icon: XCircle,
   },
 };
 
-export default function CoachEarningsPage() {
-  const currentUserId = getCurrentUserId();
+const STATUS_FILTER_LABELS: Record<Payout["status"] | "all", string> = {
+  all: "Tất cả",
+  paid: "Đã trả",
+  pending: "Đang chờ",
+  processing: "Đang xử lý",
+  approved: "Đã duyệt",
+  failed: "Thất bại",
+  rejected: "Từ chối",
+};
 
+// ============================================================================
+// Page
+// ============================================================================
+
+export default function CoachEarningsPage() {
   const { data, loading, error, refetch } = useApiResource(
     () =>
       Promise.all([
         api.fetchEarnings(),
         api.fetchPayouts(),
         api.fetchEarningsTotal(),
+        api.fetchPayoutAccount(),
       ]),
     [],
   );
   const earnings = useMemo(() => data?.[0] ?? [], [data]);
   const payouts = useMemo(() => data?.[1] ?? [], [data]);
   const earningsTotal = data?.[2];
+  const payoutAccount = data?.[3] ?? null;
 
   const reduce = useReducedMotion();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [range, setRange] = useState<Range>("1Y");
+  const [range, setRange] = useState<Range>("1N");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Payout["status"] | "all">(
     "all",
   );
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
 
-  // Range-filtered earnings
   const rangedEarnings = useMemo(() => {
     const len = earnings.length;
-    if (range === "3M") return earnings.slice(-3);
-    if (range === "6M") return earnings.slice(-6);
-    if (range === "1Y") return earnings.slice(-12);
+    if (range === "3T") return earnings.slice(-3);
+    if (range === "6T") return earnings.slice(-6);
+    if (range === "1N") return earnings.slice(-12);
     return earnings.slice(-len);
   }, [range, earnings]);
 
-  // Filtered payouts list
   const filteredPayouts = useMemo(() => {
     return payouts.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         return (
-          p.method.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q) ||
-          p.coachId.toLowerCase().includes(q)
+          p.method.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
         );
       }
       return true;
@@ -178,63 +190,8 @@ export default function CoachEarningsPage() {
     );
   }
 
-  // Empty state: coach has no transactions yet — show wallet summary if available,
-  // otherwise a friendly empty income screen.
-  if (earnings.length === 0) {
-    return (
-      <AppShell role="coach" title="Thu nhập">
-        <div className="max-w-[1340px] mx-auto">
-          <div className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-10 sm:p-16 text-center">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary to-[#5b4ee8] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(53,37,205,0.4)]">
-              <Wallet size={24} className="text-on-primary" />
-            </div>
-            <h2 className="text-[20px] font-bold tracking-tight">Chưa có thu nhập</h2>
-            <p className="text-[14px] text-on-surface-variant mt-2 max-w-sm mx-auto">
-              Thu nhập sẽ xuất hiện ở đây sau khi các buổi tập hoàn thành và được ghi nhận vào ví.
-            </p>
-            {earningsTotal && (
-              <div className="mt-6 inline-flex gap-6 text-center">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold">Số dư khả dụng</p>
-                  <p className="text-[22px] font-bold tabular-nums mt-0.5">{formatCurrency(earningsTotal.net)}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold">Tổng tích lũy</p>
-                  <p className="text-[22px] font-bold tabular-nums mt-0.5">{formatCurrency(earningsTotal.gross)}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  const last = earnings[earnings.length - 1];
-  const prev = earnings[earnings.length - 2] ?? last;
-  const total = earnings.reduce((s, x) => s + x.gross, 0);
-  const myPayouts = payouts.filter((p) =>
-    !currentUserId || p.coachId === currentUserId,
-  );
-  const pendingTotal = myPayouts
-    .filter((p) => p.status !== "paid")
-    .reduce((s, p) => s + p.amount, 0);
-
-  const deltaPct =
-    prev.gross > 0
-      ? Math.round(((last.gross - prev.gross) / prev.gross) * 100)
-      : 0;
-
-  // Revenue breakdown
-  const grossThisMonth = last.gross;
-  const platformFee = Math.round(grossThisMonth * 0.15);
-  const refunds = Math.round(grossThisMonth * 0.03);
-  const netPayout = grossThisMonth - platformFee - refunds;
-  const breakdown = [
-    { name: "Net payout", value: netPayout, color: "#10b981" },
-    { name: "Platform fee", value: platformFee, color: "#4f46e5" },
-    { name: "Refunds", value: refunds, color: "#f59e0b" },
-  ];
+  const withdrawBlockReason = getWithdrawBlockReason(earningsTotal, payoutAccount);
+  const canWithdraw = withdrawBlockReason === null;
 
   return (
     <AppShell role="coach" title="Thu nhập">
@@ -244,47 +201,20 @@ export default function CoachEarningsPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduce ? 0 : 0.45, ease: EASE }}
-          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4"
         >
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
-                <Sparkles size={11} />
-                Live financial data
-              </span>
-              <span className="text-[12px] text-on-surface-variant">
-                Updated{" "}
-                {new Date().toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            </div>
-            <h1 className="text-[32px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
-              Earnings &amp; Analytics
-            </h1>
-            <p className="text-[14px] text-on-surface-variant mt-1.5">
-              Revenue, session volume, and payout flow at a glance.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button className="h-11 px-4 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13.5px] font-medium transition-colors">
-              <CalendarRange size={15} />
-              May 2026
-              <ChevronDown size={13} />
-            </button>
-            <button className="h-11 px-4 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13.5px] font-medium transition-colors">
-              <Download size={15} />
-              Export
-            </button>
-          </div>
+          <h1 className="text-[28px] sm:text-[32px] leading-[1.1] font-bold tracking-tight">
+            Thu nhập của tôi
+          </h1>
+          <p className="text-[14px] text-on-surface-variant mt-1">
+            Quản lý ví, lịch sử rút tiền và tài khoản ngân hàng.
+          </p>
         </motion.header>
 
-        {/* ============ HERO EARNINGS ============ */}
-        <HeroEarnings
-          value={last.gross}
-          deltaPct={deltaPct}
-          trend={earnings.slice(-6)}
+        {/* ============ WALLET HERO ============ */}
+        <WalletHero
+          earningsTotal={earningsTotal}
+          canWithdraw={canWithdraw}
+          withdrawBlockReason={withdrawBlockReason}
           onWithdraw={() => setWithdrawOpen(true)}
           reduce={reduce ?? false}
         />
@@ -292,286 +222,99 @@ export default function CoachEarningsPage() {
         {/* ============ KPI ROW ============ */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
-            icon={Wallet}
-            label="Tháng này"
-            value={formatCurrency(last.gross)}
-            trend={`${deltaPct > 0 ? "+" : ""}${deltaPct}%`}
-            trendDir={deltaPct >= 0 ? "up" : "down"}
-            trendLabel="so tháng trước"
-            accent="indigo"
-            spark={seedSpark(1, last.gross / 50, 8)}
+            icon={Banknote}
+            label="Tổng thu nhập đã ghi nhận"
+            value={
+              earningsTotal
+                ? formatCurrencyVnd(earningsTotal.totalEarned)
+                : "—"
+            }
+            accent="emerald"
             delay={0.05}
             reduce={reduce ?? false}
           />
           <KpiCard
-            icon={Receipt}
-            label="Tháng trước"
-            value={formatCurrency(prev.gross)}
-            trend="Đã đóng"
-            trendDir="neutral"
-            trendLabel="đã đối soát"
-            accent="violet"
-            spark={seedSpark(2, prev.gross / 50, 7)}
+            icon={Wallet}
+            label="Số dư có thể rút"
+            value={
+              earningsTotal
+                ? formatCurrencyVnd(earningsTotal.availableBalance)
+                : "—"
+            }
+            accent="indigo"
             delay={0.1}
             reduce={reduce ?? false}
           />
           <KpiCard
-            icon={Banknote}
-            label="Tổng thu nhập"
-            value={formatCurrency(total)}
-            trend="+18%"
-            trendDir="up"
-            trendLabel="so năm ngoái"
-            accent="emerald"
-            spark={seedSpark(3, total / 200, 30)}
+            icon={Hourglass}
+            label="Đang xử lý"
+            value={
+              earningsTotal
+                ? formatCurrencyVnd(earningsTotal.pendingBalance)
+                : "—"
+            }
+            accent="amber"
             delay={0.15}
             reduce={reduce ?? false}
           />
           <KpiCard
-            icon={Hourglass}
-            label="Đang chờ chi trả"
-            value={formatCurrency(pendingTotal)}
-            trend={`${myPayouts.filter((p) => p.status !== "paid").length} tx`}
-            trendDir="neutral"
-            trendLabel="đang xử lý"
-            accent="amber"
-            spark={seedSpark(4, pendingTotal / 30 || 50, 20)}
+            icon={ArrowDownToLine}
+            label="Đã rút về ngân hàng"
+            value={
+              earningsTotal
+                ? formatCurrencyVnd(earningsTotal.totalWithdrawn)
+                : "—"
+            }
+            accent="violet"
             delay={0.2}
             reduce={reduce ?? false}
           />
         </section>
 
-        {/* ============ REVENUE CHART + AI SIDEBAR ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-5">
-          {/* Revenue chart */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduce ? 0 : 0.5, delay: 0.1, ease: EASE }}
-            className="relative overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-          >
-            <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-[18px] font-semibold tracking-tight">
-                    Doanh thu hàng tháng
-                  </h3>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
-                    <TrendingUp size={10} />
-                    Gộp + Ròng
-                  </span>
-                </div>
-                <p className="text-[13px] text-on-surface-variant">
-                  Doanh thu gộp so với doanh thu ròng (sau phí)
-                </p>
-                <div className="flex items-baseline gap-2 mt-3">
-                  <span className="text-[32px] leading-none font-bold tracking-tight tabular-nums">
-                    {formatCurrency(
-                      hoveredMonth
-                        ? rangedEarnings.find((e) => e.month === hoveredMonth)
-                            ?.gross ?? last.gross
-                        : last.gross,
-                    )}
-                  </span>
-                  <span className="text-[13px] text-on-surface-variant">
-                    {hoveredMonth ?? last.month}
-                  </span>
-                </div>
-              </div>
-
-              {/* Range pill */}
-              <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px]">
-                {RANGE_OPTIONS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRange(r)}
-                    className={cn(
-                      "relative px-3 h-7 text-[12px] font-medium rounded-[7px] transition-colors",
-                      range === r
-                        ? "text-on-surface"
-                        : "text-on-surface-variant hover:text-on-surface",
-                    )}
-                  >
-                    {range === r && (
-                      <motion.span
-                        layoutId="earnRangePill"
-                        className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
-                        transition={{
-                          type: "spring",
-                          duration: reduce ? 0 : 0.4,
-                          bounce: 0.2,
-                        }}
-                      />
-                    )}
-                    <span className="relative">{r}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-[280px] -mx-2">
-              <ClientOnly
-                fallback={
-                  <div className="h-full w-full bg-surface-container-low rounded-xl animate-pulse" />
-                }
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={rangedEarnings}
-                    margin={{ left: -4, right: 8, top: 12, bottom: 0 }}
-                    onMouseMove={(state: unknown) => {
-                      const s = state as
-                        | {
-                            activePayload?: { payload?: { month?: string } }[];
-                          }
-                        | undefined;
-                      const m = s?.activePayload?.[0]?.payload?.month;
-                      if (m) setHoveredMonth(m);
-                    }}
-                    onMouseLeave={() => setHoveredMonth(null)}
-                  >
-                    <defs>
-                      <linearGradient id="revGrossGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.35} />
-                        <stop offset="60%" stopColor="#4f46e5" stopOpacity={0.08} />
-                        <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="revStrokeGrad" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#4f46e5" />
-                        <stop offset="100%" stopColor="#7d6dff" />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      vertical={false}
-                      stroke="#e8e8e5"
-                      strokeDasharray="4 6"
-                    />
-                    <XAxis
-                      dataKey="month"
-                      stroke="#777587"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                      dy={6}
-                    />
-                    <YAxis
-                      stroke="#777587"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`}
-                      width={42}
-                    />
-                    <Tooltip
-                      content={<RevenueTooltip />}
-                      cursor={{
-                        stroke: "#4f46e5",
-                        strokeWidth: 1,
-                        strokeDasharray: "4 4",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="gross"
-                      stroke="url(#revStrokeGrad)"
-                      strokeWidth={2.5}
-                      fill="url(#revGrossGrad)"
-                      activeDot={{
-                        r: 6,
-                        fill: "#fff",
-                        stroke: "#4f46e5",
-                        strokeWidth: 2.5,
-                      }}
-                      animationDuration={reduce ? 0 : 1200}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="net"
-                      stroke="#94a3b8"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      fill="transparent"
-                      animationDuration={reduce ? 0 : 1200}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ClientOnly>
-            </div>
-
-            <div className="flex items-center gap-5 text-[12px] text-on-surface-variant mt-3 pt-3 border-t border-[var(--color-border-soft)]">
-              <Legend color="#4f46e5" label="Gross revenue" />
-              <Legend color="#94a3b8" label="Net (after fees)" dashed />
-            </div>
-          </motion.section>
-
-          {/* AI insights sidebar */}
-          <aside className="space-y-4">
-            <AIInsightCard
-              icon={TrendingUp}
-              accent="emerald"
-              title={`Doanh thu tăng ${deltaPct >= 0 ? "+" : ""}${deltaPct}% tháng này`}
-              body="Bạn đang trên đà đạt tháng mạnh nhất. Duy trì tỷ lệ đặt lịch thứ Sáu để tối đa hóa thu nhập."
-              delay={0.15}
-              reduce={reduce ?? false}
-            />
-            <AIInsightCard
-              icon={Lightbulb}
-              accent="primary"
-              title="Mobility Coaching dẫn đầu thu nhập"
-              body="62% doanh thu gộp tháng này đến từ buổi mobility — danh mục biên lợi nhuận tốt nhất của bạn."
-              cta={{ label: "Tối ưu lịch", icon: Target }}
-              delay={0.22}
-              reduce={reduce ?? false}
-            />
-            <AIInsightCard
-              icon={Zap}
-              accent="amber"
-              title="Buổi thứ Sáu trả cao nhất"
-              body="Slot thứ Sáu kiếm nhiều hơn 28% trung bình. Còn 3 slot trống thứ Sáu tới."
-              cta={{ label: "Lấp đầy slot", icon: ArrowUpRight }}
-              delay={0.29}
-              reduce={reduce ?? false}
-            />
-          </aside>
-        </div>
-
-        {/* ============ SESSIONS + BREAKDOWN ============ */}
+        {/* ============ MONTHLY CHART + SESSIONS ============ */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5">
-          <SessionsCard
-            data={rangedEarnings}
+          <EarningsChartCard
+            earnings={rangedEarnings}
+            allEarnings={earnings}
+            range={range}
+            setRange={setRange}
+            hoveredMonth={hoveredMonth}
+            setHoveredMonth={setHoveredMonth}
             reduce={reduce ?? false}
           />
-          <RevenueBreakdownCard
-            breakdown={breakdown}
-            gross={grossThisMonth}
-            onWithdraw={() => setWithdrawOpen(true)}
+          <SessionsCard data={rangedEarnings} reduce={reduce ?? false} />
+        </div>
+
+        {/* ============ WALLET DISTRIBUTION + PAYOUT ACCOUNT ============ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <WalletDistributionCard
+            earningsTotal={earningsTotal}
+            onWithdraw={canWithdraw ? () => setWithdrawOpen(true) : undefined}
+            reduce={reduce ?? false}
+          />
+          <PayoutAccountCard
+            payoutAccount={payoutAccount}
+            onUpdate={() => setWithdrawOpen(true)}
             reduce={reduce ?? false}
           />
         </div>
 
-        {/* ============ PAYOUT TABLE + QUICK ACTIONS ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
-          <PayoutTable
-            payouts={filteredPayouts}
-            search={search}
-            setSearch={setSearch}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            reduce={reduce ?? false}
-          />
-          <QuickActionsPanel
-            onWithdraw={() => setWithdrawOpen(true)}
-            available={earningsTotal?.available}
-            pending={earningsTotal?.pending}
-            reduce={reduce ?? false}
-          />
-        </div>
+        {/* ============ PAYOUT TABLE ============ */}
+        <PayoutTable
+          payouts={filteredPayouts}
+          search={search}
+          setSearch={setSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          onWithdraw={canWithdraw ? () => setWithdrawOpen(true) : undefined}
+          reduce={reduce ?? false}
+        />
       </div>
 
       <WithdrawModal
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
-        available={earningsTotal?.available ?? earningsTotal?.net ?? netPayout}
+        available={earningsTotal?.availableBalance ?? 0}
         onSuccess={refetch}
       />
     </AppShell>
@@ -579,23 +322,31 @@ export default function CoachEarningsPage() {
 }
 
 // ============================================================================
-// Hero Earnings
+// Wallet Hero
 // ============================================================================
 
-function HeroEarnings({
-  value,
-  deltaPct,
-  trend,
+function WalletHero({
+  earningsTotal,
+  canWithdraw,
+  withdrawBlockReason,
   onWithdraw,
   reduce,
 }: {
-  value: number;
-  deltaPct: number;
-  trend: EarningPoint[];
+  earningsTotal: EarningsTotal | undefined;
+  canWithdraw: boolean;
+  withdrawBlockReason: string | null;
   onWithdraw: () => void;
   reduce: boolean;
 }) {
-  const up = deltaPct >= 0;
+  const isConsistent =
+    earningsTotal !== undefined &&
+    Math.abs(
+      earningsTotal.totalEarned -
+        (earningsTotal.availableBalance +
+          earningsTotal.pendingBalance +
+          earningsTotal.totalWithdrawn),
+    ) < 1;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -603,90 +354,91 @@ function HeroEarnings({
       transition={{ duration: reduce ? 0 : 0.55, delay: 0.05, ease: EASE }}
       className="relative overflow-hidden rounded-[24px] border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-surface-container-lowest to-[#7d6dff]/[0.06] p-6 sm:p-8 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_16px_36px_-18px_rgba(53,37,205,0.25)]"
     >
-      {/* Glow blobs */}
       <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-gradient-to-br from-primary/20 via-primary/5 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 left-1/3 w-60 h-60 rounded-full bg-gradient-to-tr from-[#7d6dff]/15 to-transparent blur-3xl pointer-events-none" />
 
-      <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-end">
+      <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] uppercase tracking-wider font-bold text-primary">
-              This Month Earnings
-            </span>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold",
-                up
-                  ? "bg-success-container text-[#1f7a4d]"
-                  : "bg-[#ffdad6] text-[#ba1a1a]",
-              )}
-            >
-              {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-              {up ? "+" : ""}
-              {deltaPct}% vs last month
-            </span>
-          </div>
+          <p className="text-[11px] uppercase tracking-wider font-bold text-primary mb-3">
+            Ví thu nhập
+          </p>
 
-          <div className="flex items-baseline gap-3 flex-wrap">
+          {/* Primary: availableBalance */}
+          <div>
+            <p className="text-[13px] text-on-surface-variant mb-1">
+              Số dư có thể rút
+            </p>
             <span className="text-[44px] sm:text-[56px] leading-[1] font-bold tracking-tight tabular-nums bg-gradient-to-br from-on-surface via-on-surface to-primary bg-clip-text text-transparent">
-              {formatCurrency(value)}
+              {earningsTotal
+                ? formatCurrencyVnd(earningsTotal.availableBalance)
+                : "—"}
             </span>
-            <span className="text-[14px] text-on-surface-variant">USD</span>
           </div>
 
-          <p className="text-[13.5px] text-on-surface-variant mt-3 max-w-xl leading-relaxed">
-            You&apos;re pacing{" "}
-            <span className="text-on-surface font-medium">12% ahead</span> of
-            your monthly target. At this rate, you&apos;ll hit{" "}
-            <span className="text-primary font-semibold">$4,800</span> by
-            month-end — your highest month on record.
+          {/* Secondaries */}
+          {earningsTotal && (
+            <div className="mt-4 flex items-center gap-6 flex-wrap">
+              <div>
+                <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-medium">
+                  Tổng thu nhập đã ghi nhận
+                </p>
+                <p className="text-[15px] font-semibold tabular-nums mt-0.5">
+                  {formatCurrencyVnd(earningsTotal.totalEarned)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-medium">
+                  Đang xử lý
+                </p>
+                <p className="text-[15px] font-semibold tabular-nums mt-0.5">
+                  {formatCurrencyVnd(earningsTotal.pendingBalance)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-medium">
+                  Đã rút về ngân hàng
+                </p>
+                <p className="text-[15px] font-semibold tabular-nums mt-0.5">
+                  {formatCurrencyVnd(earningsTotal.totalWithdrawn)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Formula helper text — conditional on consistency */}
+          <p className="text-[12px] text-on-surface-variant mt-3 max-w-xl leading-relaxed">
+            {isConsistent
+              ? "Số dư có thể rút = Tổng thu nhập đã ghi nhận − Đã rút − Đang xử lý."
+              : "Số dư có thể rút được tính từ dữ liệu ví hiện tại sau khi hệ thống trừ các khoản đã rút, đang xử lý hoặc đang đối soát."}
           </p>
 
           {/* CTAs */}
-          <div className="flex items-center gap-2 mt-5 flex-wrap">
-            <button
-              onClick={onWithdraw}
-              className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <ArrowDownToLine size={15} strokeWidth={2.5} />
-              Withdraw Funds
-            </button>
-            <button className="inline-flex items-center gap-2 h-11 px-5 rounded-xl border border-[var(--color-border-soft)] bg-surface-container-lowest hover:bg-surface-container-low text-[14px] font-medium transition-colors">
-              <FileText size={15} />
-              Export Report
-            </button>
-          </div>
-        </div>
-
-        {/* Mini hero chart */}
-        <div className="hidden lg:block w-[280px] h-[140px] -mb-2">
-          <ClientOnly fallback={<div className="h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={trend}
-                margin={{ left: 0, right: 0, top: 8, bottom: 0 }}
+          <div className="flex items-center gap-3 mt-5 flex-wrap">
+            {canWithdraw ? (
+              <button
+                onClick={onWithdraw}
+                className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                <defs>
-                  <linearGradient id="heroGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="gross"
-                  stroke="#4f46e5"
-                  strokeWidth={2.5}
-                  fill="url(#heroGrad)"
-                  isAnimationActive={!reduce}
-                  animationDuration={reduce ? 0 : 1200}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-          <p className="text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant text-right -translate-y-2">
-            6-month trend
-          </p>
+                <ArrowDownToLine size={15} strokeWidth={2.5} />
+                Rút tiền
+              </button>
+            ) : (
+              <>
+                <button
+                  disabled
+                  className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-surface-container-low text-on-surface-variant text-[14px] font-semibold cursor-not-allowed opacity-60"
+                >
+                  <ArrowDownToLine size={15} strokeWidth={2.5} />
+                  Rút tiền
+                </button>
+                {withdrawBlockReason && (
+                  <div className="flex items-center gap-1.5 text-[12.5px] text-on-surface-variant">
+                    <AlertCircle size={13} className="shrink-0 text-[#f59e0b]" />
+                    {withdrawBlockReason}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -694,7 +446,7 @@ function HeroEarnings({
 }
 
 // ============================================================================
-// KPI Card
+// KPI Card (no sparklines)
 // ============================================================================
 
 const KPI_ACCENTS = {
@@ -702,25 +454,21 @@ const KPI_ACCENTS = {
     iconBg: "bg-gradient-to-br from-primary to-[#7d6dff]",
     glow: "shadow-[0_4px_14px_-3px_rgba(53,37,205,0.4)]",
     decor: "from-primary/15 to-primary/0",
-    stroke: "#4f46e5",
   },
   violet: {
     iconBg: "bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]",
     glow: "shadow-[0_4px_14px_-3px_rgba(139,92,246,0.4)]",
     decor: "from-[#c084fc]/15 to-[#c084fc]/0",
-    stroke: "#8b5cf6",
   },
   emerald: {
     iconBg: "bg-gradient-to-br from-[#10b981] to-[#34d399]",
     glow: "shadow-[0_4px_14px_-3px_rgba(16,185,129,0.4)]",
     decor: "from-[#34d399]/15 to-[#34d399]/0",
-    stroke: "#10b981",
   },
   amber: {
     iconBg: "bg-gradient-to-br from-[#f59e0b] to-[#fb923c]",
     glow: "shadow-[0_4px_14px_-3px_rgba(245,158,11,0.4)]",
     decor: "from-[#f59e0b]/15 to-[#f59e0b]/0",
-    stroke: "#f59e0b",
   },
 } as const;
 
@@ -728,207 +476,288 @@ function KpiCard({
   icon: Icon,
   label,
   value,
-  trend,
-  trendDir,
-  trendLabel,
   accent,
-  spark,
   delay,
   reduce,
 }: {
   icon: typeof Wallet;
   label: string;
   value: string;
-  trend?: string;
-  trendDir?: "up" | "down" | "neutral";
-  trendLabel?: string;
   accent: keyof typeof KPI_ACCENTS;
-  spark: { i: number; v: number }[];
   delay: number;
   reduce: boolean;
 }) {
   const a = KPI_ACCENTS[accent];
-  const trendColor =
-    trendDir === "up"
-      ? "text-[#1f7a4d]"
-      : trendDir === "down"
-        ? "text-[#ba1a1a]"
-        : "text-on-surface-variant";
-  const TrendIcon =
-    trendDir === "up"
-      ? TrendingUp
-      : trendDir === "down"
-        ? TrendingDown
-        : Circle;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduce ? 0 : 0.5, delay, ease: EASE }}
       whileHover={reduce ? {} : { y: -3 }}
-      className="group relative overflow-hidden rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_20px_-12px_rgba(15,15,30,0.08)] hover:shadow-[0_2px_4px_rgba(15,15,30,0.04),0_16px_36px_-12px_rgba(15,15,30,0.14)] transition-shadow cursor-pointer"
+      className="group relative overflow-hidden rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_20px_-12px_rgba(15,15,30,0.08)] hover:shadow-[0_2px_4px_rgba(15,15,30,0.04),0_16px_36px_-12px_rgba(15,15,30,0.14)] transition-shadow"
     >
       <div
         className={cn(
-          "absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br blur-2xl opacity-60 group-hover:opacity-100 transition-opacity",
+          "absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br blur-2xl opacity-60",
           a.decor,
         )}
       />
       <div className="relative">
-        <div className="flex items-start justify-between mb-3">
-          <div
-            className={cn(
-              "w-10 h-10 rounded-[12px] flex items-center justify-center text-white transition-transform group-hover:scale-105",
-              a.iconBg,
-              a.glow,
-            )}
-          >
-            <Icon size={17} strokeWidth={2.25} />
-          </div>
-          <ArrowUpRight
-            size={15}
-            className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
-          />
-        </div>
-        <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant">
-          {label}
-        </p>
-        <p className="text-[22px] sm:text-[24px] leading-none font-bold tracking-tight tabular-nums mt-1">
-          {value}
-        </p>
-        <div className="h-8 mt-3 -mx-1">
-          <ClientOnly fallback={<div className="h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={spark}
-                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
-              >
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke={a.stroke}
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={!reduce}
-                  animationDuration={reduce ? 0 : 1100}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-        </div>
-        <div className="flex items-center gap-1.5 mt-1 text-[11.5px]">
-          {trend && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-0.5 font-semibold",
-                trendColor,
-              )}
-            >
-              <TrendIcon size={11} />
-              {trend}
-            </span>
-          )}
-          {trendLabel && (
-            <span className="text-on-surface-variant">{trendLabel}</span>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// AI Insight Card
-// ============================================================================
-
-const INSIGHT_ACCENTS = {
-  primary: {
-    bg: "from-primary/[0.06] to-[#7d6dff]/[0.04]",
-    border: "border-primary/15",
-    icon: "bg-gradient-to-br from-primary to-[#7d6dff]",
-    glow: "shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]",
-    text: "text-primary",
-  },
-  emerald: {
-    bg: "from-[#10b981]/[0.06] to-[#34d399]/[0.04]",
-    border: "border-[#10b981]/15",
-    icon: "bg-gradient-to-br from-[#10b981] to-[#34d399]",
-    glow: "shadow-[0_4px_12px_-2px_rgba(16,185,129,0.35)]",
-    text: "text-[#1f7a4d]",
-  },
-  amber: {
-    bg: "from-[#f59e0b]/[0.06] to-[#fb923c]/[0.04]",
-    border: "border-[#f59e0b]/20",
-    icon: "bg-gradient-to-br from-[#f59e0b] to-[#fb923c]",
-    glow: "shadow-[0_4px_12px_-2px_rgba(245,158,11,0.35)]",
-    text: "text-[#b45309]",
-  },
-} as const;
-
-function AIInsightCard({
-  icon: Icon,
-  accent,
-  title,
-  body,
-  cta,
-  delay,
-  reduce,
-}: {
-  icon: typeof Lightbulb;
-  accent: keyof typeof INSIGHT_ACCENTS;
-  title: string;
-  body: string;
-  cta?: { label: string; icon: typeof ArrowUpRight };
-  delay: number;
-  reduce: boolean;
-}) {
-  const a = INSIGHT_ACCENTS[accent];
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay, ease: EASE }}
-      whileHover={reduce ? {} : { y: -2 }}
-      className={cn(
-        "group relative overflow-hidden rounded-[18px] border bg-gradient-to-br p-4 transition-all shadow-[0_1px_2px_rgba(15,15,30,0.04)] hover:shadow-[0_8px_24px_-10px_rgba(15,15,30,0.15)]",
-        a.bg,
-        a.border,
-      )}
-    >
-      <div className="flex items-start gap-3">
         <div
           className={cn(
-            "w-9 h-9 rounded-[10px] flex items-center justify-center text-white shrink-0",
-            a.icon,
+            "w-10 h-10 rounded-[12px] flex items-center justify-center text-white mb-3",
+            a.iconBg,
             a.glow,
           )}
         >
-          <Icon size={15} strokeWidth={2.25} />
+          <Icon size={17} strokeWidth={2.25} />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13.5px] font-semibold leading-snug">{title}</p>
-          <p className="text-[12px] text-on-surface-variant leading-relaxed mt-1">
-            {body}
-          </p>
-          {cta && (
-            <button
-              className={cn(
-                "mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold hover:underline",
-                a.text,
-              )}
-            >
-              <cta.icon size={12} />
-              {cta.label}
-            </button>
-          )}
-        </div>
+        <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant leading-tight">
+          {label}
+        </p>
+        <p className="text-[18px] sm:text-[20px] leading-none font-bold tracking-tight tabular-nums mt-1.5">
+          {value}
+        </p>
       </div>
     </motion.div>
   );
 }
 
 // ============================================================================
-// Sessions chart
+// Monthly Earnings Chart
+// ============================================================================
+
+function EarningsChartCard({
+  earnings,
+  allEarnings,
+  range,
+  setRange,
+  hoveredMonth,
+  setHoveredMonth,
+  reduce,
+}: {
+  earnings: EarningPoint[];
+  allEarnings: EarningPoint[];
+  range: Range;
+  setRange: (r: Range) => void;
+  hoveredMonth: string | null;
+  setHoveredMonth: (m: string | null) => void;
+  reduce: boolean;
+}) {
+  const last = earnings[earnings.length - 1];
+
+  if (allEarnings.length === 0) {
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduce ? 0 : 0.5, delay: 0.1, ease: EASE }}
+        className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)] flex flex-col items-center justify-center min-h-[300px] text-center"
+      >
+        <div className="w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center mb-3">
+          <Banknote size={20} className="text-on-surface-variant" />
+        </div>
+        <p className="text-[14px] font-medium">
+          Chưa đủ dữ liệu để hiển thị xu hướng thu nhập.
+        </p>
+        <p className="text-[12px] text-on-surface-variant mt-1 max-w-xs">
+          Thu nhập sẽ xuất hiện sau khi các buổi tập được ghi nhận vào ví.
+        </p>
+      </motion.section>
+    );
+  }
+
+  const displayValue =
+    hoveredMonth
+      ? (earnings.find((e) => e.month === hoveredMonth)?.gross ?? last?.gross ?? 0)
+      : (last?.gross ?? 0);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.1, ease: EASE }}
+      className="relative overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+        <div>
+          <h3 className="text-[18px] font-semibold tracking-tight">
+            Thu nhập ghi nhận theo tháng
+          </h3>
+          <p className="text-[13px] text-on-surface-variant mt-0.5">
+            Theo dõi các khoản thu nhập đã được ghi nhận vào ví coach.
+          </p>
+          <div className="flex items-baseline gap-2 mt-3">
+            <span className="text-[28px] leading-none font-bold tracking-tight tabular-nums">
+              {formatCurrencyVnd(displayValue)}
+            </span>
+            <span className="text-[13px] text-on-surface-variant">
+              {hoveredMonth ?? last?.month ?? ""}
+            </span>
+          </div>
+        </div>
+
+        {/* Range pill */}
+        <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px]">
+          {RANGE_OPTIONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={cn(
+                "relative px-3 h-7 text-[12px] font-medium rounded-[7px] transition-colors",
+                range === r
+                  ? "text-on-surface"
+                  : "text-on-surface-variant hover:text-on-surface",
+              )}
+            >
+              {range === r && (
+                <motion.span
+                  layoutId="earnRangePill"
+                  className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
+                  transition={{
+                    type: "spring",
+                    duration: reduce ? 0 : 0.4,
+                    bounce: 0.2,
+                  }}
+                />
+              )}
+              <span className="relative">{r}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="h-[260px] -mx-2">
+        <ClientOnly
+          fallback={
+            <div className="h-full w-full bg-surface-container-low rounded-xl animate-pulse" />
+          }
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={earnings}
+              margin={{ left: -4, right: 8, top: 12, bottom: 0 }}
+              onMouseMove={(state: unknown) => {
+                const s = state as
+                  | { activePayload?: { payload?: { month?: string } }[] }
+                  | undefined;
+                const m = s?.activePayload?.[0]?.payload?.month;
+                if (m) setHoveredMonth(m);
+              }}
+              onMouseLeave={() => setHoveredMonth(null)}
+            >
+              <defs>
+                <linearGradient id="earnGrossGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.35} />
+                  <stop offset="60%" stopColor="#4f46e5" stopOpacity={0.08} />
+                  <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="earnStrokeGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#4f46e5" />
+                  <stop offset="100%" stopColor="#7d6dff" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="#e8e8e5"
+                strokeDasharray="4 6"
+              />
+              <XAxis
+                dataKey="month"
+                stroke="#777587"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                dy={6}
+              />
+              <YAxis
+                stroke="#777587"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={formatCurrencyVndCompact}
+                width={52}
+              />
+              <Tooltip
+                content={<EarningsTooltip />}
+                cursor={{
+                  stroke: "#4f46e5",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="gross"
+                stroke="url(#earnStrokeGrad)"
+                strokeWidth={2.5}
+                fill="url(#earnGrossGrad)"
+                activeDot={{
+                  r: 6,
+                  fill: "#fff",
+                  stroke: "#4f46e5",
+                  strokeWidth: 2.5,
+                }}
+                animationDuration={reduce ? 0 : 1200}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ClientOnly>
+      </div>
+
+      <div className="flex items-center gap-1.5 text-[12px] text-on-surface-variant mt-3 pt-3 border-t border-[var(--color-border-soft)]">
+        <span className="inline-block w-3 h-3 rounded-full bg-primary" />
+        Thu nhập ghi nhận (VND)
+      </div>
+    </motion.section>
+  );
+}
+
+// ---- Earnings chart tooltip --------------------------------------------------
+
+interface EarnTooltipPayload {
+  payload: { month: string; gross: number; sessions: number };
+}
+
+function EarningsTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: EarnTooltipPayload[];
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[12px] px-3.5 py-2.5 shadow-[0_8px_24px_-8px_rgba(15,15,30,0.18)] min-w-[190px]">
+      <p className="text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
+        {d.month}
+      </p>
+      <div className="mt-1.5 space-y-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-[11.5px] text-on-surface-variant inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            Thu nhập
+          </span>
+          <span className="text-[13px] font-bold tabular-nums">
+            {formatCurrencyVnd(d.gross)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-3 pt-1 border-t border-[var(--color-border-soft)]">
+          <span className="text-[11px] text-on-surface-variant">
+            Số giao dịch
+          </span>
+          <span className="text-[11.5px] font-semibold tabular-nums">
+            {d.sessions}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Sessions bar chart
 // ============================================================================
 
 function SessionsCard({
@@ -938,8 +767,9 @@ function SessionsCard({
   data: EarningPoint[];
   reduce: boolean;
 }) {
-  const max = Math.max(...data.map((d) => d.sessions));
+  const max = data.length > 0 ? Math.max(...data.map((d) => d.sessions)) : 0;
   const total = data.reduce((s, d) => s + d.sessions, 0);
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -950,22 +780,23 @@ function SessionsCard({
       <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
         <div>
           <h3 className="text-[17px] font-semibold tracking-tight">
-            Session Volume
+            Khối lượng buổi tập
           </h3>
           <p className="text-[12.5px] text-on-surface-variant mt-0.5">
-            Sessions per month
+            Số buổi theo tháng
           </p>
-          <p className="text-[28px] font-bold tracking-tight tabular-nums mt-3 leading-none">
+          <p className="text-[26px] font-bold tracking-tight tabular-nums mt-3 leading-none">
             {total}
             <span className="text-[13px] font-medium text-on-surface-variant ml-2">
-              total in range
+              tổng trong khoảng
             </span>
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
-          <TrendingUp size={10} />
-          Peak: {max}
-        </span>
+        {max > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
+            Cao nhất: {max}
+          </span>
+        )}
       </div>
       <div className="h-[200px] -mx-2">
         <ClientOnly fallback={<div className="h-full" />}>
@@ -998,7 +829,7 @@ function SessionsCard({
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                width={32}
+                width={28}
               />
               <Tooltip
                 cursor={{ fill: "rgba(79, 70, 229, 0.06)" }}
@@ -1015,10 +846,10 @@ function SessionsCard({
                         {p.month}
                       </p>
                       <p className="text-[15px] font-bold tabular-nums mt-0.5">
-                        {p.sessions} sessions
+                        {p.sessions} buổi
                       </p>
                       <p className="text-[11.5px] text-on-surface-variant tabular-nums mt-0.5">
-                        {formatCurrency(p.gross)}
+                        {formatCurrencyVnd(p.gross)}
                       </p>
                     </div>
                   );
@@ -1034,7 +865,9 @@ function SessionsCard({
                   <Cell
                     key={i}
                     fill={
-                      d.sessions === max ? "#4f46e5" : "url(#sessBarGrad)"
+                      d.sessions === max && max > 0
+                        ? "#4f46e5"
+                        : "url(#sessBarGrad)"
                     }
                   />
                 ))}
@@ -1048,22 +881,61 @@ function SessionsCard({
 }
 
 // ============================================================================
-// Revenue breakdown donut
+// Wallet Distribution Card
 // ============================================================================
 
-function RevenueBreakdownCard({
-  breakdown,
-  gross,
+const DIST_SEGMENTS = [
+  {
+    key: "availableBalance" as const,
+    label: "Có thể rút",
+    color: "#4f46e5",
+  },
+  {
+    key: "pendingBalance" as const,
+    label: "Đang xử lý",
+    color: "#f59e0b",
+  },
+  {
+    key: "totalWithdrawn" as const,
+    label: "Đã rút",
+    color: "#8b5cf6",
+  },
+] as const;
+
+function WalletDistributionCard({
+  earningsTotal,
   onWithdraw,
   reduce,
 }: {
-  breakdown: { name: string; value: number; color: string }[];
-  gross: number;
-  onWithdraw: () => void;
+  earningsTotal: EarningsTotal | undefined;
+  onWithdraw?: () => void;
   reduce: boolean;
 }) {
-  const netPayout = breakdown[0].value;
-  const netPct = Math.round((netPayout / gross) * 100);
+  if (!earningsTotal) {
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduce ? 0 : 0.5, delay: 0.35, ease: EASE }}
+        className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)] flex items-center justify-center min-h-[220px]"
+      >
+        <p className="text-[13px] text-on-surface-variant">
+          Đang tải dữ liệu ví…
+        </p>
+      </motion.section>
+    );
+  }
+
+  const { totalEarned, availableBalance, pendingBalance, totalWithdrawn } =
+    earningsTotal;
+  const sum = availableBalance + pendingBalance + totalWithdrawn;
+  const isConsistent = Math.abs(totalEarned - sum) < 1;
+
+  const donutData = DIST_SEGMENTS.map((s) => ({
+    ...s,
+    value: earningsTotal[s.key],
+  }));
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -1071,101 +943,281 @@ function RevenueBreakdownCard({
       transition={{ duration: reduce ? 0 : 0.5, delay: 0.35, ease: EASE }}
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
-      <div className="mb-2">
-        <h3 className="text-[17px] font-semibold tracking-tight">
-          Revenue Breakdown
-        </h3>
-        <p className="text-[12.5px] text-on-surface-variant mt-0.5">
-          Where this month&apos;s {formatCurrency(gross)} goes
-        </p>
-      </div>
+      <h3 className="text-[17px] font-semibold tracking-tight">
+        Tổng quan dòng tiền coach
+      </h3>
+      <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+        Tổng thu nhập đã ghi nhận:{" "}
+        <span className="font-semibold tabular-nums text-on-surface">
+          {formatCurrencyVnd(totalEarned)}
+        </span>
+      </p>
 
-      <div className="flex items-center gap-5 mt-3">
-        <div className="relative w-[140px] h-[140px] shrink-0">
-          <ClientOnly fallback={<div className="w-full h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={breakdown}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={46}
-                  outerRadius={66}
-                  paddingAngle={3}
-                  cornerRadius={6}
-                  stroke="none"
-                  isAnimationActive={!reduce}
-                  animationDuration={reduce ? 0 : 900}
-                >
-                  {breakdown.map((seg, i) => (
-                    <Cell key={i} fill={seg.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <p className="text-[22px] font-bold leading-none tabular-nums">
-              {netPct}%
-            </p>
-            <p className="text-[9.5px] uppercase tracking-wider font-medium text-on-surface-variant mt-0.5">
-              Net
-            </p>
+      {/* Donut (only when values are consistent) */}
+      {isConsistent ? (
+        <div className="flex items-center gap-5 mt-4">
+          <div className="relative w-[140px] h-[140px] shrink-0">
+            <ClientOnly fallback={<div className="w-full h-full" />}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={46}
+                    outerRadius={66}
+                    paddingAngle={3}
+                    cornerRadius={6}
+                    stroke="none"
+                    isAnimationActive={!reduce}
+                    animationDuration={reduce ? 0 : 900}
+                  >
+                    {donutData.map((seg, i) => (
+                      <Cell key={i} fill={seg.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </ClientOnly>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <p className="text-[9px] uppercase tracking-wider font-medium text-on-surface-variant">
+                Tổng
+              </p>
+              <p className="text-[11px] font-bold tabular-nums leading-tight">
+                {formatCurrencyVndCompact(totalEarned)}
+              </p>
+            </div>
           </div>
+          <ul className="flex-1 space-y-2.5 min-w-0">
+            {donutData.map((s) => (
+              <li key={s.key}>
+                <div className="flex items-center gap-2 text-[12.5px]">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ background: s.color }}
+                  />
+                  <span className="text-on-surface-variant truncate flex-1">
+                    {s.label}
+                  </span>
+                  <span className="font-semibold tabular-nums">
+                    {formatCurrencyVnd(s.value)}
+                  </span>
+                </div>
+                {totalEarned > 0 && (
+                  <div className="h-1 rounded-full bg-surface-container-low overflow-hidden mt-1.5">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${(s.value / totalEarned) * 100}%`,
+                        background: s.color,
+                      }}
+                    />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul className="flex-1 space-y-2.5 min-w-0">
-          {breakdown.map((s) => (
-            <li key={s.name}>
-              <div className="flex items-center gap-2 text-[12.5px]">
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ background: s.color }}
-                />
-                <span className="text-on-surface-variant truncate flex-1">
-                  {s.name}
-                </span>
-                <span className="font-semibold tabular-nums">
-                  {formatCurrency(s.value)}
-                </span>
-              </div>
-              <div className="h-1 rounded-full bg-surface-container-low overflow-hidden mt-1.5">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${(s.value / gross) * 100}%`,
-                    background: s.color,
-                  }}
-                />
-              </div>
+      ) : (
+        /* Card list fallback when values don't sum to totalEarned */
+        <ul className="mt-4 space-y-2">
+          {donutData.map((s) => (
+            <li
+              key={s.key}
+              className="flex items-center gap-3 p-3 rounded-[12px] border border-[var(--color-border-soft)]"
+            >
+              <span
+                className="w-3 h-3 rounded-full shrink-0"
+                style={{ background: s.color }}
+              />
+              <span className="flex-1 text-[13px] text-on-surface-variant">
+                {s.label}
+              </span>
+              <span className="font-semibold tabular-nums text-[14px]">
+                {formatCurrencyVnd(s.value)}
+              </span>
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Helper text */}
+      <div className="mt-4 flex items-start gap-1.5 text-[11.5px] text-on-surface-variant">
+        <Info size={12} className="shrink-0 mt-0.5" />
+        <p>
+          {isConsistent
+            ? "Số dư có thể rút = Tổng thu nhập đã ghi nhận − Đã rút − Đang xử lý."
+            : "Một số khoản có thể đang được hệ thống giữ, xử lý hoặc đối soát nên tổng không nhất thiết khớp tuyệt đối."}
+        </p>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between">
+      {/* Bottom CTA */}
+      <div className="mt-4 pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant">
-            Net Payout
+          <p className="text-[10.5px] uppercase tracking-wider font-medium text-on-surface-variant">
+            Số dư có thể rút
           </p>
-          <p className="text-[20px] font-bold tabular-nums leading-none mt-0.5">
-            {formatCurrency(netPayout)}
+          <p className="text-[18px] font-bold tabular-nums leading-none mt-0.5">
+            {formatCurrencyVnd(availableBalance)}
           </p>
         </div>
-        <button
-          onClick={onWithdraw}
-          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] transition-all"
-        >
-          <ArrowDownToLine size={13} />
-          Withdraw
-        </button>
+        {onWithdraw && (
+          <button
+            onClick={onWithdraw}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] transition-all"
+          >
+            <ArrowDownToLine size={13} />
+            Rút tiền
+          </button>
+        )}
       </div>
     </motion.section>
   );
 }
 
 // ============================================================================
-// Payout table
+// Payout Account Card
+// ============================================================================
+
+function PayoutAccountCard({
+  payoutAccount,
+  onUpdate,
+  reduce,
+}: {
+  payoutAccount: PayoutAccount | null;
+  onUpdate: () => void;
+  reduce: boolean;
+}) {
+  const statusRaw = (payoutAccount?.status ?? "").toLowerCase();
+  const isVerified =
+    statusRaw === "verified" || statusRaw === "approved";
+  const isRejected = statusRaw === "rejected";
+  const isPending =
+    !isVerified &&
+    !isRejected &&
+    !!payoutAccount?.bankAccountNumber;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.4, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-[17px] font-semibold tracking-tight">
+            Tài khoản nhận tiền
+          </h3>
+          <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+            Thông tin tài khoản ngân hàng nhận thanh toán.
+          </p>
+        </div>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center shadow-[0_4px_12px_-2px_rgba(139,92,246,0.4)] shrink-0">
+          <Building2 size={17} className="text-white" />
+        </div>
+      </div>
+
+      {payoutAccount?.bankAccountNumber ? (
+        <div className="space-y-2.5">
+          <InfoRow
+            label="Ngân hàng"
+            value={payoutAccount.bankName ?? "—"}
+          />
+          <InfoRow
+            label="Số tài khoản"
+            value={maskAccountNumber(payoutAccount.bankAccountNumber)}
+            mono
+          />
+          <InfoRow
+            label="Chủ tài khoản"
+            value={payoutAccount.bankAccountHolder ?? "—"}
+          />
+          <InfoRow
+            label="Phương thức"
+            value={payoutAccount.payoutMethod ?? "Chuyển khoản ngân hàng"}
+          />
+
+          {/* Status badge */}
+          <div className="flex items-center gap-2 pt-1">
+            <p className="text-[11.5px] text-on-surface-variant">Trạng thái:</p>
+            {isVerified && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                <ShieldCheck size={11} />
+                Đã xác minh
+              </span>
+            )}
+            {isRejected && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-600 border border-rose-200">
+                <XCircle size={11} />
+                Bị từ chối
+              </span>
+            )}
+            {isPending && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                <Clock size={11} />
+                Chờ xác minh
+              </span>
+            )}
+            {!isVerified && !isRejected && !isPending && (
+              <span className="text-[11.5px] text-on-surface-variant">—</span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center mb-3">
+            <Building2 size={20} className="text-on-surface-variant" />
+          </div>
+          <p className="text-[13px] text-on-surface-variant font-medium">
+            Bạn chưa thiết lập tài khoản nhận tiền.
+          </p>
+          <p className="text-[12px] text-on-surface-variant/70 mt-1">
+            Cần có tài khoản ngân hàng được duyệt để rút tiền.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-5 pt-4 border-t border-[var(--color-border-soft)]">
+        <button
+          onClick={onUpdate}
+          className="w-full h-9 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13px] font-medium transition-colors inline-flex items-center justify-center gap-1.5"
+        >
+          <Building2 size={13} />
+          Cập nhật tài khoản nhận tiền
+        </button>
+      </div>
+    </motion.section>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <p className="text-[12px] text-on-surface-variant shrink-0">{label}</p>
+      <p
+        className={cn(
+          "text-[13px] font-medium text-right",
+          mono && "font-mono tabular-nums",
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// Payout Table
 // ============================================================================
 
 function PayoutTable({
@@ -1174,6 +1226,7 @@ function PayoutTable({
   setSearch,
   statusFilter,
   setStatusFilter,
+  onWithdraw,
   reduce,
 }: {
   payouts: Payout[];
@@ -1181,11 +1234,13 @@ function PayoutTable({
   setSearch: (s: string) => void;
   statusFilter: Payout["status"] | "all";
   setStatusFilter: (s: Payout["status"] | "all") => void;
+  onWithdraw?: () => void;
   reduce: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<Payout | null>(null);
-  const [receiptData, setReceiptData] = useState<WithdrawalReceiptResponse | null>(null);
+  const [receiptData, setReceiptData] =
+    useState<WithdrawalReceiptResponse | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
 
@@ -1196,9 +1251,10 @@ function PayoutTable({
     setReceiptError(null);
     setReceiptLoading(true);
     try {
-      const data = await api.fetchWithdrawalReceipt(p.id);
-      setReceiptData(data);
-      if (!data) setReceiptError("Biên nhận chưa khả dụng cho yêu cầu này.");
+      const receipt = await api.fetchWithdrawalReceipt(p.id);
+      setReceiptData(receipt);
+      if (!receipt)
+        setReceiptError("Biên nhận chưa khả dụng cho yêu cầu này.");
     } catch {
       setReceiptError("Không tải được biên nhận. Vui lòng thử lại.");
     } finally {
@@ -1208,251 +1264,288 @@ function PayoutTable({
 
   return (
     <>
-    <motion.section
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.4, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      {/* Header */}
-      <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border-soft)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h3 className="text-[17px] font-semibold tracking-tight">
-            Payout History
-          </h3>
-          <p className="text-[12px] text-on-surface-variant mt-0.5">
-            {payouts.length} payout{payouts.length === 1 ? "" : "s"} in view
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              type="search"
-              aria-label="Search payouts"
-              placeholder="Tìm phương thức, id…"
-              className="h-9 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-lg outline-none text-[12.5px] w-44 transition-all"
-            />
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduce ? 0 : 0.5, delay: 0.5, ease: EASE }}
+        className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+      >
+        {/* Header */}
+        <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border-soft)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-[17px] font-semibold tracking-tight">
+              Lịch sử rút tiền
+            </h3>
+            <p className="text-[12px] text-on-surface-variant mt-0.5">
+              {payouts.length} yêu cầu hiển thị
+            </p>
           </div>
-          <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-lg">
-            {(["all", "paid", "pending", "processing", "failed"] as const).map(
-              (s) => (
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search */}
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                type="search"
+                aria-label="Tìm kiếm yêu cầu rút tiền"
+                placeholder="Tìm mã, phương thức…"
+                className="h-9 pl-9 pr-3 bg-surface-container-low border border-transparent hover:border-[var(--color-border-soft)] focus:border-primary/40 focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/8 rounded-lg outline-none text-[12.5px] w-44 transition-all"
+              />
+            </div>
+
+            {/* Status filter */}
+            <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-lg">
+              {(
+                [
+                  "all",
+                  "paid",
+                  "pending",
+                  "processing",
+                  "failed",
+                ] as const
+              ).map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
                   className={cn(
-                    "px-2.5 h-7 rounded-md text-[11px] font-medium capitalize transition-colors",
+                    "px-2.5 h-7 rounded-md text-[11px] font-medium transition-colors",
                     statusFilter === s
                       ? "bg-surface-container-lowest text-on-surface shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
                       : "text-on-surface-variant hover:text-on-surface",
                   )}
                 >
-                  {s}
+                  {STATUS_FILTER_LABELS[s]}
                 </button>
-              ),
+              ))}
+            </div>
+
+            {/* Disabled export */}
+            <button
+              disabled
+              title="Sắp hỗ trợ"
+              className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] text-[12px] font-medium text-on-surface-variant opacity-50 cursor-not-allowed"
+            >
+              Xuất CSV
+              <span className="text-[9px] bg-surface-container-low rounded px-1 py-0.5 ml-0.5">
+                Sắp hỗ trợ
+              </span>
+            </button>
+
+            {/* Withdraw CTA */}
+            {onWithdraw && (
+              <button
+                onClick={onWithdraw}
+                className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] transition-all"
+              >
+                <ArrowDownToLine size={13} />
+                Rút tiền
+              </button>
             )}
           </div>
-          <button className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors">
-            <Filter size={13} />
-            More
-          </button>
-          <button className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(53,37,205,0.55)] hover:scale-[1.02] transition-all">
-            <Download size={13} />
-            Export CSV
-          </button>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[10.5px] uppercase tracking-wider text-on-surface-variant">
-            <tr>
-              <th className="px-5 sm:px-6 py-3 font-semibold w-10" />
-              <th className="px-3 py-3 font-semibold">Date</th>
-              <th className="px-3 py-3 font-semibold">Method</th>
-              <th className="px-3 py-3 font-semibold">Reference</th>
-              <th className="px-3 py-3 font-semibold text-right">Amount</th>
-              <th className="px-3 py-3 font-semibold">Status</th>
-              <th className="px-5 sm:px-6 py-3 font-semibold text-right">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {payouts.length === 0 && (
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[10.5px] uppercase tracking-wider text-on-surface-variant">
               <tr>
-                <td colSpan={7} className="px-6 py-10 text-center">
-                  <p className="text-[13px] text-on-surface-variant">
-                    No payouts match your filters.
-                  </p>
-                </td>
+                <th className="px-5 sm:px-6 py-3 font-semibold w-10" />
+                <th className="px-3 py-3 font-semibold">Ngày</th>
+                <th className="px-3 py-3 font-semibold">Phương thức</th>
+                <th className="px-3 py-3 font-semibold">Mã tham chiếu</th>
+                <th className="px-3 py-3 font-semibold text-right">Số tiền</th>
+                <th className="px-3 py-3 font-semibold">Trạng thái</th>
+                <th className="px-5 sm:px-6 py-3 font-semibold text-right">
+                  Thao tác
+                </th>
               </tr>
-            )}
-            {payouts.map((p, i) => {
-              const meta = STATUS_META[p.status];
-              const isOpen = expanded === p.id;
-              const StatusIcon = meta.icon;
-              return (
-                <Fragment key={p.id}>
-                  <tr
-                    onClick={() => setExpanded(isOpen ? null : p.id)}
-                    className={cn(
-                      "border-b border-[var(--color-border-soft)] last:border-b-0 transition-colors cursor-pointer group",
-                      i % 2 === 1 && "bg-surface-container-low/15",
-                      "hover:bg-primary/[0.03]",
-                    )}
-                  >
-                    <td className="px-5 sm:px-6 py-3.5">
-                      <ChevronRight
-                        size={14}
-                        className={cn(
-                          "text-on-surface-variant transition-transform",
-                          isOpen && "rotate-90 text-primary",
-                        )}
-                      />
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <p className="text-[13px] font-medium">
-                        {new Date(p.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                      <p className="text-[11px] text-on-surface-variant">
-                        {new Date(p.date).toLocaleDateString("en-US", {
-                          weekday: "short",
-                        })}
-                      </p>
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <p className="text-[13px] text-on-surface truncate max-w-[180px]">
-                        {p.method}
-                      </p>
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <p className="text-[12px] font-mono text-on-surface-variant">
-                        {p.id.toUpperCase()}
-                      </p>
-                    </td>
-                    <td className="px-3 py-3.5 text-right">
-                      <p className="text-[14px] font-bold tabular-nums">
-                        {formatCurrency(p.amount, p.currency)}
-                      </p>
-                      <p className="text-[10.5px] text-on-surface-variant">
-                        {p.currency}
-                      </p>
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border",
-                          meta.pill,
-                        )}
-                      >
-                        <StatusIcon size={10} />
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="px-5 sm:px-6 py-3.5 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        {p.status === "paid" && (
-                          <button
-                            onClick={(e) => void handleViewReceipt(e, p)}
-                            aria-label="Tải biên nhận"
-                            title="Tải biên nhận"
-                            className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
-                          >
-                            <Receipt size={13} />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label="View"
-                          className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center"
+            </thead>
+            <tbody>
+              {payouts.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-10 text-center">
+                    <p className="text-[13px] text-on-surface-variant">
+                      Không tìm thấy yêu cầu rút tiền phù hợp.
+                    </p>
+                  </td>
+                </tr>
+              )}
+              {payouts.map((p, i) => {
+                const meta = STATUS_META[p.status];
+                const isOpen = expanded === p.id;
+                const StatusIcon = meta.icon;
+                const isFailed =
+                  p.status === "failed" || p.status === "rejected";
+                const failureText = p.failureReason ?? p.adminNote ?? null;
+                return (
+                  <Fragment key={p.id}>
+                    <tr
+                      onClick={() => setExpanded(isOpen ? null : p.id)}
+                      className={cn(
+                        "border-b border-[var(--color-border-soft)] last:border-b-0 transition-colors cursor-pointer",
+                        i % 2 === 1 && "bg-surface-container-low/15",
+                        "hover:bg-primary/[0.03]",
+                      )}
+                    >
+                      <td className="px-5 sm:px-6 py-3.5">
+                        <ChevronRight
+                          size={14}
+                          className={cn(
+                            "text-on-surface-variant transition-transform",
+                            isOpen && "rotate-90 text-primary",
+                          )}
+                        />
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <p className="text-[13px] font-medium">
+                          {new Date(p.date).toLocaleDateString("vi-VN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <p className="text-[13px] text-on-surface truncate max-w-[180px]">
+                          {p.method}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <p className="text-[12px] font-mono text-on-surface-variant">
+                          {p.id.toUpperCase()}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3.5 text-right">
+                        <p className="text-[14px] font-bold tabular-nums">
+                          {formatCurrencyVnd(p.amount)}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border",
+                            meta.pill,
+                          )}
                         >
-                          <ExternalLink size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {isOpen && (
-                    <tr className="bg-gradient-to-br from-primary/[0.02] to-transparent border-b border-[var(--color-border-soft)]">
-                      <td colSpan={7} className="px-5 sm:px-6 py-4">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-[12px]">
-                          <DetailItem
-                            label="Doanh thu gộp"
-                            value={formatCurrency(
-                              Math.round(p.amount / 0.85),
-                              p.currency,
-                            )}
-                          />
-                          <DetailItem
-                            label="Phí nền tảng"
-                            value={`-${formatCurrency(
-                              Math.round((p.amount / 0.85) * 0.15),
-                              p.currency,
-                            )}`}
-                          />
-                          <DetailItem
-                            label="Chi trả ròng"
-                            value={formatCurrency(p.amount, p.currency)}
-                            highlight
-                          />
-                          <DetailItem
-                            label="Quyết toán"
-                            value={new Date(
-                              new Date(p.date).getTime() +
-                                3 * 24 * 60 * 60 * 1000,
-                            ).toLocaleDateString("vi-VN", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          />
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
+                          <StatusIcon size={10} />
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-5 sm:px-6 py-3.5 text-right">
+                        <div className="inline-flex items-center gap-1">
                           {p.status === "paid" && (
                             <button
                               onClick={(e) => void handleViewReceipt(e, p)}
-                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors"
+                              aria-label="Xem biên nhận"
+                              title="Xem biên nhận"
+                              className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
                             >
-                              <Receipt size={12} />
-                              Tải biên nhận
+                              <Receipt size={13} />
                             </button>
                           )}
-                          <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors">
-                            <Send size={12} />
-                            Gửi email
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="Xem chi tiết"
+                            className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center"
+                          >
+                            <ExternalLink size={13} />
                           </button>
                         </div>
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </motion.section>
 
-    {viewingReceipt && (
-      <ReceiptModal
-        payout={viewingReceipt}
-        receipt={receiptData}
-        loading={receiptLoading}
-        error={receiptError}
-        onClose={() => { setViewingReceipt(null); setReceiptData(null); setReceiptError(null); }}
-        onRetry={() => void handleViewReceipt({ stopPropagation: () => {} } as React.MouseEvent, viewingReceipt)}
-      />
-    )}
-  </>
+                    {/* Expanded detail row */}
+                    {isOpen && (
+                      <tr className="bg-gradient-to-br from-primary/[0.02] to-transparent border-b border-[var(--color-border-soft)]">
+                        <td colSpan={7} className="px-5 sm:px-6 py-4">
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <DetailItem
+                              label="Mã yêu cầu"
+                              value={p.id.toUpperCase()}
+                              mono
+                            />
+                            <DetailItem
+                              label="Ngày tạo"
+                              value={new Date(p.date).toLocaleDateString(
+                                "vi-VN",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                },
+                              )}
+                            />
+                            <DetailItem
+                              label="Mã PayOS"
+                              value={p.payOsReferenceId ?? "—"}
+                              mono
+                            />
+                            <DetailItem
+                              label="Trạng thái PayOS"
+                              value={p.payOsPayoutStatus ?? "—"}
+                            />
+                          </div>
+
+                          {/* Failure reason — shown directly, not behind icon */}
+                          {isFailed && (
+                            <div className="mt-3 flex items-start gap-2 p-3 rounded-[10px] bg-[#ffdad6]/50 border border-[#ffbbb3]">
+                              <AlertCircle
+                                size={14}
+                                className="text-[#ba1a1a] shrink-0 mt-0.5"
+                              />
+                              <p className="text-[12.5px] text-[#ba1a1a]">
+                                <span className="font-semibold">Lý do: </span>
+                                {failureText ?? "Chưa có lý do cụ thể."}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 mt-3">
+                            {p.status === "paid" && (
+                              <button
+                                onClick={(e) => void handleViewReceipt(e, p)}
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12px] font-medium transition-colors"
+                              >
+                                <Receipt size={12} />
+                                Xem biên nhận
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </motion.section>
+
+      {viewingReceipt && (
+        <ReceiptModal
+          payout={viewingReceipt}
+          receipt={receiptData}
+          loading={receiptLoading}
+          error={receiptError}
+          onClose={() => {
+            setViewingReceipt(null);
+            setReceiptData(null);
+            setReceiptError(null);
+          }}
+          onRetry={() =>
+            void handleViewReceipt(
+              { stopPropagation: () => {} } as React.MouseEvent,
+              viewingReceipt,
+            )
+          }
+        />
+      )}
+    </>
   );
 }
 
@@ -1460,10 +1553,12 @@ function DetailItem({
   label,
   value,
   highlight,
+  mono,
 }: {
   label: string;
   value: string;
   highlight?: boolean;
+  mono?: boolean;
 }) {
   return (
     <div>
@@ -1472,142 +1567,14 @@ function DetailItem({
       </p>
       <p
         className={cn(
-          "text-[14px] font-bold tabular-nums mt-0.5",
+          "text-[13px] font-bold tabular-nums mt-0.5",
           highlight && "text-primary",
+          mono && "font-mono",
         )}
       >
         {value}
       </p>
     </div>
-  );
-}
-
-// ============================================================================
-// Quick actions panel
-// ============================================================================
-
-const QUICK_ACTIONS = [
-  {
-    icon: ArrowDownToLine,
-    label: "Rút tiền",
-    desc: "Chuyển về ngân hàng",
-    accent: "indigo" as const,
-  },
-  {
-    icon: Download,
-    label: "Xuất CSV",
-    desc: "12 tháng gần nhất",
-    accent: "violet" as const,
-  },
-  {
-    icon: FileText,
-    label: "Hồ sơ thuế",
-    desc: "1099 & biên lai",
-    accent: "amber" as const,
-  },
-  {
-    icon: Receipt,
-    label: "Xem hóa đơn",
-    desc: "Tất cả giao dịch",
-    accent: "emerald" as const,
-  },
-];
-
-const QA_ACCENT = {
-  indigo: "from-primary to-[#7d6dff]",
-  violet: "from-[#8b5cf6] to-[#c084fc]",
-  emerald: "from-[#10b981] to-[#34d399]",
-  amber: "from-[#f59e0b] to-[#fb923c]",
-} as const;
-
-function QuickActionsPanel({
-  onWithdraw,
-  available,
-  pending,
-  reduce,
-}: {
-  onWithdraw: () => void;
-  available?: number;
-  pending?: number;
-  reduce: boolean;
-}) {
-  return (
-    <motion.aside
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.45, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      <h3 className="text-[16px] font-semibold tracking-tight mb-3">
-        Thao tác nhanh
-      </h3>
-      <div className="space-y-2">
-        {QUICK_ACTIONS.map((q, i) => {
-          const Icon = q.icon;
-          return (
-            <motion.button
-              key={q.label}
-              onClick={q.label === "Rút tiền" ? onWithdraw : undefined}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: reduce ? 0 : 0.35,
-                delay: reduce ? 0 : 0.5 + i * 0.05,
-                ease: EASE,
-              }}
-              whileHover={reduce ? {} : { x: 2 }}
-              className="group w-full flex items-center gap-3 p-3 rounded-[14px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent transition-all text-left"
-            >
-              <div
-                className={cn(
-                  "w-9 h-9 rounded-[10px] bg-gradient-to-br flex items-center justify-center text-white shadow-[0_3px_10px_-2px_rgba(15,15,30,0.18)] shrink-0 transition-transform group-hover:scale-105",
-                  QA_ACCENT[q.accent],
-                )}
-              >
-                <Icon size={15} strokeWidth={2.25} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold leading-tight">
-                  {q.label}
-                </p>
-                <p className="text-[11px] text-on-surface-variant mt-0.5">
-                  {q.desc}
-                </p>
-              </div>
-              <ChevronRight
-                size={13}
-                className="text-on-surface-variant opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all"
-              />
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Wallet balance banner */}
-      <div className="mt-4 p-3.5 rounded-[14px] bg-gradient-to-br from-primary/[0.06] to-[#7d6dff]/[0.04] border border-primary/15">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles size={12} className="text-primary" />
-          <p className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-            Số dư ví
-          </p>
-        </div>
-        {available !== undefined ? (
-          <>
-            <p className="text-[18px] font-bold tabular-nums leading-none mt-1">
-              {formatCurrency(available)}
-            </p>
-            <p className="text-[11.5px] text-on-surface-variant mt-1">
-              Khả dụng rút ngay
-              {pending !== undefined && pending > 0 && (
-                <> · <span className="text-on-surface font-medium">{formatCurrency(pending)} đang chờ</span></>
-              )}
-            </p>
-          </>
-        ) : (
-          <p className="text-[13px] text-on-surface-variant mt-1">Đang tải…</p>
-        )}
-      </div>
-    </motion.aside>
   );
 }
 
@@ -1636,7 +1603,9 @@ function ReceiptModal({
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onClose();
+      }}
     >
       <div className="w-full max-w-md rounded-[20px] bg-surface-container-lowest border border-[var(--color-border-soft)] shadow-[0_24px_60px_-12px_rgba(15,15,30,0.35)] overflow-hidden">
         {/* Header */}
@@ -1646,9 +1615,11 @@ function ReceiptModal({
               <Receipt size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[15px] font-semibold tracking-tight">Biên nhận rút tiền</p>
+              <p className="text-[15px] font-semibold tracking-tight">
+                Biên nhận rút tiền
+              </p>
               <p className="text-[11.5px] text-on-surface-variant">
-                {formatCurrency(payout.amount, payout.currency)}
+                {formatCurrencyVnd(payout.amount)}
               </p>
             </div>
           </div>
@@ -1686,44 +1657,61 @@ function ReceiptModal({
 
           {receipt && !loading && (
             <div className="space-y-4">
-              {/* Receipt number */}
               <div className="flex items-center justify-between p-3 rounded-[10px] bg-surface-container-low/50">
-                <p className="text-[11.5px] text-on-surface-variant font-medium">Số biên nhận</p>
-                <p className="text-[12px] font-mono font-semibold">{receipt.receiptNumber}</p>
+                <p className="text-[11.5px] text-on-surface-variant font-medium">
+                  Số biên nhận
+                </p>
+                <p className="text-[12px] font-mono font-semibold">
+                  {receipt.receiptNumber}
+                </p>
               </div>
 
-              {/* Key details grid */}
               <div className="grid grid-cols-2 gap-3">
-                <ReceiptField label="Số tiền" value={formatCurrency(receipt.amount, receipt.currency)} mono />
+                <ReceiptField
+                  label="Số tiền"
+                  value={formatCurrencyVnd(receipt.amount)}
+                  mono
+                />
                 <ReceiptField label="Trạng thái" value={receipt.status} />
-                <ReceiptField label="Ngày tạo" value={new Date(receipt.createdAt).toLocaleDateString("vi-VN")} />
+                <ReceiptField
+                  label="Ngày tạo"
+                  value={new Date(receipt.createdAt).toLocaleDateString(
+                    "vi-VN",
+                  )}
+                />
                 {receipt.paidAt && (
-                  <ReceiptField label="Ngày thanh toán" value={new Date(receipt.paidAt).toLocaleDateString("vi-VN")} />
+                  <ReceiptField
+                    label="Ngày thanh toán"
+                    value={new Date(receipt.paidAt).toLocaleDateString("vi-VN")}
+                  />
                 )}
               </div>
 
-              {/* Bank account */}
               <div className="flex items-center gap-3 p-3 rounded-[10px] border border-[var(--color-border-soft)]">
                 <div className="w-9 h-9 rounded-[8px] bg-surface-container-high flex items-center justify-center shrink-0">
                   <Building2 size={16} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold truncate">{receipt.bankName}</p>
+                  <p className="text-[13px] font-semibold truncate">
+                    {receipt.bankName}
+                  </p>
                   <p className="text-[11.5px] text-on-surface-variant">
                     {receipt.maskedAccountNumber} · {receipt.accountHolderName}
                   </p>
                 </div>
               </div>
 
-              {/* PayOS reference */}
               {receipt.payOsReferenceId && (
                 <div className="flex items-center justify-between text-[11.5px]">
-                  <span className="text-on-surface-variant">Mã tham chiếu PayOS</span>
-                  <span className="font-mono text-on-surface">{receipt.payOsReferenceId}</span>
+                  <span className="text-on-surface-variant">
+                    Mã tham chiếu PayOS
+                  </span>
+                  <span className="font-mono text-on-surface">
+                    {receipt.payOsReferenceId}
+                  </span>
                 </div>
               )}
 
-              {/* Note */}
               {receipt.note && (
                 <p className="text-[11px] text-on-surface-variant/70 italic border-t border-[var(--color-border-soft)] pt-3">
                   {receipt.note}
@@ -1746,86 +1734,28 @@ function ReceiptModal({
   );
 }
 
-function ReceiptField({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
+function ReceiptField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value?: string;
+  mono?: boolean;
+}) {
   return (
     <div>
-      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">{label}</p>
-      <p className={cn("text-[13px] font-bold mt-0.5 tabular-nums", mono ? "font-mono" : "")}>{value ?? "—"}</p>
-    </div>
-  );
-}
-
-// ============================================================================
-// Misc
-// ============================================================================
-
-function Legend({
-  color,
-  label,
-  dashed,
-}: {
-  color: string;
-  label: string;
-  dashed?: boolean;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
-      <span
-        className="inline-block w-3 h-3 rounded-full"
-        style={{
-          background: dashed ? "transparent" : color,
-          border: dashed ? `1.5px dashed ${color}` : undefined,
-        }}
-      />
-      {label}
-    </span>
-  );
-}
-
-interface RevTooltipPayload {
-  payload: { month: string; gross: number; net: number; sessions: number };
-}
-
-function RevenueTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: RevTooltipPayload[];
-}) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[12px] px-3.5 py-2.5 shadow-[0_8px_24px_-8px_rgba(15,15,30,0.18)] min-w-[160px]">
-      <p className="text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
-        {d.month}
+      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
+        {label}
       </p>
-      <div className="mt-1.5 space-y-1">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-[11.5px] text-on-surface-variant inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            Gross
-          </span>
-          <span className="text-[13px] font-bold tabular-nums">
-            {formatCurrency(d.gross)}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-[11.5px] text-on-surface-variant inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#94a3b8]" />
-            Net
-          </span>
-          <span className="text-[13px] font-bold tabular-nums">
-            {formatCurrency(d.net)}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-3 pt-1 border-t border-[var(--color-border-soft)]">
-          <span className="text-[11px] text-on-surface-variant">Sessions</span>
-          <span className="text-[11.5px] font-semibold tabular-nums">
-            {d.sessions}
-          </span>
-        </div>
-      </div>
+      <p
+        className={cn(
+          "text-[13px] font-bold mt-0.5 tabular-nums",
+          mono ? "font-mono" : "",
+        )}
+      >
+        {value ?? "—"}
+      </p>
     </div>
   );
 }

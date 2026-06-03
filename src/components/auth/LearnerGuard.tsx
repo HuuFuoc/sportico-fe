@@ -18,7 +18,7 @@
 //  This allows `pnpm build` SSG and demo/design review without credentials.
 // ============================================================================
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isMockMode } from "@/lib/api-client";
 import { getAccessToken } from "@/lib/auth-token";
@@ -31,7 +31,20 @@ export function LearnerGuard({ children }: { children: React.ReactNode }) {
   const status = useAuthStore((s) => s.status);
   const hydrate = useAuthStore((s) => s.hydrate);
 
+  // `getAccessToken()` reads localStorage — unavailable on the server.
+  // Without this guard the server renders `null` (no token) while the client's
+  // first render sees the real token and renders `<LoadingState>`, causing a
+  // React hydration mismatch. By waiting for mount we ensure both the server
+  // and the client's initial render return the same output (`null`), and the
+  // real auth check only runs after hydration is complete.
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (isMockMode()) return;
     if (!getAccessToken()) {
       const redirect = encodeURIComponent(pathname);
@@ -41,10 +54,14 @@ export function LearnerGuard({ children }: { children: React.ReactNode }) {
     if (status === "idle") {
       void hydrate();
     }
-  }, [status, router, pathname, hydrate]);
+  }, [mounted, status, router, pathname, hydrate]);
 
-  // Mock mode: passthrough
+  // Mock mode: passthrough (env var is static — same on server and client)
   if (isMockMode()) return <>{children}</>;
+
+  // Before hydration: return null to match the server's output.
+  // (The server can't read localStorage so it also returns null here.)
+  if (!mounted) return null;
 
   // No token: redirect in progress — render nothing to avoid flash
   if (!getAccessToken()) return null;

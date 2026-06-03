@@ -270,6 +270,12 @@ export interface WithdrawalRequestResponse {
   adminNote?: string | null;
   reviewedByUserId?: string | null;
   reviewedAt?: string | null;
+  payOsPayoutId?: string | null;
+  payOsReferenceId?: string | null;
+  payOsPayoutStatus?: string | null;
+  failureReason?: string | null;
+  processingAt?: string | null;
+  paidAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -398,6 +404,33 @@ export interface CurrentUserResponse {
   roles: string[];
   coachProfile?: CoachProfileSummaryResponse | null;
   learnerProfile?: LearnerProfileSummaryResponse | null;
+}
+
+// ---- Public user profile (GET /api/users/{id}) — AllowAnonymous ---------------
+// Only safe public fields — the backend never returns email/phone/status/etc.
+// DO NOT add sensitive fields here; they are not returned by this endpoint.
+
+export interface PublicCoachProfileDto {
+  headline?: string | null;
+  bio?: string | null;
+  experienceYears?: number | null;
+  coverImageUrl?: string | null;
+  rating?: number | null;
+  totalReviews?: number | null;
+}
+
+export interface PublicLearnerProfileDto {
+  goal?: string | null;
+}
+
+/** Safe public profile returned by GET /api/users/{id}. */
+export interface PublicUserResponseDto {
+  id: string;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  roles?: string[] | null;
+  coachProfile?: PublicCoachProfileDto | null;
+  learnerProfile?: PublicLearnerProfileDto | null;
 }
 
 /** Request body for `PUT /api/users/me`. All fields are partial updates. */

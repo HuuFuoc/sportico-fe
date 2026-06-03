@@ -87,18 +87,28 @@ const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Quản lý",
+    label: "Quản lý người dùng",
     items: [
       { href: "/admin/users", label: "Người dùng", icon: "group" },
-      { href: "/admin/verifications", label: "Duyệt gói tập", icon: "inventory_2" },
       { href: "/admin/reviews", label: "Đánh giá", icon: "star" },
     ],
   },
   {
-    label: "Nền tảng",
+    label: "Duyệt & Xác minh",
+    items: [
+      { href: "/admin/verifications", label: "Duyệt gói tập", icon: "inventory_2" },
+    ],
+  },
+  {
+    label: "Tài chính",
     items: [
       { href: "/admin/revenue", label: "Doanh thu", icon: "payments" },
       { href: "/admin/withdrawals", label: "Rút tiền", icon: "account_balance_wallet" },
+    ],
+  },
+  {
+    label: "Hệ thống",
+    items: [
       { href: "/admin/ai-settings", label: "Cài đặt AI", icon: "auto_awesome" },
       { href: "/admin/console", label: "Console", icon: "terminal" },
       { href: "/admin/settings", label: "Cài đặt tài khoản", icon: "manage_accounts" },
