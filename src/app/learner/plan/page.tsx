@@ -195,7 +195,16 @@ function LearnerPlanContent() {
     error,
     refetch,
   } = useApiResource(() => api.fetchMyBookings(), []);
-  const bookings = useMemo(() => bookingsData ?? [], [bookingsData]);
+  // Exclude cancelled and pending-payment bookings — learner shouldn't manage
+  // a journey they haven't paid for or that was already cancelled.
+  const bookings = useMemo(
+    () =>
+      (bookingsData ?? []).filter((b) => {
+        const key = b.status.toLowerCase().replace(/_/g, "");
+        return key !== "cancelled" && key !== "pendingpayment" && key !== "pending";
+      }),
+    [bookingsData],
+  );
 
   const searchParams = useSearchParams();
   const paramBookingId = searchParams.get("booking") ?? "";
@@ -222,7 +231,7 @@ function LearnerPlanContent() {
   if (error) {
     return (
       <AppShell role="learner" title="Lộ trình">
-        <div className="max-w-[880px] mx-auto pt-8">
+        <div className="pt-8">
           <ErrorState onRetry={refetch} className="mx-auto max-w-md" />
         </div>
       </AppShell>
@@ -233,7 +242,7 @@ function LearnerPlanContent() {
 
   return (
     <AppShell role="learner" title="Lộ trình">
-      <div className="max-w-[1040px] mx-auto pb-10">
+      <div className="pb-10">
         {/* ---- Page header ---- */}
         <PageHeader
           hasMultiple={bookings.length > 1}
@@ -391,7 +400,7 @@ function MobilePackageSheet({
                   Gói tập của bạn
                 </p>
                 <p className="text-[11px] text-on-surface-variant mt-0.5">
-                  {bookings.length} gói đã mua
+                  {bookings.length} lộ trình
                 </p>
               </div>
               <button
@@ -503,7 +512,7 @@ function PackageNavigator({
           Gói tập của bạn
         </p>
         <p className="text-[11px] text-on-surface-variant mt-0.5">
-          {bookings.length} gói đã mua
+          {bookings.length} lộ trình
         </p>
       </div>
       <div className="p-2 space-y-1 max-h-[calc(100vh-180px)] overflow-y-auto">
@@ -1216,7 +1225,7 @@ function safeDuration(v: number | undefined): number | undefined {
 
 function AssessmentEmptyState({ onStart }: { onStart: () => void }) {
   return (
-    <div className="flex flex-col items-center py-12 text-center">
+    <div className="flex flex-col items-center py-6 text-center">
       <div className="w-14 h-14 mb-4 rounded-[14px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center shadow-[0_4px_16px_-4px_rgba(53,37,205,0.35)]">
         <Target size={24} className="text-white" />
       </div>
@@ -1599,7 +1608,7 @@ function PlanTab({ bookingId }: { bookingId: string }) {
 
 function PlanEmptyState({ hasAssessment }: { hasAssessment: boolean }) {
   return (
-    <div className="flex flex-col items-center py-12 text-center">
+    <div className="flex flex-col items-center py-6 text-center">
       <div className="w-14 h-14 mb-4 rounded-[14px] bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center shadow-[0_4px_16px_-4px_rgba(139,92,246,0.35)]">
         <ClipboardList size={24} className="text-white" />
       </div>
@@ -1996,7 +2005,7 @@ function StatTile({
 
 function CheckInsEmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex flex-col items-center py-12 text-center">
+    <div className="flex flex-col items-center py-6 text-center">
       <div className="w-14 h-14 mb-4 rounded-[14px] bg-gradient-to-br from-[#f43f5e] to-[#fb7185] flex items-center justify-center shadow-[0_4px_12px_-4px_rgba(244,63,94,0.4)]">
         <HeartPulse size={22} className="text-white" />
       </div>
@@ -2316,7 +2325,7 @@ function SectionShell({
 }) {
   return (
     <section className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_4px_16px_-8px_rgba(15,15,30,0.05)]">
-      <div className="flex items-center justify-between gap-2 mb-5">
+      <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-[9px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center shrink-0">
             <Icon size={15} className="text-white" />

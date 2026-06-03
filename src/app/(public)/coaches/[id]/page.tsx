@@ -407,6 +407,16 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
     publicPackages[0] ??
     null;
 
+  // Booking matching the currently-selected package (drives per-package CTA state).
+  const selectedPackageBooking = selectedPackage
+    ? ((myBookingsData ?? []).find(
+        (b) =>
+          b.coachId === id &&
+          !!b.trainingPackageId &&
+          b.trainingPackageId === selectedPackage.id,
+      ) ?? null)
+    : null;
+
   const hasLocation =
     richData?.teachingCity ||
     richData?.teachingDistrict ||
@@ -948,9 +958,9 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                           </div>
                         </div>
 
-                        {/* CTA — 4 states: active booking / pending_payment / unauthenticated / no booking */}
-                        {coachBooking?.status?.toLowerCase() === "active" ? (
-                          /* Learner already has an active package: book a session */
+                        {/* CTA — 4 states: active booking for this package / pending_payment / unauthenticated / no booking */}
+                        {selectedPackageBooking?.status?.toLowerCase() === "active" ? (
+                          /* Learner already has an active booking for THIS package: book a session */
                           <button
                             type="button"
                             onClick={() => setBookSessionOpen(true)}
@@ -959,14 +969,17 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                             <CalendarPlus size={16} />
                             Đặt buổi tập
                           </button>
-                        ) : coachBooking?.status?.toLowerCase() === "pending_payment" ? (
-                          /* Payment pending: sync it */
-                          <Link
-                            href="/learner/bookings"
-                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-amber-500 px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(245,158,11,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(245,158,11,0.55)] active:translate-y-0"
+                        ) : selectedPackageBooking?.status?.toLowerCase() === "pending_payment" ? (
+                          /* An earlier payment attempt for THIS package is still pending. */
+                          <button
+                            type="button"
+                            onClick={() => void handleBook(selectedPackage.id)}
+                            disabled={booking}
+                            className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#3525cd] to-[#7d6dff] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(53,37,205,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(53,37,205,0.55)] active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
                           >
-                            Đồng bộ thanh toán
-                          </Link>
+                            {booking && <Loader2 size={15} className="animate-spin" />}
+                            {booking ? "Đang xử lý…" : "Mua gói tập"}
+                          </button>
                         ) : !isAuthed ? (
                           /* Not logged in: redirect to login with returnUrl */
                           <Link
@@ -1074,11 +1087,11 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* ── Book Session Modal (for learners with active booking) ─────────── */}
+      {/* ── Book Session Modal (for learners with active booking for the selected package) ─────────── */}
       <AnimatePresence>
-        {bookSessionOpen && coachBooking && coachBooking.status?.toLowerCase() === "active" && (
+        {bookSessionOpen && selectedPackageBooking && selectedPackageBooking.status?.toLowerCase() === "active" && (
           <BookSessionModal
-            booking={coachBooking}
+            booking={selectedPackageBooking}
             onClose={() => setBookSessionOpen(false)}
             onBooked={() => {
               // Refetch bookings so completedSessions/progress is up-to-date.

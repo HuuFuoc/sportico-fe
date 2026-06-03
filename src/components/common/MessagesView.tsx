@@ -520,8 +520,7 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
                     </span>
                   )}
                 </div>
-                <p className="text-[12px] text-on-surface-variant flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                <p className="text-[12px] text-on-surface-variant mt-0.5">
                   {active.isAI
                     ? "Luôn sẵn sàng • Thích nghi với mục tiêu của bạn"
                     : "Đang hoạt động"}
