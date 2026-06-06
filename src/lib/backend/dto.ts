@@ -770,22 +770,35 @@ export interface CreateReviewReportRequest {
   description?: string | null;
 }
 
-/** Item in GET /api/admin/review-reports */
+/**
+ * Item in GET /api/admin/review-reports (PUT /resolve returns the same shape).
+ *
+ * Verified against the LIVE backend (2026-06): the reported review is
+ * FLATTENED into `review*` sibling fields — there is NO nested `review`
+ * object. Reading a nested `review` previously left the admin snapshot blank
+ * ("Không có snapshot review.").
+ */
 export interface ReviewReportResponse {
   id: string;
+  reporterId?: string | null;
   reviewId?: string | null;
-  /** "pending" | "reviewing" | "resolved" | "rejected" */
-  status: string;
   reason?: string | null;
   description?: string | null;
+  /** "pending" | "reviewing" | "resolved" | "rejected" */
+  status: string;
   /** "none" | "review_hidden" | "review_deleted" */
   actionTaken?: string | null;
-  resolutionNote?: string | null;
-  handledAt?: string | null;
   handledByUserId?: string | null;
-  /** Snapshot of the reported review. */
-  review?: ReviewResponse | null;
+  handledAt?: string | null;
+  resolutionNote?: string | null;
   createdAt?: string | null;
+  // ── Flattened snapshot of the reported review ──────────────────────────────
+  reviewRating?: number | null;
+  reviewComment?: string | null;
+  /** "active" | "hidden" | "deleted" */
+  reviewStatus?: string | null;
+  reviewCoachId?: string | null;
+  reviewLearnerId?: string | null;
 }
 
 /** PUT /api/admin/review-reports/{id}/resolve */

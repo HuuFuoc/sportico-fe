@@ -444,6 +444,7 @@ export function chatMessageToMessage(m: ChatMessageResponse): Message {
     senderId: m.senderId,
     text: m.content ?? "",
     sentAt: m.sentAt,
+    isRead: m.isRead,
   };
 }
 
@@ -658,8 +659,14 @@ export function reviewSummaryToUi(r: CoachReviewSummaryResponse): ReviewSummary 
 }
 
 export function reviewReportToUi(r: ReviewReportResponse): ReviewReport {
+  // The backend flattens the reported review into review* sibling fields (no
+  // nested `review` object). Rebuild the UI snapshot from those when present so
+  // admins can see the actual review they are moderating.
+  const hasReviewSnapshot =
+    r.reviewId != null || r.reviewRating != null || r.reviewComment != null;
   return {
     id: r.id,
+    reporterId: r.reporterId ?? undefined,
     status: r.status,
     reason: r.reason ?? "",
     description: r.description ?? undefined,
@@ -667,6 +674,19 @@ export function reviewReportToUi(r: ReviewReportResponse): ReviewReport {
     resolutionNote: r.resolutionNote ?? undefined,
     handledAt: r.handledAt ?? undefined,
     createdAt: r.createdAt ?? new Date().toISOString(),
-    reviewSnapshot: r.review ? reviewToUi(r.review) : undefined,
+    reviewSnapshot: hasReviewSnapshot
+      ? {
+          id: r.reviewId ?? "",
+          coachId: r.reviewCoachId ?? "",
+          learnerId: r.reviewLearnerId ?? "",
+          rating: r.reviewRating ?? 0,
+          comment: r.reviewComment ?? undefined,
+          status: r.reviewStatus ?? "active",
+          canEdit: false,
+          // Backend doesn't send a separate review timestamp here; fall back to
+          // the report's createdAt so the snapshot still shows a date.
+          createdAt: r.createdAt ?? new Date().toISOString(),
+        }
+      : undefined,
   };
 }

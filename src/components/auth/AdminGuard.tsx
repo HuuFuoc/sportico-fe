@@ -1,7 +1,7 @@
 "use client";
 
 // ============================================================================
-// LearnerGuard — route gate for all /learner/* pages.
+// AdminGuard — route gate for all /admin/* pages.
 //
 // ── LIVE API MODE (NEXT_PUBLIC_API_BASE_URL is set) ─────────────────────────
 //
@@ -10,22 +10,20 @@
 //  3. Hydration loading       → show neutral spinner.
 //  4. Hydration failed        → redirect /login.
 //  5. Authenticated — route by PRIMARY role (admin > coach > learner):
-//       • primary "learner"   → allow (pure learners; the common case).
+//       • primary "admin"     → allow (the only accounts that belong here).
 //       • primary "coach"     → redirect /coach/dashboard.
-//       • primary "admin"     → redirect /admin/dashboard.
+//       • primary "learner"   → redirect /learner/bookings.
+//       • primary null        → unknown role, never render admin → /login.
 //
-//  Why route by primary role (not "does the user have the learner role"):
-//  the backend keeps the learner role on an account after it is elevated to
-//  coach, so a coach's /api/auth/me returns roles: ["coach","learner"]. Letting
-//  any account with a learner role into /learner/* meant a coach landed in the
-//  learner UI (learner sidebar, "Learner" label, "Trở thành HLV" CTA) — the bug
-//  this guard now prevents. There is no production learner-mode switch for a
-//  coach, so each account lives in exactly the one section its top role owns.
-//  A genuine learner (roles: ["learner"]) is unaffected.
+//  Same contract as LearnerGuard / CoachGuard: the section is decided by
+//  `primaryRole(user)` (the authoritative GET /api/auth/me roles), never by a
+//  hard-coded role, the route, the JWT alone, or email/name. /admin/* had NO
+//  guard before, so any signed-in account could open it by typing the URL —
+//  this closes that gap without touching the backend.
 //
 // ── MOCK / DEMO MODE (NEXT_PUBLIC_API_BASE_URL unset) ───────────────────────
 //
-//  Guard is bypassed. All /learner routes render with mock fixtures.
+//  Guard is bypassed. All /admin routes render with mock fixtures.
 //  This allows `pnpm build` SSG and demo/design review without credentials.
 // ============================================================================
 
@@ -36,25 +34,23 @@ import { getAccessToken } from "@/lib/auth-token";
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { LoadingState } from "@/components/common/AsyncStates";
 
-// Where to send an authenticated account whose primary role is NOT learner.
-const HOME_FOR_ROLE: Record<"coach" | "admin", string> = {
+// Where to send an authenticated account whose primary role is NOT admin.
+const HOME_FOR_NON_ADMIN: Record<"coach" | "learner", string> = {
   coach: "/coach/dashboard",
-  admin: "/admin/dashboard",
+  learner: "/learner/bookings",
 };
 
-export function LearnerGuard({ children }: { children: React.ReactNode }) {
+export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const status = useAuthStore((s) => s.status);
   const user = useAuthStore((s) => s.user);
   const hydrate = useAuthStore((s) => s.hydrate);
 
-  // `getAccessToken()` reads localStorage — unavailable on the server.
-  // Without this guard the server renders `null` (no token) while the client's
-  // first render sees the real token and renders `<LoadingState>`, causing a
-  // React hydration mismatch. By waiting for mount we ensure both the server
-  // and the client's initial render return the same output (`null`), and the
-  // real auth check only runs after hydration is complete.
+  // `getAccessToken()` reads localStorage — unavailable on the server. Waiting
+  // for mount keeps the server render and the client's first render identical
+  // (both `null`), avoiding a React hydration mismatch. The real auth check
+  // only runs after mount. (Same approach as LearnerGuard.)
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -73,18 +69,25 @@ export function LearnerGuard({ children }: { children: React.ReactNode }) {
       void hydrate();
       return;
     }
-    // Token present but store says unauthenticated: this can happen when the
-    // login page redirects here before the hydrate() it awaited had a chance
-    // to propagate the new status. Re-hydrate with force to resolve the state.
+    if (status === "loading") return;
+    // Token present but store says unauthenticated: re-hydrate (force) to
+    // resolve state set just before this guard mounted; only give up (→ login)
+    // when the token is actually gone.
     if (status === "unauthenticated") {
-      void hydrate({ force: true });
+      if (getAccessToken()) {
+        void hydrate({ force: true });
+        return;
+      }
+      router.replace("/login");
       return;
     }
-    // Authenticated: only learners belong here. Send coach/admin accounts to
-    // their own dashboard (routed by primary role — see header comment).
+    // Authenticated: only admins belong here. Route everyone else to their own
+    // section by primary role (see header comment). Unknown role → /login.
     const primary = primaryRole(user);
-    if (primary === "coach" || primary === "admin") {
-      router.replace(HOME_FOR_ROLE[primary]);
+    if (primary === "coach" || primary === "learner") {
+      router.replace(HOME_FOR_NON_ADMIN[primary]);
+    } else if (primary !== "admin") {
+      router.replace("/login");
     }
   }, [mounted, status, user, router, pathname, hydrate]);
 
@@ -92,7 +95,6 @@ export function LearnerGuard({ children }: { children: React.ReactNode }) {
   if (isMockMode()) return <>{children}</>;
 
   // Before hydration: return null to match the server's output.
-  // (The server can't read localStorage so it also returns null here.)
   if (!mounted) return null;
 
   // No token: redirect in progress — render nothing to avoid flash
@@ -100,19 +102,18 @@ export function LearnerGuard({ children }: { children: React.ReactNode }) {
 
   // Loading auth state
   if (status === "idle" || status === "loading") {
-    return <LoadingState label="Đang xác thực…" />;
+    return <LoadingState label="Đang kiểm tra quyền truy cập…" />;
   }
 
   // Unauthenticated: redirect already triggered
   if (status === "unauthenticated") return null;
 
-  // Authenticated but the account's home is another section (coach/admin):
-  // a redirect is in flight — render a neutral screen, never the learner UI.
-  const primary = primaryRole(user);
-  if (primary === "coach" || primary === "admin") {
+  // Authenticated but not an admin: a redirect is in flight — render a neutral
+  // screen, never the admin UI (no flash for coach/learner accounts).
+  if (primaryRole(user) !== "admin") {
     return <LoadingState label="Đang chuyển hướng…" />;
   }
 
-  // Authenticated learner — allow
+  // Authenticated admin — allow
   return <>{children}</>;
 }

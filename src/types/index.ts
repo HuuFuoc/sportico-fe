@@ -31,6 +31,8 @@ export interface ReviewSummary {
 
 export interface ReviewReport {
   id: string;
+  /** User id of the reporter (a coach reporting a review on their own profile). */
+  reporterId?: string;
   /** "pending" | "reviewing" | "resolved" | "rejected" */
   status: string;
   reason: string;
@@ -264,6 +266,9 @@ export interface Message {
   text: string;
   sentAt: string;
   isAI?: boolean;
+  /** Whether the recipient has read this message (from backend `isRead`).
+   *  Undefined when the source doesn't provide read state (e.g. AI / mock). */
+  isRead?: boolean;
 }
 
 // ============================================================================

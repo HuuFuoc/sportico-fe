@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { StaggeredMenuButton } from "@/components/landing/StaggeredMenu";
-import { useAuthStore, userIsCoach, userIsAdmin } from "@/lib/store/useAuthStore";
+import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { logout } from "@/lib/auth-api";
 import { avatarFor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ interface NavLink {
 const BASE_LINKS: NavLink[] = [
   { label: "Huấn Luyện Viên", href: "/coaches" },
   { label: "Ghép nối", href: "/ai-match" },
-  { label: "Về Chúng Tôi", href: "/" },
+  { label: "Về Chúng Tôi", href: "/about" },
 ];
 
 const BECOME_COACH_HREF = "/onboarding";
@@ -63,14 +63,8 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const authStatus = useAuthStore((s) => s.status);
   const isAuthenticated = authStatus === "authenticated" && authUser !== null;
 
-  // Derive the UI role: admin > coach > learner
-  const role: Role = authUser
-    ? userIsAdmin(authUser)
-      ? "admin"
-      : userIsCoach(authUser)
-        ? "coach"
-        : "learner"
-    : "learner";
+  // Derive the UI role from the real auth user: admin > coach > learner.
+  const role: Role = primaryRole(authUser) ?? "learner";
 
   const displayName = authUser?.fullName ?? "Người dùng";
   const avatarSrc = authUser?.avatarUrl ?? avatarFor(authUser?.id ?? "guest");

@@ -14,6 +14,7 @@ import { create } from "zustand";
 import { getCurrentUser } from "@/lib/auth-api";
 import { getAccessToken } from "@/lib/auth-token";
 import type { CurrentUserResponse } from "@/lib/types/coach";
+import type { Role } from "@/types";
 
 export type AuthStatus =
   | "idle"
@@ -37,6 +38,29 @@ export function userIsCoach(user: CurrentUserResponse | null): boolean {
 
 export function userIsAdmin(user: CurrentUserResponse | null): boolean {
   return hasRole(user, "admin");
+}
+
+export function userIsLearner(user: CurrentUserResponse | null): boolean {
+  return hasRole(user, "learner");
+}
+
+/**
+ * The user's PRIMARY role for routing + display, highest-privilege first:
+ * admin > coach > learner. Returns null when there is no user / no known role.
+ *
+ * This is the single source of truth for "which in-app section does this account
+ * belong to". It MUST be used instead of `roles.includes("learner")`: an
+ * elevated coach keeps BOTH "coach" and "learner" on the backend (verified via
+ * GET /api/auth/me → roles: ["coach","learner"]), so the mere presence of the
+ * learner role does not mean the learner section is their home — the highest
+ * role wins. Guards and the navbar derive the section/label from this.
+ */
+export function primaryRole(user: CurrentUserResponse | null): Role | null {
+  if (!user) return null;
+  if (userIsAdmin(user)) return "admin";
+  if (userIsCoach(user)) return "coach";
+  if (userIsLearner(user)) return "learner";
+  return null;
 }
 
 interface AuthState {

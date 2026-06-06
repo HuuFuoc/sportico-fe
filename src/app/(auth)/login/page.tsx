@@ -15,7 +15,7 @@ import { login, AuthError } from "@/lib/auth-api";
 import { getCurrentUser } from "@/lib/auth-session";
 import { isMockMode } from "@/lib/api-client";
 import { useAppStore } from "@/lib/store/useAppStore";
-import { useAuthStore } from "@/lib/store/useAuthStore";
+import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { showError, showInfo } from "@/lib/toast";
 import type { Role } from "@/types";
 import {
@@ -24,19 +24,11 @@ import {
   type LoginValues,
 } from "@/lib/validation/auth";
 
-/** Pick the landing role from the backend roles array (admin > coach > learner). */
-function roleFromBackend(roles: string[]): Role {
-  const lower = roles.map((r) => r.toLowerCase());
-  if (lower.includes("admin")) return "admin";
-  if (lower.includes("coach")) return "coach";
-  return "learner";
-}
-
 /** Post-login destination by role. */
 function postLoginHref(role: Role): string {
   if (role === "admin") return "/admin/settings?fromLogin=1";
   if (role === "coach") return "/coach/settings?fromLogin=1";
-  return "/learner/settings?fromLogin=1";
+  return "/";
 }
 
 export default function LoginPage() {
@@ -84,7 +76,7 @@ export default function LoginPage() {
         //    hydrate() never throws — it returns null on failure.
         const me = await useAuthStore.getState().hydrate({ force: true });
         if (me) {
-          role = roleFromBackend(me.roles);
+          role = primaryRole(me) ?? "learner";
           useAppStore.getState().setRole(role);
           if (me.id) useAppStore.getState().setCurrentUserId(me.id);
         } else {

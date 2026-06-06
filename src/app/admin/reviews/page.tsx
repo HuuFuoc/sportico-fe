@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  AlertCircle,
   CheckCircle2,
   ChevronDown,
   EyeOff,
@@ -11,6 +10,7 @@ import {
   Loader2,
   MessageSquare,
   Star,
+  User,
   X,
   XCircle,
 } from "lucide-react";
@@ -19,6 +19,8 @@ import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { showSuccess, showError } from "@/lib/toast";
+import { messageForApiError } from "@/lib/errors-vi";
 import type { Review, ReviewReport } from "@/types";
 import type { ResolveReviewReportRequest } from "@/lib/backend/dto";
 
@@ -83,45 +85,42 @@ function StatusBadge({ status }: { status: string }) {
 
 function ResolveModal({
   report,
+  resolveName,
   onClose,
   onResolved,
 }: {
   report: ReviewReport;
+  resolveName: (id?: string) => string | undefined;
   onClose: () => void;
   onResolved: () => void;
 }) {
   const [action, setAction] = useState<"reject" | "resolve_keep" | "resolve_hide">("resolve_keep");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const isSettled =
     report.status === "resolved" || report.status === "rejected";
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    setErr(null);
     try {
       const body: ResolveReviewReportRequest = {
         isValid: action !== "reject",
         hideOrDeleteReview: action === "resolve_hide",
-        resolutionNote: note || undefined,
+        resolutionNote: note.trim() || undefined,
       };
       await api.resolveReviewReport(report.id, body);
+      showSuccess("Đã xử lý báo cáo.");
       onResolved();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("409") || msg.toLowerCase().includes("already")) {
-        setErr("Báo cáo này đã được xử lý trước đó.");
-      } else {
-        setErr(msg || "Giải quyết thất bại. Vui lòng thử lại.");
-      }
+      showError(messageForApiError(e));
     } finally {
       setSubmitting(false);
     }
   };
 
   const snap = report.reviewSnapshot;
+  const reporterName = resolveName(report.reporterId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -158,7 +157,9 @@ function ResolveModal({
             <div className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low p-3 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[12px] font-semibold text-on-surface truncate">
-                  {snap.learnerName ?? `Học viên ${snap.learnerId.slice(0, 8)}`}
+                  {resolveName(snap.learnerId) ??
+                    snap.learnerName ??
+                    `Học viên ${snap.learnerId.slice(0, 8)}`}
                 </p>
                 <StarRow rating={snap.rating} />
               </div>
@@ -183,6 +184,20 @@ function ResolveModal({
               <p className="text-[12px] text-on-surface-variant">{report.description}</p>
             )}
           </div>
+
+          {/* Reporter (the coach who filed the report) */}
+          {report.reporterId && (
+            <div className="flex items-center gap-2 text-[12px] text-on-surface-variant">
+              <User size={13} className="shrink-0 text-primary" />
+              <span>
+                Người báo cáo:{" "}
+                <span className="font-medium text-on-surface">
+                  {reporterName ?? `HLV ${report.reporterId.slice(0, 8)}`}
+                </span>{" "}
+                · Huấn luyện viên
+              </span>
+            </div>
+          )}
 
           {isSettled ? (
             <div className="rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low px-3 py-2 text-[12px] text-on-surface-variant">
@@ -239,13 +254,6 @@ function ResolveModal({
                 />
               </div>
 
-              {err && (
-                <div className="flex items-center gap-2 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
-                  <AlertCircle size={13} className="shrink-0" />
-                  {err}
-                </div>
-              )}
-
               {/* Confirm — hide review requires extra warning */}
               {action === "resolve_hide" && (
                 <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-[8px] px-3 py-2">
@@ -281,14 +289,17 @@ function ResolveModal({
 
 function ReportRow({
   report,
+  resolveName,
   onAction,
 }: {
   report: ReviewReport;
+  resolveName: (id?: string) => string | undefined;
   onAction: (r: ReviewReport) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const snap: Review | undefined = report.reviewSnapshot;
   const isSettled = report.status === "resolved" || report.status === "rejected";
+  const reporterName = resolveName(report.reporterId);
 
   return (
     <motion.div
@@ -361,6 +372,18 @@ function ReportRow({
                 </div>
               )}
 
+              {/* Reporter (the coach who filed the report) */}
+              {report.reporterId && (
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-on-surface-variant">Người báo cáo</p>
+                  <div className="flex items-center gap-2 text-[13px] text-on-surface">
+                    <User size={13} className="shrink-0 text-primary" />
+                    {reporterName ?? `HLV ${report.reporterId.slice(0, 8)}`}
+                    <span className="text-[12px] text-on-surface-variant">· Huấn luyện viên</span>
+                  </div>
+                </div>
+              )}
+
               {/* Review snapshot */}
               {snap ? (
                 <div>
@@ -368,7 +391,9 @@ function ReportRow({
                   <div className="rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low p-3 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[12px] font-semibold text-on-surface">
-                        {snap.learnerName ?? `Học viên ${snap.learnerId.slice(0, 8)}`}
+                        {resolveName(snap.learnerId) ??
+                          snap.learnerName ??
+                          `Học viên ${snap.learnerId.slice(0, 8)}`}
                       </p>
                       <StarRow rating={snap.rating} />
                     </div>
@@ -422,6 +447,42 @@ export default function AdminReviewsPage() {
   const reports = data?.items ?? [];
   const hasNext = data?.hasNext ?? false;
   const totalCount = data?.totalCount ?? 0;
+
+  // Resolve reviewer (learner) + reporter (coach) display names by id.
+  // The report payload only carries ids; GET /api/users/{id} is cached so the
+  // lookups are cheap and de-duped across reports.
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = [
+      ...new Set(
+        reports
+          .flatMap((r) => [r.reporterId, r.reviewSnapshot?.learnerId])
+          .filter((x): x is string => !!x),
+      ),
+    ];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void Promise.all(
+      ids.map(
+        async (id) => [id, (await api.fetchUserProfile(id))?.name ?? ""] as const,
+      ),
+    ).then((entries) => {
+      if (cancelled) return;
+      setUserNames((prev) => {
+        const next = { ...prev };
+        for (const [id, name] of entries) next[id] = name;
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reports]);
+
+  const resolveName = useCallback(
+    (id?: string): string | undefined => (id && userNames[id]) || undefined,
+    [userNames],
+  );
 
   const handleTabChange = useCallback((tab: StatusFilter) => {
     setStatusFilter(tab);
@@ -499,7 +560,12 @@ export default function AdminReviewsPage() {
         {!loading && !error && reports.length > 0 && (
           <div className="space-y-2">
             {reports.map((report) => (
-              <ReportRow key={report.id} report={report} onAction={setResolving} />
+              <ReportRow
+                key={report.id}
+                report={report}
+                resolveName={resolveName}
+                onAction={setResolving}
+              />
             ))}
           </div>
         )}
@@ -532,6 +598,7 @@ export default function AdminReviewsPage() {
         {resolving && (
           <ResolveModal
             report={resolving}
+            resolveName={resolveName}
             onClose={() => setResolving(null)}
             onResolved={handleResolved}
           />

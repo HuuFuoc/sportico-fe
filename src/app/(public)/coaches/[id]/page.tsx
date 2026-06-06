@@ -44,6 +44,7 @@ import { isMockMode, ApiError } from "@/lib/api-client";
 import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole } from "@/lib/auth-session";
 import { messageForApiError } from "@/lib/errors-vi";
+import { showSuccess, showError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import type { CurrentUserResponse, PublicCoachDetailResponse } from "@/lib/backend/dto";
@@ -1427,32 +1428,31 @@ function ReviewsSection({
   const [reportReason, setReportReason] = useState("");
   const [reportDesc, setReportDesc] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const [reportDone, setReportDone] = useState(false);
+
+  // Reason must be at least 10 characters (mirrors the backend rule so the user
+  // gets immediate feedback instead of a 400 Bad Request).
+  const REPORT_REASON_MIN = 10;
+  const reportReasonValid = reportReason.trim().length >= REPORT_REASON_MIN;
 
   const openReport = (id: string) => {
     setReportTarget(id);
     setReportReason("");
     setReportDesc("");
-    setReportError(null);
-    setReportDone(false);
   };
 
   const handleReportSubmit = async () => {
-    if (!reportTarget || !reportReason.trim()) { setReportError("Vui lòng điền lý do báo cáo."); return; }
+    if (!reportTarget || !reportReasonValid) return;
     setReportSubmitting(true);
-    setReportError(null);
     try {
-      const body: CreateReviewReportRequest = { reason: reportReason, description: reportDesc || undefined };
+      const body: CreateReviewReportRequest = {
+        reason: reportReason.trim(),
+        description: reportDesc.trim() || undefined,
+      };
       await api.reportReview(reportTarget, body);
-      setReportDone(true);
+      showSuccess("Đã gửi báo cáo đánh giá.");
+      setReportTarget(null);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("REVIEW_REPORT_NOT_ALLOWED")) {
-        setReportError("Bạn chỉ có thể báo cáo đánh giá thuộc hồ sơ coach của mình.");
-      } else {
-        setReportError(msg || "Báo cáo thất bại. Vui lòng thử lại.");
-      }
+      showError(messageForApiError(e));
     } finally {
       setReportSubmitting(false);
     }
@@ -1744,67 +1744,56 @@ function ReviewsSection({
                 </button>
               </div>
 
-              {reportDone ? (
-                <div className="flex flex-col items-center py-4 gap-2 text-emerald-700">
-                  <Check size={24} />
-                  <p className="text-[13px] font-semibold">Báo cáo đã được gửi</p>
-                  <p className="text-[12px] text-on-surface-variant">Chúng tôi sẽ xem xét trong thời gian sớm nhất.</p>
-                  <button
-                    onClick={() => setReportTarget(null)}
-                    className="mt-2 rounded-[8px] border border-[var(--color-border-soft)] px-4 py-2 text-[13px] text-on-surface-variant hover:bg-surface-container-low"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-[12px] font-semibold text-on-surface-variant">
-                      Lý do báo cáo *
-                    </label>
-                    <input
-                      className="w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
-                      placeholder="Nội dung vi phạm, thông tin sai…"
-                      value={reportReason}
-                      onChange={(e) => setReportReason(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[12px] font-semibold text-on-surface-variant">
-                      Mô tả thêm (tuỳ chọn)
-                    </label>
-                    <textarea
-                      rows={2}
-                      className="w-full resize-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
-                      placeholder="Chi tiết thêm về vấn đề…"
-                      value={reportDesc}
-                      onChange={(e) => setReportDesc(e.target.value)}
-                    />
-                  </div>
-                  {reportError && (
-                    <div className="flex items-center gap-2 rounded-[7px] border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
-                      <AlertCircle size={12} className="shrink-0" />
-                      {reportError}
-                    </div>
+              <div className="space-y-1">
+                <label className="text-[12px] font-semibold text-on-surface-variant">
+                  Lý do báo cáo *
+                </label>
+                <input
+                  className="w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
+                  placeholder="Nội dung vi phạm, thông tin sai…"
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                />
+                <p
+                  className={cn(
+                    "text-[11px]",
+                    reportReason.trim().length > 0 && !reportReasonValid
+                      ? "text-red-600"
+                      : "text-on-surface-variant",
                   )}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleReportSubmit}
-                      disabled={reportSubmitting}
-                      className="inline-flex items-center gap-1.5 rounded-[8px] bg-red-600 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60"
-                    >
-                      {reportSubmitting && <Loader2 size={12} className="animate-spin" />}
-                      Gửi báo cáo
-                    </button>
-                    <button
-                      onClick={() => setReportTarget(null)}
-                      className="rounded-[8px] px-4 py-2 text-[13px] text-on-surface-variant hover:bg-surface-container-low"
-                    >
-                      Huỷ
-                    </button>
-                  </div>
-                </>
-              )}
+                >
+                  Tối thiểu {REPORT_REASON_MIN} ký tự ({reportReason.trim().length}/
+                  {REPORT_REASON_MIN})
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[12px] font-semibold text-on-surface-variant">
+                  Mô tả thêm (tuỳ chọn)
+                </label>
+                <textarea
+                  rows={2}
+                  className="w-full resize-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
+                  placeholder="Chi tiết thêm về vấn đề…"
+                  value={reportDesc}
+                  onChange={(e) => setReportDesc(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReportSubmit}
+                  disabled={reportSubmitting || !reportReasonValid}
+                  className="inline-flex items-center gap-1.5 rounded-[8px] bg-red-600 px-4 py-2 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {reportSubmitting && <Loader2 size={12} className="animate-spin" />}
+                  Gửi báo cáo
+                </button>
+                <button
+                  onClick={() => setReportTarget(null)}
+                  className="rounded-[8px] px-4 py-2 text-[13px] text-on-surface-variant hover:bg-surface-container-low"
+                >
+                  Huỷ
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
