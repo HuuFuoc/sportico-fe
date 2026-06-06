@@ -9,6 +9,7 @@ import {
   Loader2,
   MapPin,
   MessageSquare,
+  Users,
   Video,
   X,
   Zap,
@@ -16,6 +17,8 @@ import {
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { sessionErrorMessage } from "@/lib/errors-vi";
+import { showError } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import type { AvailabilitySlot, Booking } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -24,9 +27,8 @@ interface Props {
   booking: Booking;
   onClose: () => void;
   /**
-   * Called after a session was successfully created.
-   * The caller is responsible for refetching all stale data
-   * (training sessions, bookings, booking sessions).
+   * Called after a session was successfully created OR when SESSION_LIMIT_EXCEEDED
+   * is detected. The caller is responsible for refetching all stale data.
    */
   onBooked: () => void;
 }
@@ -62,6 +64,19 @@ function durationMin(s: AvailabilitySlot): number {
   );
 }
 
+/** Check if an API error is specifically SESSION_LIMIT_EXCEEDED. */
+function isSessionLimitError(err: unknown): boolean {
+  if (err instanceof Error && err.name === "ApiError") {
+    const body = (err as { body?: unknown }).body;
+    if (body && typeof body === "object") {
+      const envelope = body as { error?: { code?: string }; code?: string };
+      const code = envelope.error?.code ?? (envelope as { code?: string }).code;
+      return code === "SESSION_LIMIT_EXCEEDED";
+    }
+  }
+  return false;
+}
+
 export function BookSessionModal({ booking, onClose, onBooked }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -70,7 +85,6 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
   const [learnerNote, setLearnerNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     data: slotsData,
@@ -85,8 +99,24 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
     [booking.coachId],
   );
 
+  // Derive usage from backend-supplied fields; fall back to completedSessions only
+  // if the new fields haven't arrived yet (e.g. cached stale booking object).
+  const remainingSessions =
+    booking.remainingSessions ?? Math.max(0, booking.totalSessions - booking.completedSessions);
+  const usedSessions = booking.usedSessions ?? booking.completedSessions;
+
+  // Use backend canBookSession as primary gate; fall back to remainingSessions > 0.
+  const isSessionsFull =
+    booking.canBookSession === false || remainingSessions <= 0;
+
   const availableSlots = useMemo(
-    () => (slotsData ?? []).filter((s) => s.status?.toLowerCase() === "available"),
+    () =>
+      (slotsData ?? []).filter((s) => {
+        if (s.status?.toLowerCase() !== "available") return false;
+        if (s.isFull === true) return false;
+        if (typeof s.remainingParticipants === "number" && s.remainingParticipants <= 0) return false;
+        return true;
+      }),
     [slotsData],
   );
 
@@ -95,20 +125,28 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
   const handleSelectSlot = useCallback((slot: AvailabilitySlot) => {
     setSelectedSlot(slot);
     setModalState("note");
-    setSubmitError(null);
   }, []);
 
   const handleBack = useCallback(() => {
     setModalState("select");
     setSelectedSlot(null);
     setLearnerNote("");
-    setSubmitError(null);
   }, []);
 
   const handleConfirm = useCallback(async () => {
     if (!selectedSlot) return;
+
+    // Guard: backend fields take priority; block immediately if no slots remain.
+    if (booking.canBookSession === false || remainingSessions <= 0) {
+      showError(
+        "Gói tập này đã hết số buổi có thể đặt. Vui lòng kiểm tra lại gói tập hoặc mua gói mới.",
+      );
+      setModalState("select");
+      setSelectedSlot(null);
+      return;
+    }
+
     setSubmitting(true);
-    setSubmitError(null);
     try {
       await api.bookSession(
         booking.id,
@@ -119,18 +157,26 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
       refetchSlots();
       onBooked();
     } catch (err) {
-      setSubmitError(sessionErrorMessage(err, "Đặt lịch thất bại. Vui lòng thử lại."));
+      showError(sessionErrorMessage(err, "Đặt lịch thất bại. Vui lòng thử lại."));
+      // If backend rejects due to slot exhaustion, refetch booking so usage refreshes.
+      if (isSessionLimitError(err)) {
+        onBooked(); // triggers parent refetch + closes modal
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [selectedSlot, booking.id, learnerNote, refetchSlots, onBooked]);
+  }, [selectedSlot, booking, remainingSessions, learnerNote, refetchSlots, onBooked]);
 
-  const progressPct =
+  // Progress bar shows "đã hoàn thành" fraction (completed / total).
+  const progressCompletedPct =
     booking.totalSessions > 0
       ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
       : 0;
-
-  const remainingSessions = booking.totalSessions - booking.completedSessions;
+  // Secondary bar shows "đã giữ chỗ" fraction (used / total).
+  const progressUsedPct =
+    booking.totalSessions > 0
+      ? Math.round((usedSessions / booking.totalSessions) * 100)
+      : 0;
 
   return (
     <div
@@ -178,26 +224,52 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
           )}
         </div>
 
-        {/* Booking progress strip */}
+        {/* Booking usage strip */}
         {modalState === "select" && (
-          <div className="px-5 py-3 border-b border-[var(--color-border-soft)] bg-surface-container-low/40 shrink-0">
-            <div className="flex items-center justify-between text-[12px] mb-1.5">
-              <span className="text-on-surface-variant">Tiến độ gói tập</span>
-              <span className="font-semibold text-on-surface tabular-nums">
-                {booking.completedSessions}/{booking.totalSessions} buổi
-                {remainingSessions > 0 && (
-                  <span className="text-on-surface-variant font-normal">
-                    {" "}· còn {remainingSessions} buổi
-                  </span>
-                )}
+          <div className="px-5 py-3 border-b border-[var(--color-border-soft)] bg-surface-container-low/40 shrink-0 space-y-1.5">
+            {/* Used / total row */}
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="text-on-surface-variant">Đã giữ chỗ</span>
+              <span className={cn("font-semibold tabular-nums", isSessionsFull ? "text-red-600" : "text-on-surface")}>
+                {usedSessions}/{booking.totalSessions} buổi
               </span>
             </div>
+            {/* Progress bar — used fraction */}
             <div className="h-1.5 w-full rounded-full bg-surface-container-high overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff] transition-all"
-                style={{ width: `${progressPct}%` }}
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  isSessionsFull
+                    ? "bg-gradient-to-r from-red-400 to-rose-400"
+                    : "bg-gradient-to-r from-primary to-[#7d6dff]",
+                )}
+                style={{ width: `${progressUsedPct}%` }}
               />
             </div>
+            {/* Completed + remaining sub-row */}
+            <div className="flex items-center justify-between text-[11.5px] text-on-surface-variant">
+              <span className="tabular-nums">
+                Đã hoàn thành: <strong className="text-on-surface">{booking.completedSessions}/{booking.totalSessions}</strong>
+              </span>
+              {remainingSessions > 0 ? (
+                <span className="tabular-nums text-emerald-700 font-medium">
+                  Còn {remainingSessions} buổi
+                </span>
+              ) : (
+                <span className="tabular-nums text-red-600 font-semibold">
+                  Hết lượt đặt
+                </span>
+              )}
+            </div>
+            {/* Completed progress bar (secondary, thinner) */}
+            {usedSessions !== booking.completedSessions && (
+              <div className="h-1 w-full rounded-full bg-surface-container-high overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-emerald-400/70 transition-all"
+                  style={{ width: `${progressCompletedPct}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -213,14 +285,14 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18 }}
               >
-                {slotsLoading && (
+                {!isSessionsFull && slotsLoading && (
                   <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-on-surface-variant">
                     <Loader2 size={16} className="animate-spin text-primary" />
                     Đang tải lịch trống…
                   </div>
                 )}
 
-                {slotsError && (
+                {!isSessionsFull && !slotsLoading && slotsError && (
                   <div className="rounded-[12px] border border-red-200 bg-red-50 p-4 text-center">
                     <p className="text-[13px] font-medium text-red-700 mb-2">
                       Không tải được lịch
@@ -234,26 +306,44 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
                   </div>
                 )}
 
-                {!slotsLoading && !slotsError && availableSlots.length === 0 && (
+                {isSessionsFull && (
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                      <CheckCircle2 size={22} className="text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-semibold text-on-surface">
+                        Gói tập đã hết số buổi có thể đặt
+                      </p>
+                      <p className="text-[12.5px] text-on-surface-variant mt-1 max-w-[280px]">
+                        Đã giữ chỗ {usedSessions}/{booking.totalSessions} buổi
+                        {booking.completedSessions < usedSessions && ` (hoàn thành: ${booking.completedSessions})`}.
+                        Hãy mua gói mới để tiếp tục tập luyện.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!isSessionsFull && !slotsLoading && !slotsError && availableSlots.length === 0 && (
                   <div className="flex flex-col items-center gap-3 py-12 text-center">
                     <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center">
                       <CalendarDays size={20} className="text-on-surface-variant" />
                     </div>
                     <div>
                       <p className="text-[14px] font-semibold text-on-surface">
-                        Chưa có lịch trống
+                        Không còn lịch trống
                       </p>
                       <p className="text-[12.5px] text-on-surface-variant mt-1 max-w-[240px]">
-                        Huấn luyện viên chưa mở lịch khả dụng. Bạn có thể nhắn tin để hỏi thêm.
+                        Huấn luyện viên chưa mở lịch, hoặc tất cả slot đã đầy. Bạn có thể nhắn tin để hỏi thêm.
                       </p>
                     </div>
                   </div>
                 )}
 
-                {!slotsLoading && !slotsError && availableSlots.length > 0 && (
+                {!isSessionsFull && !slotsLoading && !slotsError && availableSlots.length > 0 && (
                   <div className="space-y-5">
                     <p className="text-[12px] text-on-surface-variant">
-                      {availableSlots.length} lịch trống khả dụng — chọn một buổi để đặt
+                      {availableSlots.length} slot còn chỗ — chọn một buổi để đặt
                     </p>
                     {Array.from(grouped.entries()).map(([date, slots]) => (
                       <div key={date}>
@@ -354,11 +444,6 @@ export function BookSessionModal({ booking, onClose, onBooked }: Props) {
                   />
                 </div>
 
-                {submitError && (
-                  <div className="rounded-[10px] border border-red-200 bg-red-50 px-3 py-2.5 text-[12.5px] text-red-700">
-                    {submitError}
-                  </div>
-                )}
               </motion.div>
             )}
 
@@ -486,6 +571,8 @@ function SlotButton({
 }) {
   const start = new Date(slot.startTime);
   const dur = durationMin(slot);
+  const isGroup = (slot.maxParticipants ?? 1) > 1;
+  const remaining = slot.remainingParticipants ?? (isGroup ? (slot.maxParticipants ?? 1) - (slot.bookedParticipants ?? 0) : undefined);
 
   return (
     <motion.button
@@ -509,31 +596,36 @@ function SlotButton({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        {slot.isOnline ? (
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {slot.isOnline ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold border border-primary/15">
               <Video size={10} />
               Online
             </span>
-            {slot.meetingUrl && (
-              <span className="text-[11px] text-on-surface-variant truncate">
-                {slot.meetingUrl.replace(/^https?:\/\//, "").split("/")[0]}
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5">
+          ) : (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant text-[11px] font-semibold">
               <MapPin size={10} />
               Trực tiếp
             </span>
-            {slot.location && (
-              <span className="text-[11px] text-on-surface-variant truncate">
-                {slot.location}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+          {/* Group slot capacity badge */}
+          {isGroup && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#8b5cf6]/10 text-[#7c3aed] text-[11px] font-semibold border border-[#8b5cf6]/15">
+              <Users size={10} />
+              Còn {remaining} chỗ
+            </span>
+          )}
+          {!slot.isOnline && slot.location && (
+            <span className="text-[11px] text-on-surface-variant truncate">
+              {slot.location}
+            </span>
+          )}
+          {slot.isOnline && slot.meetingUrl && (
+            <span className="text-[11px] text-on-surface-variant truncate">
+              {slot.meetingUrl.replace(/^https?:\/\//, "").split("/")[0]}
+            </span>
+          )}
+        </div>
         {slot.note && (
           <p className="text-[11px] text-on-surface-variant mt-0.5 truncate italic">
             {slot.note}

@@ -33,6 +33,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/lib/api";
+import { showSuccess, showApiError } from "@/lib/toast";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState } from "@/components/common/AsyncStates";
 import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
@@ -131,6 +132,19 @@ function getStatusCfg(status: string) {
   );
 }
 
+/**
+ * Override "active" → "completed" when the real completed-session count
+ * meets or exceeds totalSessions. The backend counter can lag because it
+ * isn't always incremented atomically when the coach marks a session done.
+ */
+function effectiveStatus(booking: Booking, completedOverride?: number): string {
+  const status = (booking.status ?? "").toLowerCase();
+  if (status !== "active") return status;
+  const done = completedOverride ?? booking.completedSessions;
+  if (booking.totalSessions > 0 && done >= booking.totalSessions) return "completed";
+  return status;
+}
+
 function getPaymentLabel(booking: Booking): {
   label: string;
   variant: "paid" | "pending" | "unknown";
@@ -214,11 +228,56 @@ function LearnerPlanContent() {
   const [activeTab, setActiveTab] = useState<PlanTab>(paramTab);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // Fetch actual completed-session counts for all active bookings.
+  // The backend `completedSessions` counter can be stale when the coach
+  // marks sessions done without the booking aggregate being updated atomically.
+  const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
   useEffect(() => {
-    if (!bookings.length) return;
-    if (bookingId && bookings.some((b) => b.id === bookingId)) return;
-    setBookingId(bookings[0].id);
-  }, [bookings, bookingId]);
+    const active = bookings.filter((b) => (b.status ?? "").toLowerCase() === "active");
+    if (!active.length) return;
+    Promise.allSettled(
+      active.map((b) =>
+        api.fetchBookingSessions(b.id).then((sessions) => ({
+          id: b.id,
+          count: sessions.filter((s) => (s.status ?? "").toLowerCase() === "completed").length,
+        })),
+      ),
+    ).then((results) => {
+      const m = new Map<string, number>();
+      for (const r of results) {
+        if (r.status === "fulfilled") m.set(r.value.id, r.value.count);
+      }
+      if (m.size) setSessionCounts(m);
+    });
+  }, [bookings]);
+
+  // Active bookings: non-completed (backend or derived).
+  const displayBookings = useMemo(
+    () =>
+      bookings.filter(
+        (b) => effectiveStatus(b, sessionCounts.get(b.id)) !== "completed",
+      ),
+    [bookings, sessionCounts],
+  );
+
+  // Completed bookings: both backend-marked and session-exhausted active ones.
+  const completedBookings = useMemo(
+    () =>
+      bookings.filter(
+        (b) => effectiveStatus(b, sessionCounts.get(b.id)) === "completed",
+      ),
+    [bookings, sessionCounts],
+  );
+
+  const [pageMode, setPageMode] = useState<"active" | "completed">("active");
+  const listBookings = pageMode === "active" ? displayBookings : completedBookings;
+
+  // Auto-select first booking in the active list when mode or list changes.
+  useEffect(() => {
+    if (!listBookings.length) return;
+    if (bookingId && listBookings.some((b) => b.id === bookingId)) return;
+    setBookingId(listBookings[0].id);
+  }, [listBookings, bookingId]);
 
   if (loading) {
     return (
@@ -239,26 +298,47 @@ function LearnerPlanContent() {
   }
 
   const selectedBooking = bookings.find((b) => b.id === bookingId) ?? null;
+  const selectedStatus = selectedBooking
+    ? effectiveStatus(selectedBooking, sessionCounts.get(selectedBooking.id))
+    : null;
 
   return (
     <AppShell role="learner" title="Lộ trình">
       <div className="pb-10">
         {/* ---- Page header ---- */}
         <PageHeader
-          hasMultiple={bookings.length > 1}
+          hasMultiple={listBookings.length > 1}
           selectedBooking={selectedBooking}
           onOpenSheet={() => setSheetOpen(true)}
         />
 
-        {bookings.length === 0 ? (
-          <NoBookingsState />
+        {/* ---- Mode tabs ---- */}
+        {(displayBookings.length > 0 || completedBookings.length > 0) && (
+          <PlanModeTabs
+            mode={pageMode}
+            activeCount={displayBookings.length}
+            completedCount={completedBookings.length}
+            onChange={(m) => {
+              setPageMode(m);
+              setBookingId("");
+            }}
+          />
+        )}
+
+        {listBookings.length === 0 ? (
+          pageMode === "active" ? (
+            <NoBookingsState />
+          ) : (
+            <NoCompletedState />
+          )
         ) : (
           <>
             {/* Mobile bottom sheet */}
             <MobilePackageSheet
               open={sheetOpen}
-              bookings={bookings}
+              bookings={listBookings}
               selectedId={bookingId}
+              sessionCountMap={sessionCounts}
               onSelect={(id) => {
                 setBookingId(id);
                 setSheetOpen(false);
@@ -272,9 +352,10 @@ function LearnerPlanContent() {
               <div className="hidden lg:block w-[300px] xl:w-[320px] shrink-0">
                 <div className="sticky top-[84px]">
                   <PackageNavigator
-                    bookings={bookings}
+                    bookings={listBookings}
                     selectedId={bookingId}
                     onSelect={setBookingId}
+                    sessionCountMap={sessionCounts}
                   />
                 </div>
               </div>
@@ -285,6 +366,8 @@ function LearnerPlanContent() {
                   <>
                     <SelectedPackageOverview
                       booking={selectedBooking}
+                      completedOverride={sessionCounts.get(selectedBooking.id)}
+                      statusOverride={selectedStatus ?? undefined}
                       onCheckIn={() => setActiveTab("checkins")}
                       onAssess={() => setActiveTab("assessment")}
                     />
@@ -307,6 +390,85 @@ function LearnerPlanContent() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+// ============================================================================
+// Plan Mode Tabs (Đang học | Đã hoàn thành)
+// ============================================================================
+
+function PlanModeTabs({
+  mode,
+  activeCount,
+  completedCount,
+  onChange,
+}: {
+  mode: "active" | "completed";
+  activeCount: number;
+  completedCount: number;
+  onChange: (m: "active" | "completed") => void;
+}) {
+  const reduce = useReducedMotion();
+  const tabs: { id: "active" | "completed"; label: string; count: number }[] = [
+    { id: "active",    label: "Đang học",       count: activeCount },
+    { id: "completed", label: "Đã hoàn thành",  count: completedCount },
+  ];
+  return (
+    <div className="flex items-center gap-1 p-1 mb-5 rounded-[12px] bg-surface-container-low border border-[var(--color-border-soft)] self-start w-fit">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={cn(
+            "relative flex items-center gap-2 px-4 py-2 rounded-[9px] text-[13px] font-medium transition-colors z-[1] whitespace-nowrap",
+            mode === tab.id
+              ? "text-on-surface"
+              : "text-on-surface-variant hover:text-on-surface",
+          )}
+        >
+          {mode === tab.id && (
+            <motion.span
+              layoutId="plan-mode-pill"
+              className="absolute inset-0 rounded-[9px] bg-surface-container-lowest shadow-sm border border-[var(--color-border-soft)]"
+              transition={{ type: "spring", bounce: 0.18, duration: reduce ? 0 : 0.35 }}
+            />
+          )}
+          <span className="relative z-[1]">{tab.label}</span>
+          {tab.count > 0 && (
+            <span
+              className={cn(
+                "relative z-[1] inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] tabular-nums font-semibold",
+                mode === tab.id
+                  ? "bg-primary/10 text-primary"
+                  : "bg-on-surface/10 text-on-surface-variant",
+              )}
+            >
+              {tab.count}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// No-bookings empty states
+// ============================================================================
+
+function NoCompletedState() {
+  return (
+    <div className="rounded-[16px] border border-dashed border-[var(--color-border-soft)] bg-surface-container-lowest py-16 text-center">
+      <div className="w-14 h-14 mx-auto mb-4 rounded-[14px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center shadow-[0_4px_16px_-4px_rgba(53,37,205,0.3)] opacity-40">
+        <Trophy size={22} className="text-white" />
+      </div>
+      <p className="text-[15px] font-semibold text-on-surface">
+        Chưa có gói tập nào hoàn thành
+      </p>
+      <p className="text-body-sm text-on-surface-variant mt-1.5 max-w-[260px] mx-auto">
+        Các gói bạn đã tập xong sẽ xuất hiện ở đây để bạn xem lại.
+      </p>
+    </div>
   );
 }
 
@@ -363,12 +525,14 @@ function MobilePackageSheet({
   open,
   bookings,
   selectedId,
+  sessionCountMap,
   onSelect,
   onClose,
 }: {
   open: boolean;
   bookings: Booking[];
   selectedId: string;
+  sessionCountMap: Map<string, number>;
   onSelect: (id: string) => void;
   onClose: () => void;
 }) {
@@ -417,6 +581,7 @@ function MobilePackageSheet({
                   key={b.id}
                   booking={b}
                   selected={b.id === selectedId}
+                  completedOverride={sessionCountMap.get(b.id)}
                   onSelect={onSelect}
                 />
               ))}
@@ -432,10 +597,12 @@ function MobilePackageSheet({
 function PackageOptionCard({
   booking,
   selected,
+  completedOverride,
   onSelect,
 }: {
   booking: Booking;
   selected: boolean;
+  completedOverride?: number;
   onSelect: (id: string) => void;
 }) {
   const { data: coach } = useApiResource(
@@ -444,8 +611,10 @@ function PackageOptionCard({
   );
   const coachName = coach?.name;
   const displayName = getPackageDisplayName(booking, coachName);
+  const completedSessions = completedOverride ?? booking.completedSessions;
+  const derivedStatus = effectiveStatus(booking, completedOverride);
   const pct = booking.totalSessions
-    ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
+    ? Math.round((completedSessions / booking.totalSessions) * 100)
     : 0;
 
   return (
@@ -462,7 +631,7 @@ function PackageOptionCard({
         <p className="text-[13px] font-semibold text-on-surface leading-snug">
           {displayName}
         </p>
-        <StatusBadge status={booking.status} compact />
+        <StatusBadge status={derivedStatus} compact />
       </div>
       {coachName && (
         <p className="text-[11.5px] text-on-surface-variant mb-2">
@@ -471,7 +640,7 @@ function PackageOptionCard({
       )}
       <div className="flex items-center gap-2 mt-1">
         <span className="text-[11px] text-on-surface-variant tabular-nums">
-          {booking.completedSessions}/{booking.totalSessions} buổi
+          {completedSessions}/{booking.totalSessions} buổi
         </span>
         <div className="flex-1 h-1 rounded-full bg-surface-container-high overflow-hidden">
           <div
@@ -500,10 +669,12 @@ function PackageNavigator({
   bookings,
   selectedId,
   onSelect,
+  sessionCountMap,
 }: {
   bookings: Booking[];
   selectedId: string;
   onSelect: (id: string) => void;
+  sessionCountMap: Map<string, number>;
 }) {
   return (
     <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden shadow-[0_1px_2px_rgba(15,15,30,0.04),0_4px_16px_-8px_rgba(15,15,30,0.05)]">
@@ -521,6 +692,7 @@ function PackageNavigator({
             key={b.id}
             booking={b}
             selected={b.id === selectedId}
+            completedOverride={sessionCountMap.get(b.id)}
             onSelect={onSelect}
           />
         ))}
@@ -532,10 +704,12 @@ function PackageNavigator({
 function PackageNavCard({
   booking,
   selected,
+  completedOverride,
   onSelect,
 }: {
   booking: Booking;
   selected: boolean;
+  completedOverride?: number;
   onSelect: (id: string) => void;
 }) {
   const { data: coach } = useApiResource(
@@ -544,8 +718,10 @@ function PackageNavCard({
   );
   const coachName = coach?.name;
   const displayName = getPackageDisplayName(booking, coachName);
+  const completedSessions = completedOverride ?? booking.completedSessions;
+  const derivedStatus = effectiveStatus(booking, completedOverride);
   const pct = booking.totalSessions
-    ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
+    ? Math.round((completedSessions / booking.totalSessions) * 100)
     : 0;
 
   return (
@@ -577,7 +753,7 @@ function PackageNavCard({
           >
             {displayName}
           </p>
-          <StatusBadge status={booking.status} compact />
+          <StatusBadge status={derivedStatus} compact />
         </div>
         {/* Coach */}
         {coachName && (
@@ -594,7 +770,7 @@ function PackageNavCard({
             />
           </div>
           <span className="text-[10.5px] text-on-surface-variant tabular-nums shrink-0">
-            {booking.completedSessions}/{booking.totalSessions}
+            {completedSessions}/{booking.totalSessions}
           </span>
         </div>
         {/* Date */}
@@ -614,10 +790,14 @@ function PackageNavCard({
 
 function SelectedPackageOverview({
   booking,
+  completedOverride,
+  statusOverride,
   onCheckIn,
   onAssess,
 }: {
   booking: Booking;
+  completedOverride?: number;
+  statusOverride?: string;
   onCheckIn: () => void;
   onAssess: () => void;
 }) {
@@ -629,10 +809,12 @@ function SelectedPackageOverview({
   const coachName =
     coach?.name ?? `Coach ${booking.coachId.slice(0, 4).toUpperCase()}`;
   const displayName = getPackageDisplayName(booking, coachName);
+  const completedSessions = completedOverride ?? booking.completedSessions;
+  const derivedStatus = statusOverride ?? booking.status;
   const pct = booking.totalSessions
-    ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
+    ? Math.round((completedSessions / booking.totalSessions) * 100)
     : 0;
-  const remaining = booking.totalSessions - booking.completedSessions;
+  const remaining = Math.max(0, booking.totalSessions - completedSessions);
 
   return (
     <motion.div
@@ -651,7 +833,7 @@ function SelectedPackageOverview({
               <h2 className="text-[16px] font-semibold text-on-surface">
                 {displayName}
               </h2>
-              <StatusBadge status={booking.status} />
+              <StatusBadge status={derivedStatus} />
             </div>
 
             {/* Meta row */}
@@ -659,7 +841,7 @@ function SelectedPackageOverview({
               <span className="flex items-center gap-1.5">
                 <Dumbbell size={13} className="text-primary shrink-0" />
                 <span className="tabular-nums font-semibold text-on-surface">
-                  {booking.completedSessions}
+                  {completedSessions}
                 </span>
                 <span>/ {booking.totalSessions} buổi</span>
               </span>
@@ -709,13 +891,15 @@ function SelectedPackageOverview({
 
           {/* CTAs */}
           <div className="flex flex-row sm:flex-col items-center sm:items-stretch gap-2 shrink-0">
-            <button
-              onClick={onCheckIn}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-4px_rgba(53,37,205,0.5)] hover:bg-[#2d20b8] transition-all hover:-translate-y-[1px] active:translate-y-0"
-            >
-              <HeartPulse size={14} />
-              Check-in hôm nay
-            </button>
+            {derivedStatus !== "completed" && (
+              <button
+                onClick={onCheckIn}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-4px_rgba(53,37,205,0.5)] hover:bg-[#2d20b8] transition-all hover:-translate-y-[1px] active:translate-y-0"
+              >
+                <HeartPulse size={14} />
+                Check-in hôm nay
+              </button>
+            )}
             <button
               onClick={onAssess}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low text-[12px] text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
@@ -1438,9 +1622,10 @@ function AssessmentForm({
         },
         !!existing,
       );
+      showSuccess("Đã lưu đánh giá thể lực.");
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lưu đánh giá thất bại.");
+      showApiError(e);
       setSaving(false);
     }
   };
@@ -2126,10 +2311,8 @@ function CheckInForm({
   const [sleep, setSleep] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const save = async () => {
-    setError(null);
     setSaving(true);
     try {
       await api.createProgressCheckIn(bookingId, {
@@ -2141,9 +2324,10 @@ function CheckInForm({
         sleepQuality: sleep || undefined,
         learnerNote: note || undefined,
       });
+      showSuccess("Đã lưu check-in thành công.");
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lưu check-in thất bại.");
+      showApiError(e);
       setSaving(false);
     }
   };
@@ -2211,11 +2395,6 @@ function CheckInForm({
           placeholder="Cảm giác sau buổi tập…"
         />
       </Labeled>
-      {error && (
-        <p className="text-body-sm text-[#ba1a1a]" role="alert">
-          {error}
-        </p>
-      )}
       <div className="flex items-center justify-end gap-2">
         <button
           onClick={onCancel}

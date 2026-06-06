@@ -12,6 +12,7 @@ import { AICoachCard } from "@/components/dashboard/AICoachCard";
 import { api } from "@/lib/api";
 import { devUserIdForRole } from "@/lib/auth";
 import { NOW } from "@/lib/mock/clock";
+import { isMockMode } from "@/lib/api-client";
 import { cn, relativeDay } from "@/lib/utils";
 
 const SESSION_ACCENT: Record<string, string> = {
@@ -35,10 +36,11 @@ export default async function LearnerDashboardPage() {
 
   if (!learner) notFound();
 
-  const greetingHour = new Date(NOW).getHours();
+  const todayAnchor = isMockMode() ? NOW : new Date();
+  const greetingHour = todayAnchor.getHours();
   const greeting =
     greetingHour < 12 ? "Chào buổi sáng" : greetingHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
-  const todayLabel = new Date(NOW).toLocaleDateString("vi-VN", {
+  const todayLabel = todayAnchor.toLocaleDateString("vi-VN", {
     weekday: "long",
     day: "numeric",
     month: "long",

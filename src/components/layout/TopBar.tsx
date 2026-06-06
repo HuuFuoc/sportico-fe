@@ -13,6 +13,7 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 interface TopBarProps {
   role: AppRole;
   title?: string;
+  searchPlaceholder?: string;
 }
 
 function useCurrentUser(): { name: string; avatarUrl: string | null } | null {
@@ -35,7 +36,7 @@ function useCurrentUser(): { name: string; avatarUrl: string | null } | null {
   return null;
 }
 
-export function TopBar({ role, title }: TopBarProps) {
+export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
   const [showNotifs, setShowNotifs] = useState(false);
   const toggleMobileSidebar = useAppStore((s) => s.toggleMobileSidebar);
   const { data: notificationsData } = useApiResource(
@@ -75,11 +76,12 @@ export function TopBar({ role, title }: TopBarProps) {
   };
 
   const placeholder =
-    role === "coach"
+    searchPlaceholder ??
+    (role === "coach"
       ? "Tìm học viên hoặc buổi tập..."
       : role === "admin"
         ? "Tìm phân tích hoặc người dùng..."
-        : "Tìm buổi tập hoặc HLV...";
+        : "Tìm buổi tập hoặc HLV...");
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-surface-container-lowest border-b border-[var(--color-border-soft)] flex items-center justify-between px-4 sm:px-6 z-30">

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, CheckCircle2, Lock, Mail } from "lucide-react";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { PasswordField } from "@/components/auth/PasswordField";
@@ -17,6 +16,7 @@ import { getCurrentUser } from "@/lib/auth-session";
 import { isMockMode } from "@/lib/api-client";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { useAuthStore } from "@/lib/store/useAuthStore";
+import { showError, showInfo } from "@/lib/toast";
 import type { Role } from "@/types";
 import {
   loginSchema,
@@ -32,10 +32,7 @@ function roleFromBackend(roles: string[]): Role {
   return "learner";
 }
 
-/** Post-login destination by role — goes to the personal profile settings page
- *  with ?fromLogin=1 so the page shows an onboarding banner + "Skip" button.
- *  The user can complete their profile or navigate straight to their dashboard.
- */
+/** Post-login destination by role. */
 function postLoginHref(role: Role): string {
   if (role === "admin") return "/admin/settings?fromLogin=1";
   if (role === "coach") return "/coach/settings?fromLogin=1";
@@ -46,14 +43,12 @@ export default function LoginPage() {
   const router = useRouter();
   const setRole = useAppStore((s) => s.setRole);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
-  const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
-    setSessionExpired(
-      new URLSearchParams(window.location.search).get("session") === "expired",
-    );
+    if (new URLSearchParams(window.location.search).get("session") === "expired") {
+      showInfo("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+    }
   }, []);
 
   const {
@@ -67,10 +62,8 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginValues) => {
-    setServerError(null);
     try {
-      // Calls the real Auth API in live mode; resolves a demo success in mock
-      // mode. `login()` stores the access/refresh tokens centrally.
+      // 1. Authenticate — stores the new access + refresh tokens.
       await login({
         email: values.email,
         password: values.password,
@@ -79,41 +72,46 @@ export default function LoginPage() {
 
       setSuccess(true);
 
-      // Decode the JWT locally — the access token issued by login already
-      // contains the user's role and id claims, so no extra network call is
-      // needed here. This avoids a race where GET /api/auth/me returns 401
-      // (e.g. token not yet propagated, unverified account) and the 401
-      // handler would wipe the just-issued tokens and loop back to /login.
-      //
-      // Background-hydrate the auth store so downstream pages have the full
-      // user object without an extra round-trip; errors are intentionally
-      // swallowed — pages will re-hydrate on load.
       let role: Role = "learner";
-      const jwt = getCurrentUser(); // auth-session.ts — local JWT decode, no network
-      role = jwt?.role ?? "learner";
-      if (jwt?.userId) setCurrentUserId(jwt.userId);
 
       if (!isMockMode()) {
-        useAuthStore.getState().hydrate({ force: true }).then((me) => {
-          if (me) {
-            // If the JWT role differs from the authoritative backend role
-            // (e.g. coach profile just created), update the store silently.
-            const backendRole = roleFromBackend(me.roles);
-            useAppStore.getState().setRole(backendRole);
-            if (me.id) useAppStore.getState().setCurrentUserId(me.id);
-          }
-        }).catch(() => {
-          // Background hydration failure is non-fatal.
-        });
+        // 2. Fetch the authoritative user from GET /api/auth/me BEFORE redirecting.
+        //    This is the only reliable source of the user's role — the JWT alone
+        //    may not carry role claims (ASP.NET Identity embeds them at token
+        //    issue time, but a freshly promoted coach might still have an old JWT).
+        //    hydrate() uses suppressAuthRedirect so a 401 cannot clear the
+        //    just-issued tokens or bounce back to /login.
+        //    hydrate() never throws — it returns null on failure.
+        const me = await useAuthStore.getState().hydrate({ force: true });
+        if (me) {
+          role = roleFromBackend(me.roles);
+          useAppStore.getState().setRole(role);
+          if (me.id) useAppStore.getState().setCurrentUserId(me.id);
+        } else {
+          // /me unavailable (e.g. account not active yet) — fall back to the
+          // role encoded in the JWT. If the JWT has no role claim, we land on
+          // the learner dashboard which is the safest default.
+          const jwt = getCurrentUser();
+          role = jwt?.role ?? "learner";
+          if (jwt?.userId) setCurrentUserId(jwt.userId);
+          setRole(role);
+        }
+      } else {
+        // Mock mode: "mock-access-token" is not a real JWT so role stays "learner".
+        const jwt = getCurrentUser();
+        role = jwt?.role ?? "learner";
+        if (jwt?.userId) setCurrentUserId(jwt.userId);
+        setRole(role);
       }
 
-      setRole(role);
-      // Honour ?redirect= set by the 401 interceptor (internal paths only).
+      // 3. Redirect to the correct dashboard for this user's role.
+      //    Honour ?redirect= placed by the 401 interceptor (internal paths only).
       const sp = new URLSearchParams(window.location.search);
       const dest = sp.get("redirect");
       router.push(dest && dest.startsWith("/") ? dest : postLoginHref(role));
     } catch (err) {
-      setServerError(
+      setSuccess(false);
+      showError(
         err instanceof AuthError
           ? err.message
           : "Đã xảy ra lỗi. Vui lòng thử lại.",
@@ -134,12 +132,6 @@ export default function LoginPage() {
         }
       >
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-          {sessionExpired && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3.5 py-3 text-[13px] text-amber-800">
-              Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.
-            </div>
-          )}
-
           <AuthInput
             label="Email"
             type="email"
@@ -173,29 +165,13 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <AnimatePresence>
-            {serverError && (
-              <motion.div
-                role="alert"
-                initial={{ opacity: 0, y: -4, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: "auto" }}
-                exit={{ opacity: 0, y: -4, height: 0 }}
-                className="overflow-hidden"
-              >
-                <p className="rounded-[10px] border border-rose-200 bg-rose-50 px-3 py-2 text-[12.5px] font-medium text-rose-700">
-                  {serverError}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <AuthButton
             type="submit"
             loading={isSubmitting}
             disabled={success}
             trailing={success ? <CheckCircle2 size={15} /> : <ArrowRight size={15} />}
           >
-            {success ? "Đăng nhập thành công – đang chuyển hướng…" : "Đăng nhập"}
+            {success ? "Đang xác minh tài khoản…" : "Đăng nhập"}
           </AuthButton>
         </form>
       </AuthCard>

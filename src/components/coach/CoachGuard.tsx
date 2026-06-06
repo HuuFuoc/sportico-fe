@@ -84,7 +84,14 @@ export function CoachGuard({ children }: { children: React.ReactNode }) {
     if (status === "loading") return;
 
     // Rule 4: hydration failed → go to login.
+    // Exception: if a token exists and status is "unauthenticated", this may be
+    // stale state from a previous clear(). Re-hydrate before giving up so a
+    // freshly-logged-in coach is not bounced back to /login.
     if (status === "unauthenticated") {
+      if (getAccessToken()) {
+        void hydrate({ force: true });
+        return;
+      }
       router.replace("/login");
       return;
     }

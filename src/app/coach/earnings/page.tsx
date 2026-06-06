@@ -83,45 +83,51 @@ const STATUS_META: Record<
   { label: string; pill: string; icon: typeof CheckCircle2 }
 > = {
   paid: {
-    label: "Đã trả",
+    label: "Đã nhận tiền",
     pill: "bg-success-container text-[#1f7a4d] border-[#bce8c8]",
     icon: CheckCircle2,
   },
   pending: {
-    label: "Đang chờ",
+    label: "Đang chờ admin duyệt",
     pill: "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60",
     icon: Clock,
   },
   approved: {
-    label: "Đã duyệt",
+    label: "Đã duyệt — chờ chuyển khoản",
     pill: "bg-blue-50 text-blue-700 border-blue-200",
     icon: Hourglass,
   },
   processing: {
-    label: "Đang xử lý",
+    label: "Đang chuyển khoản",
     pill: "bg-primary/10 text-primary border-primary/20",
     icon: Hourglass,
   },
   failed: {
-    label: "Thất bại",
+    label: "Chuyển khoản thất bại",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     icon: XCircle,
   },
   rejected: {
-    label: "Đã từ chối",
+    label: "Bị từ chối",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
+    icon: XCircle,
+  },
+  cancelled: {
+    label: "Đã hủy",
+    pill: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
     icon: XCircle,
   },
 };
 
 const STATUS_FILTER_LABELS: Record<Payout["status"] | "all", string> = {
   all: "Tất cả",
-  paid: "Đã trả",
-  pending: "Đang chờ",
-  processing: "Đang xử lý",
+  paid: "Đã nhận tiền",
+  pending: "Chờ duyệt",
+  processing: "Đang chuyển",
   approved: "Đã duyệt",
   failed: "Thất bại",
   rejected: "Từ chối",
+  cancelled: "Đã hủy",
 };
 
 // ============================================================================
@@ -1298,14 +1304,17 @@ function PayoutTable({
             </div>
 
             {/* Status filter */}
-            <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-lg">
+            <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-lg flex-wrap">
               {(
                 [
                   "all",
                   "paid",
                   "pending",
+                  "approved",
                   "processing",
                   "failed",
+                  "rejected",
+                  "cancelled",
                 ] as const
               ).map((s) => (
                 <button
@@ -1479,9 +1488,22 @@ function PayoutTable({
                                 },
                               )}
                             />
+                            {p.processingAt && (
+                              <DetailItem
+                                label="Ngày bắt đầu chuyển"
+                                value={new Date(p.processingAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                              />
+                            )}
+                            {p.paidAt && (
+                              <DetailItem
+                                label="Ngày hoàn tất"
+                                value={new Date(p.paidAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                highlight
+                              />
+                            )}
                             <DetailItem
-                              label="Mã PayOS"
-                              value={p.payOsReferenceId ?? "—"}
+                              label="Mã PayOS Payout"
+                              value={p.payOsPayoutId ?? "—"}
                               mono
                             />
                             <DetailItem
@@ -1489,6 +1511,16 @@ function PayoutTable({
                               value={p.payOsPayoutStatus ?? "—"}
                             />
                           </div>
+
+                          {/* Status description */}
+                          {p.status === "processing" && (
+                            <div className="mt-3 flex items-start gap-2 p-3 rounded-[10px] bg-primary/[0.05] border border-primary/20">
+                              <Info size={14} className="text-primary shrink-0 mt-0.5" />
+                              <p className="text-[12.5px] text-primary">
+                                Yêu cầu rút tiền đang được PayOS xử lý. Trạng thái sẽ tự cập nhật khi chuyển khoản hoàn tất.
+                              </p>
+                            </div>
+                          )}
 
                           {/* Failure reason — shown directly, not behind icon */}
                           {isFailed && (
@@ -1498,8 +1530,10 @@ function PayoutTable({
                                 className="text-[#ba1a1a] shrink-0 mt-0.5"
                               />
                               <p className="text-[12.5px] text-[#ba1a1a]">
-                                <span className="font-semibold">Lý do: </span>
-                                {failureText ?? "Chưa có lý do cụ thể."}
+                                <span className="font-semibold">
+                                  {p.status === "failed" ? "Chuyển khoản thất bại — tiền đã hoàn về số dư khả dụng. " : "Bị từ chối — tiền đã hoàn về số dư khả dụng. "}
+                                </span>
+                                {failureText && <>Lý do: {failureText}</>}
                               </p>
                             </div>
                           )}
@@ -1717,6 +1751,13 @@ function ReceiptModal({
                   {receipt.note}
                 </p>
               )}
+
+              <div className="flex items-start gap-2 p-3 rounded-[10px] bg-emerald-50 border border-emerald-200 mt-1">
+                <ShieldCheck size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-emerald-700">
+                  Phí nền tảng đã được trừ khi học viên mua gói tập. Không có phí bổ sung nào bị trừ trong lần rút tiền này.
+                </p>
+              </div>
             </div>
           )}
         </div>

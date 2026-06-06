@@ -45,7 +45,7 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   BOOKING_NOT_FOUND: "Không tìm thấy gói đặt lịch.",
   BOOKING_NOT_ACTIVE: "Gói tập đã hết hạn hoặc chưa được kích hoạt.",
   BOOKING_EXPIRED: "Gói tập đã hết hạn.",
-  SESSION_LIMIT_EXCEEDED: "Gói này đã dùng hết số buổi.",
+  SESSION_LIMIT_EXCEEDED: "Gói tập này đã hết số buổi có thể đặt. Vui lòng kiểm tra lại gói tập hoặc mua gói mới.",
   SCHEDULE_CONFLICT: "Khung giờ này vừa được đặt. Vui lòng chọn khung giờ khác.",
   ScheduleConflict: "Khung giờ này vừa được đặt. Vui lòng chọn khung giờ khác.",
   SLOT_NOT_AVAILABLE: "Khung giờ này không còn trống. Vui lòng chọn khung giờ khác.",
@@ -63,6 +63,14 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   WITHDRAWAL_INSUFFICIENT_BALANCE: "Số dư ví không đủ để rút.",
   WITHDRAWAL_AMOUNT_TOO_SMALL: "Số tiền rút tối thiểu chưa đạt.",
   WITHDRAWAL_PENDING_EXISTS: "Bạn đang có yêu cầu rút tiền chờ xử lý.",
+  WITHDRAWAL_REQUEST_NOT_FOUND: "Không tìm thấy yêu cầu rút tiền.",
+  INSUFFICIENT_WALLET_BALANCE: "Số dư khả dụng không đủ để thực hiện yêu cầu.",
+  INVALID_WITHDRAWAL_STATUS: "Trạng thái yêu cầu rút tiền không hợp lệ cho thao tác này.",
+  PAYOUT_ALREADY_PROCESSING: "PayOS đang xử lý giao dịch này. Vui lòng cập nhật trạng thái trước khi thao tác tiếp.",
+  PAYOUT_ALREADY_PAID: "Yêu cầu rút tiền này đã được thanh toán.",
+  PAYOUT_NOT_FOUND: "Không tìm thấy yêu cầu rút tiền.",
+  PAYOUT_REFRESH_FAILED: "Không thể làm mới trạng thái chuyển khoản. Vui lòng thử lại.",
+  PAYOUT_STATUS_REFRESH_REQUIRED: "Vui lòng cập nhật trạng thái PayOS trước khi thao tác tiếp.",
   // Payout account
   PAYOUT_ACCOUNT_REQUIRED:
     "Tài khoản nhận tiền chưa được xác minh. Vui lòng chờ quản trị viên duyệt trước khi rút.",
@@ -135,16 +143,34 @@ export function validationDetails(err: unknown): string[] {
 
 /**
  * Lightweight variant for session / booking components that catch plain `Error`
- * thrown by `apiFetch`. The error message already contains the BE message from
- * `unwrap()` — this function maps known patterns to friendlier copy.
+ * thrown by `apiFetch`. Reads the `body` of ApiError first (contains the
+ * backend's JSON error envelope with `code`), then falls back to scanning the
+ * message string.
  */
 export function sessionErrorMessage(err: unknown, fallback = "Thao tác thất bại. Vui lòng thử lại."): string {
-  const raw = err instanceof Error ? err.message : String(err);
+  // 1. ApiError from apiFetch: body contains { error: { code } } or { code }.
+  if (err instanceof Error && err.name === "ApiError") {
+    const body = (err as { body?: unknown }).body;
+    if (body && typeof body === "object") {
+      const envelope = body as { error?: { code?: string; message?: string }; code?: string; message?: string };
+      const e = envelope.error ?? envelope;
+      if (e.code && ERROR_MESSAGES_VI[e.code]) return ERROR_MESSAGES_VI[e.code];
+      // HTTP 409 without a code → generic conflict message
+      const status = (err as { status?: number }).status;
+      if (!e.code && status === 409) return "Khung giờ hoặc gói tập đang xảy ra xung đột. Vui lòng thử lại.";
+      if (e.message?.trim()) return e.message.trim();
+    }
+    // HTTP 409 fallback when body could not be parsed
+    const status = (err as { status?: number }).status;
+    if (status === 409) return "Khung giờ hoặc gói tập đang xảy ra xung đột. Vui lòng thử lại.";
+  }
 
-  // Scan the raw message for known backend error code patterns.
+  // 2. Scan the raw message for known backend error code patterns.
+  const raw = err instanceof Error ? err.message : String(err);
   for (const [code, msg] of Object.entries(ERROR_MESSAGES_VI)) {
     if (raw.toLowerCase().includes(code.toLowerCase())) return msg;
   }
 
+  // 3. Raw message or fallback.
   return raw.trim() || fallback;
 }

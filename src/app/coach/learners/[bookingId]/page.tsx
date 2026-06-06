@@ -1018,6 +1018,7 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
     data: booking,
     loading: bookingLoading,
     error: bookingError,
+    refetch: refetchBooking,
   } = useApiResource(() => api.fetchBooking(bookingId), [bookingId]);
 
   // Fetch learner profile once booking is loaded and learnerId is available.
@@ -1050,6 +1051,19 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
     [sessionsData],
   );
 
+  // Completed-only count: derive from sessions list if available (more accurate
+  // than booking.completedSessions which may lag), fall back to booking field.
+  const derivedCompletedSessions = useMemo(
+    () =>
+      sessionsData !== null
+        ? sessionsData.filter((s) => (s.status ?? "").toLowerCase() === "completed").length
+        : null,
+    [sessionsData],
+  );
+
+  const displayCompletedSessions =
+    derivedCompletedSessions ?? booking?.completedSessions ?? 0;
+
   const {
     data: checkInsData,
     loading: checkInsLoading,
@@ -1072,6 +1086,7 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
       else await api.completeSession(sessionId);
       setSessionActionErr(null);
       refetchSessions();
+      if (action === "complete") refetchBooking();
     } catch (e) {
       setSessionActionErr(e instanceof Error ? e.message : "Lỗi khi cập nhật buổi tập. Vui lòng thử lại.");
     } finally {
@@ -1174,8 +1189,12 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
               />
               <MetaCell
                 label="Tiến độ buổi"
-                value={`${booking.completedSessions}/${booking.totalSessions} buổi`}
-                sub={`còn ${booking.totalSessions - booking.completedSessions} buổi`}
+                value={`${displayCompletedSessions}/${booking.totalSessions} hoàn thành`}
+                sub={
+                  booking.usedSessions != null && booking.usedSessions !== displayCompletedSessions
+                    ? `đã giữ chỗ ${booking.usedSessions}/${booking.totalSessions} · còn ${booking.remainingSessions ?? 0}`
+                    : `còn ${booking.remainingSessions ?? Math.max(0, booking.totalSessions - displayCompletedSessions)} buổi`
+                }
               />
               <MetaCell
                 label="Tổng thanh toán"
@@ -1189,7 +1208,7 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
                 <span>Tiến độ hoàn thành</span>
                 <span className="tabular-nums font-semibold text-on-surface">
                   {booking.totalSessions > 0
-                    ? Math.min(100, Math.round((booking.completedSessions / booking.totalSessions) * 100))
+                    ? Math.min(100, Math.round((displayCompletedSessions / booking.totalSessions) * 100))
                     : 0}%
                 </span>
               </div>
@@ -1197,7 +1216,7 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff] transition-all"
                   style={{
-                    width: `${booking.totalSessions > 0 ? Math.min(100, Math.round((booking.completedSessions / booking.totalSessions) * 100)) : 0}%`,
+                    width: `${booking.totalSessions > 0 ? Math.min(100, Math.round((displayCompletedSessions / booking.totalSessions) * 100)) : 0}%`,
                   }}
                 />
               </div>

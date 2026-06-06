@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { savePendingPayos } from "@/lib/payos-pending";
+import { showError, showApiError } from "@/lib/toast";
 
 interface BookSessionButtonProps {
   /** Coach id from the route — used to resolve the live package client-side. */
@@ -31,11 +32,9 @@ export function BookSessionButton({
 }: BookSessionButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleBook = async () => {
     if (loading) return;
-    setError(null);
     setLoading(true);
     try {
       let pkgId = packageId;
@@ -44,7 +43,7 @@ export function BookSessionButton({
         pkgId = coach?.packageId;
       }
       if (!pkgId) {
-        setError("Huấn luyện viên chưa có gói tập. Vui lòng liên hệ trực tiếp.");
+        showError("Huấn luyện viên chưa có gói tập. Vui lòng liên hệ trực tiếp.");
         setLoading(false);
         return;
       }
@@ -64,31 +63,22 @@ export function BookSessionButton({
       }
       router.push("/learner/bookings");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Đặt lịch thất bại. Vui lòng thử lại.",
-      );
+      showApiError(err);
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <button
-        type="button"
-        onClick={() => void handleBook()}
-        disabled={loading}
-        className={cn(
-          "px-5 py-2.5 bg-primary text-on-primary rounded-[6px] text-body-base font-medium hover:bg-[#2d20b8] transition-colors disabled:opacity-60 disabled:cursor-not-allowed",
-          className,
-        )}
-      >
-        {loading ? "Đang xử lý…" : label}
-      </button>
-      {error && (
-        <p className="text-body-sm text-red-600" role="alert">
-          {error}
-        </p>
+    <button
+      type="button"
+      onClick={() => void handleBook()}
+      disabled={loading}
+      className={cn(
+        "px-5 py-2.5 bg-primary text-on-primary rounded-[6px] text-body-base font-medium hover:bg-[#2d20b8] transition-colors disabled:opacity-60 disabled:cursor-not-allowed",
+        className,
       )}
-    </div>
+    >
+      {loading ? "Đang xử lý…" : label}
+    </button>
   );
 }

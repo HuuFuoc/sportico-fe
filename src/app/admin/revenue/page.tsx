@@ -57,8 +57,10 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency } from "@/lib/utils";
+import { showApiError } from "@/lib/toast";
 import { api } from "@/lib/api";
 import type { WithdrawalReceiptResponse } from "@/lib/api";
+import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Coach, Payout } from "@/types";
@@ -201,7 +203,7 @@ export default function AdminRevenuePage() {
       await fn();
       refetch();
     } catch (e) {
-      console.error(e);
+      showApiError(e);
     } finally {
       setActionLoading(null);
     }
@@ -230,25 +232,43 @@ export default function AdminRevenuePage() {
     }
   };
 
-  // Enrich payouts
+  // Snapshot "now" outside useMemo so the computation is pure (no Date.now() inside).
+  const [nowMs] = useState(() => Date.now());
+
+  // Enrich payouts.
+  // Mock mode: inject demo metadata (rail, country, fake risk score, ai flag).
+  // Live mode: compute only real/derivable fields — no fake metadata on real money.
   const payouts = useMemo<EnrichedPayout[]>(
     () =>
-      rawPayouts.map((p, i) => ({
-        ...p,
-        rail: (["ACH", "Wire", "Card", "SEPA"] as PayoutRail[])[i % 4],
-        country: COUNTRIES[i % COUNTRIES.length],
-        riskScore: p.status === "failed" ? 78 : p.status === "pending" ? 42 : 18,
-        aiFlag: p.status === "failed" || i === 2,
-        failureReason:
-          p.status === "failed" ? "Tài khoản đóng (R02)" : undefined,
-        ageHours:
-          p.status === "pending"
-            ? 28 + i * 2
-            : p.status === "processing"
-              ? 6
-              : 0,
-      })),
-    [rawPayouts],
+      rawPayouts.map((p, i) => {
+        const ageHours = p.date
+          ? Math.max(0, Math.floor((nowMs - new Date(p.date).getTime()) / 3_600_000))
+          : 0;
+        const statusRisk = (p.status ?? "").toLowerCase() === "failed" ? 75
+          : (p.status ?? "").toLowerCase() === "pending" ? 40
+          : 10;
+        if (isMockMode()) {
+          return {
+            ...p,
+            rail: (["ACH", "Wire", "Card", "SEPA"] as PayoutRail[])[i % 4],
+            country: COUNTRIES[i % COUNTRIES.length],
+            riskScore: (p.status ?? "").toLowerCase() === "failed" ? 78 : (p.status ?? "").toLowerCase() === "pending" ? 42 : 18,
+            aiFlag: (p.status ?? "").toLowerCase() === "failed" || i === 2,
+            failureReason: (p.status ?? "").toLowerCase() === "failed" ? "Tài khoản đóng (R02)" : undefined,
+            ageHours: (p.status ?? "").toLowerCase() === "pending" ? 28 + i * 2 : (p.status ?? "").toLowerCase() === "processing" ? 6 : 0,
+          };
+        }
+        return {
+          ...p,
+          rail: "—" as PayoutRail,
+          country: "—",
+          riskScore: statusRisk,
+          aiFlag: (p.status ?? "").toLowerCase() === "failed",
+          failureReason: undefined,
+          ageHours,
+        };
+      }),
+    [rawPayouts, nowMs],
   );
 
   const filteredPayouts = useMemo(() => {
@@ -391,79 +411,94 @@ export default function AdminRevenuePage() {
         </motion.header>
 
         {/* ============ KPI STRIP ============ */}
-        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-[var(--color-border-soft)] rounded-[12px] border border-[var(--color-border-soft)] overflow-hidden">
-          <Kpi
-            label="Tổng khối lượng"
-            value={formatCurrency(GROSS_VOLUME)}
-            delta={`+${pctDelta(last.revenue, prev.revenue)}%`}
-            deltaDir="up"
-            compare="so tháng trước"
-            spark={seedSpark(1, 600000, 80000)}
-            tone="neutral"
-            insight="Đang cao hơn mức trung bình 90 ngày."
-          />
-          <Kpi
-            label="Doanh thu ròng"
-            value={formatCurrency(NET_REVENUE)}
-            delta={`+${pctDelta(last.fees, prev.fees)}%`}
-            deltaDir="up"
-            compare="so tháng trước"
-            spark={seedSpark(2, 90000, 12000)}
-            tone="good"
-          />
-          <Kpi
-            label="Biên lợi nhuận"
-            value={`${PLATFORM_MARGIN.toFixed(1)}%`}
-            delta="−0.4 bps"
-            deltaDir="down"
-            compare="nén QoQ"
-            spark={seedSparkVar(3, 15.2, 0.4)}
-            tone="warn"
-            insight="Nén nhẹ — kiểm tra chi phí kênh ACH."
-          />
-          <Kpi
-            label="Nợ đang chờ"
-            value={formatCurrency(PENDING_LIABILITY)}
-            delta="14 tx"
-            deltaDir="neutral"
-            compare="đang xử lý"
-            spark={seedSpark(4, 120000, 18000)}
-            tone="neutral"
-          />
-          <Kpi
-            label="Tỷ lệ thất bại"
-            value={`${FAILED_RATE.toFixed(2)}%`}
-            delta="+18%"
-            deltaDir="up"
-            compare="so TB 7 ngày"
-            spark={seedSparkVar(5, 1.6, 0.6)}
-            tone="danger"
-            insight="Tăng đột biến kênh ACH — cần điều tra"
-            anomaly
-          />
-          <Kpi
-            label="Rủi ro dự trữ"
-            value={formatCurrency(RESERVE_EXPOSURE)}
-            delta="0.9x"
-            deltaDir="neutral"
-            compare="tỷ lệ bảo phủ"
-            spark={seedSpark(6, 85000, 6000)}
-            tone="good"
-          />
-        </section>
+        {isMockMode() ? (
+          <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-[var(--color-border-soft)] rounded-[12px] border border-[var(--color-border-soft)] overflow-hidden">
+            <Kpi
+              label="Tổng khối lượng"
+              value={formatCurrency(GROSS_VOLUME)}
+              delta={`+${pctDelta(last.revenue, prev.revenue)}%`}
+              deltaDir="up"
+              compare="so tháng trước"
+              spark={seedSpark(1, 600000, 80000)}
+              tone="neutral"
+              insight="Đang cao hơn mức trung bình 90 ngày."
+            />
+            <Kpi
+              label="Doanh thu ròng"
+              value={formatCurrency(NET_REVENUE)}
+              delta={`+${pctDelta(last.fees, prev.fees)}%`}
+              deltaDir="up"
+              compare="so tháng trước"
+              spark={seedSpark(2, 90000, 12000)}
+              tone="good"
+            />
+            <Kpi
+              label="Biên lợi nhuận"
+              value={`${PLATFORM_MARGIN.toFixed(1)}%`}
+              delta="−0.4 bps"
+              deltaDir="down"
+              compare="nén QoQ"
+              spark={seedSparkVar(3, 15.2, 0.4)}
+              tone="warn"
+              insight="Nén nhẹ — kiểm tra chi phí kênh ACH."
+            />
+            <Kpi
+              label="Nợ đang chờ"
+              value={formatCurrency(PENDING_LIABILITY)}
+              delta="14 tx"
+              deltaDir="neutral"
+              compare="đang xử lý"
+              spark={seedSpark(4, 120000, 18000)}
+              tone="neutral"
+            />
+            <Kpi
+              label="Tỷ lệ thất bại"
+              value={`${FAILED_RATE.toFixed(2)}%`}
+              delta="+18%"
+              deltaDir="up"
+              compare="so TB 7 ngày"
+              spark={seedSparkVar(5, 1.6, 0.6)}
+              tone="danger"
+              insight="Tăng đột biến kênh ACH — cần điều tra"
+              anomaly
+            />
+            <Kpi
+              label="Rủi ro dự trữ"
+              value={formatCurrency(RESERVE_EXPOSURE)}
+              delta="0.9x"
+              deltaDir="neutral"
+              compare="tỷ lệ bảo phủ"
+              spark={seedSpark(6, 85000, 6000)}
+              tone="good"
+            />
+          </section>
+        ) : (
+          <div className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-5 py-4 flex items-center gap-3 text-[12.5px] text-on-surface-variant">
+            <Info size={16} className="text-on-surface-variant/50 shrink-0" />
+            <span>
+              <span className="font-semibold text-on-surface">Phân tích tài chính tổng hợp</span>{" "}
+              chưa khả dụng — endpoint admin-level revenue đang trong lộ trình phát triển.
+              Dữ liệu thanh toán thực bên dưới được lấy từ API payout queue.
+            </span>
+          </div>
+        )}
 
         {/* ============ MAIN 2-COLUMN ============ */}
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
           {/* ============ LEFT ============ */}
           <div className="space-y-4 min-w-0">
             {/* Cashflow chart */}
-            <CashflowChart data={cashflow} reduce={reduce ?? false} />
+            {isMockMode() ? (
+              <CashflowChart data={cashflow} reduce={reduce ?? false} />
+            ) : null}
 
-            {/* Rail performance + Settlement */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
-              <RailPerformance reduce={reduce ?? false} />
-              <SettlementTimeline reduce={reduce ?? false} />
-            </div>
+            {/* Rail performance + Settlement — demo data, only shown in mock mode */}
+            {isMockMode() && (
+              <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
+                <RailPerformance reduce={reduce ?? false} />
+                <SettlementTimeline reduce={reduce ?? false} />
+              </div>
+            )}
 
             {/* Payouts table */}
             <PayoutTable
@@ -1202,6 +1237,11 @@ const STATUS_META: Record<
     label: "Đã từ chối",
     pill: "bg-[#ffdad6] text-[#ba1a1a] border-[#ffbbb3]",
     dot: "bg-[#ef4444]",
+  },
+  cancelled: {
+    label: "Đã hủy",
+    pill: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
+    dot: "bg-on-surface-variant/40",
   },
 };
 

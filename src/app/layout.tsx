@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Toaster } from "sonner";
 import { ScrollRestoration } from "@/components/common/ScrollRestoration";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
@@ -40,6 +41,12 @@ export default function RootLayout({
         <ScrollRestoration />
         {children}
         <ScrollToTopButton />
+        <Toaster
+          position="top-right"
+          richColors
+          duration={4000}
+          toastOptions={{ style: { fontFamily: "var(--font-inter, Inter, sans-serif)" } }}
+        />
       </body>
     </html>
   );

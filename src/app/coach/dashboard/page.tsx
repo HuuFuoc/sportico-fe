@@ -45,20 +45,24 @@ import { devUserIdForRole } from "@/lib/auth";
 import { getCurrentUserId } from "@/lib/auth-session";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-// NOW is the deterministic mock "today" anchor (see @/lib/mock/clock).
-// TODO(api): once the backend returns real timestamps, use `new Date()` here.
 import { NOW } from "@/lib/mock/clock";
+import { isMockMode } from "@/lib/api-client";
 import { cn, formatCurrency, initials } from "@/lib/utils";
 import type { Session, Learner } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-// Deterministic pseudo-random for stable SSR-friendly sparklines
+// Deterministic pseudo-random for stable SSR-friendly sparklines (mock mode only).
 function seedSpark(seed: number, base: number, jitter: number, len = 8) {
   return Array.from({ length: len }, (_, i) => {
     const noise = Math.sin(i * 1.4 + seed) * jitter;
     return { i, v: Math.max(0, base + i * (jitter / 5) + noise) };
   });
+}
+
+// In live mode the API returns no time-series data → don't show fake sparklines.
+function liveSpark(seed: number, base: number, jitter: number) {
+  return isMockMode() ? seedSpark(seed, base, jitter) : [];
 }
 
 const WEEK_BARS = [
@@ -116,17 +120,19 @@ export default function CoachDashboardPage() {
 
   const upcoming = useMemo(() => upcomingAll.slice(0, 5), [upcomingAll]);
   const todaySessions = useMemo(
-    () =>
-      upcomingAll.filter(
-        (s) => new Date(s.start).toDateString() === NOW.toDateString(),
-      ),
+    () => {
+      const today = isMockMode() ? NOW : new Date();
+      return upcomingAll.filter(
+        (s) => new Date(s.start).toDateString() === today.toDateString(),
+      );
+    },
     [upcomingAll],
   );
   const recentLearners = useMemo(() => learners.slice(0, 5), [learners]);
 
-  // In live mode use dashboard pending-withdrawal count; in mock mode keep 3
-  const followUpCount = dashStats?.pendingWithdrawalRequests ?? 3;
-  const hour = new Date(NOW).getHours();
+  // In live mode use dashboard pending-withdrawal count; in mock mode demo value 3
+  const followUpCount = dashStats?.pendingWithdrawalRequests ?? (isMockMode() ? 3 : 0);
+  const hour = (isMockMode() ? NOW : new Date()).getHours();
   const greeting =
     hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
 
@@ -166,7 +172,7 @@ export default function CoachDashboardPage() {
             value={dashStats?.activeBookings ?? coach?.activeLearners ?? 0}
             trend={dashStats ? `${dashStats.completedBookings} hoàn thành` : undefined}
             accent="indigo"
-            spark={seedSpark(1, 18, 4)}
+            spark={liveSpark(1, 18, 4)}
             delay={0.05}
             reduce={reduce ?? false}
           />
@@ -176,7 +182,7 @@ export default function CoachDashboardPage() {
             value={dashStats?.upcomingSessions ?? upcoming.length}
             trend={dashStats ? `${dashStats.requestedSessions} chờ xác nhận` : "Ổn định"}
             accent="violet"
-            spark={seedSpark(2, 5, 3)}
+            spark={liveSpark(2, 5, 3)}
             delay={0.1}
             reduce={reduce ?? false}
           />
@@ -186,7 +192,7 @@ export default function CoachDashboardPage() {
             value={dashStats ? `${Math.round(dashStats.sessionCompletionRate * 100)}%` : (coach?.rating.toFixed(1) ?? "—")}
             trend={dashStats ? `${dashStats.completedSessions} buổi xong` : `${coach?.reviewCount ?? 0} đánh giá`}
             accent="amber"
-            spark={seedSpark(3, 4.7, 0.2)}
+            spark={liveSpark(3, 4.7, 0.2)}
             delay={0.15}
             reduce={reduce ?? false}
           />
@@ -196,7 +202,7 @@ export default function CoachDashboardPage() {
             value={dashStats ? formatCurrency(dashStats.availableBalance) : formatCurrency(coach?.totalEarningsThisMonth ?? 0)}
             trend={dashStats ? `${formatCurrency(dashStats.pendingBalance)} đang chờ` : undefined}
             accent="emerald"
-            spark={seedSpark(4, 3200, 400)}
+            spark={liveSpark(4, 3200, 400)}
             delay={0.2}
             reduce={reduce ?? false}
           />
@@ -210,34 +216,46 @@ export default function CoachDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnalyticsCard
                 title="Buổi tập"
-                subtitle={dashStats ? `${dashStats.completedSessions} hoàn thành / ${dashStats.cancelledSessions} huỷ` : "Tuần này"}
-                badge={dashStats ? `${dashStats.completedSessions + dashStats.upcomingSessions} tổng` : `${WEEK_BARS.reduce((a, b) => a + b.sessions, 0)} tổng (demo)`}
+                subtitle={dashStats ? `${dashStats.completedSessions} hoàn thành / ${dashStats.cancelledSessions} huỷ` : isMockMode() ? "Tuần này" : "—"}
+                badge={dashStats ? `${dashStats.completedSessions + dashStats.upcomingSessions} tổng` : isMockMode() ? `${WEEK_BARS.reduce((a, b) => a + b.sessions, 0)} tổng (demo)` : undefined}
                 delay={0.25}
                 reduce={reduce ?? false}
               >
-                <SessionsBarChart reduce={reduce ?? false} />
+                {isMockMode() ? (
+                  <SessionsBarChart reduce={reduce ?? false} />
+                ) : (
+                  <ChartUnavailable label="Phân tích buổi tập theo ngày" />
+                )}
               </AnalyticsCard>
 
               <AnalyticsCard
                 title="Thu nhập"
-                subtitle={dashStats ? `Tổng: ${formatCurrency(dashStats.totalEarned)}` : "Xu hướng 7 tháng"}
-                badge={dashStats ? `Đã rút: ${formatCurrency(dashStats.totalWithdrawn)}` : "+18% so năm ngoái (demo)"}
-                badgeTone={dashStats ? undefined : "success"}
+                subtitle={dashStats ? `Tổng: ${formatCurrency(dashStats.totalEarned)}` : isMockMode() ? "Xu hướng 7 tháng" : "—"}
+                badge={dashStats ? `Đã rút: ${formatCurrency(dashStats.totalWithdrawn)}` : isMockMode() ? "+18% so năm ngoái (demo)" : undefined}
+                badgeTone={dashStats || !isMockMode() ? undefined : "success"}
                 delay={0.3}
                 reduce={reduce ?? false}
               >
-                <EarningsLineChart reduce={reduce ?? false} />
+                {isMockMode() ? (
+                  <EarningsLineChart reduce={reduce ?? false} />
+                ) : (
+                  <ChartUnavailable label="Xu hướng thu nhập theo tháng" />
+                )}
               </AnalyticsCard>
 
               <AnalyticsCard
                 title="Gói tập"
-                subtitle={dashStats ? "Phân tích gói tập" : "Trạng thái học viên"}
-                badge={dashStats ? `${dashStats.activeBookings} đang hoạt động` : "Demo"}
+                subtitle={dashStats ? "Phân tích gói tập" : isMockMode() ? "Trạng thái học viên" : "—"}
+                badge={dashStats ? `${dashStats.activeBookings} đang hoạt động` : isMockMode() ? "Demo" : undefined}
                 delay={0.35}
                 reduce={reduce ?? false}
                 className="md:col-span-2 xl:col-span-1"
               >
-                <EngagementDonut reduce={reduce ?? false} />
+                {isMockMode() ? (
+                  <EngagementDonut reduce={reduce ?? false} />
+                ) : (
+                  <ChartUnavailable label="Phân bổ trạng thái gói tập" />
+                )}
               </AnalyticsCard>
             </div>
 
@@ -248,8 +266,10 @@ export default function CoachDashboardPage() {
               reduce={reduce ?? false}
             />
 
-            {/* Recent learners */}
-            <RecentLearners learners={recentLearners} reduce={reduce ?? false} />
+            {/* Recent learners — only rendered in mock/demo mode; no real learner list endpoint */}
+            {isMockMode() && (
+              <RecentLearners learners={recentLearners} reduce={reduce ?? false} />
+            )}
           </div>
 
           {/* ============ RIGHT SIDEBAR ============ */}
@@ -307,7 +327,7 @@ function Hero({
               Bảng điều khiển
             </span>
             <span className="text-[12px] text-on-surface-variant">
-              {new Date(NOW).toLocaleDateString("en-US", {
+              {(isMockMode() ? NOW : new Date()).toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
@@ -447,26 +467,28 @@ function StatCard({
           {value}
         </p>
 
-        <div className="h-8 mt-3 -mx-1">
-          <ClientOnly fallback={<div className="h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={spark}
-                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
-              >
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke={a.stroke}
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={!reduce}
-                  animationDuration={reduce ? 0 : 1100}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-        </div>
+        {spark.length > 0 && (
+          <div className="h-8 mt-3 -mx-1">
+            <ClientOnly fallback={<div className="h-full" />}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={spark}
+                  margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+                >
+                  <Line
+                    type="monotone"
+                    dataKey="v"
+                    stroke={a.stroke}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={!reduce}
+                    animationDuration={reduce ? 0 : 1100}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ClientOnly>
+          </div>
+        )}
 
         {(trend || trendLabel) && (
           <div className="flex items-center gap-1.5 mt-1 text-[11.5px]">
@@ -549,6 +571,19 @@ function AnalyticsCard({
       </div>
       {children}
     </motion.div>
+  );
+}
+
+function ChartUnavailable({ label }: { label: string }) {
+  return (
+    <div className="h-[140px] flex flex-col items-center justify-center gap-2 text-on-surface-variant/50">
+      <Activity size={18} className="opacity-40" />
+      <p className="text-[11px] text-center leading-snug">
+        {label}
+        <br />
+        <span className="opacity-70">Chưa có dữ liệu</span>
+      </p>
+    </div>
   );
 }
 
@@ -1211,7 +1246,7 @@ function UpcomingRow({
   reduce: boolean;
 }) {
   const date = new Date(session.start);
-  const isToday = date.toDateString() === NOW.toDateString();
+  const isToday = date.toDateString() === (isMockMode() ? NOW : new Date()).toDateString();
   const time = date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",

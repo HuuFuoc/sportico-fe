@@ -45,6 +45,7 @@ import { isMockMode } from "@/lib/api-client";
 import { getCurrentUserId } from "@/lib/auth-session";
 import { devUserIdForRole } from "@/lib/auth";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { showSuccess, showInfo, showApiError } from "@/lib/toast";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { AvailabilitySlot, Session } from "@/types";
 
@@ -104,6 +105,8 @@ export default function CoachSchedulePage() {
 
   const [showCreateSlot, setShowCreateSlot] = useState(false);
   const [detailSlot, setDetailSlot] = useState<AvailabilitySlot | null>(null);
+  const [createFromTime, setCreateFromTime] = useState<Date | null>(null);
+  const [detailSession, setDetailSession] = useState<Session | null>(null);
 
   // Learner lookup: mock mode uses mock fixture; live mode resolves via
   // GET /api/users/{id} (AllowAnonymous) for each unique learnerId in sessions.
@@ -196,10 +199,7 @@ export default function CoachSchedulePage() {
         const key = localDateKey(d);
         return weekSessions
           .filter((s) => localDateKey(new Date(s.start)) === key)
-          .sort(
-            (a, b) =>
-              new Date(a.start).getTime() - new Date(b.start).getTime(),
-          );
+          .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
       }),
     [weekDays, weekSessions],
   );
@@ -547,46 +547,90 @@ export default function CoachSchedulePage() {
                         isToday && "bg-primary/[0.015]",
                       )}
                     >
-                      {/* Hour gridlines */}
-                      {Array.from({ length: END_HOUR - START_HOUR }).map(
-                        (_, i) => (
+                      {/* Hour grid lines — click-to-add only, no chips inside */}
+                      {Array.from({ length: END_HOUR - START_HOUR }).map((_, i) => {
+                        const hour = START_HOUR + i;
+                        const hourStart = new Date(d);
+                        hourStart.setHours(hour, 0, 0, 0);
+                        const hasSession = dayBuckets[dayIdx].some(
+                          (s) => new Date(s.start).getHours() === hour,
+                        );
+                        const hasSlot = slotDayBuckets[dayIdx].some(
+                          (sl) =>
+                            new Date(sl.startTime).getHours() === hour &&
+                            sl.status?.toLowerCase() !== "booked",
+                        );
+                        return (
                           <div
                             key={i}
                             style={{ height: HOUR_HEIGHT }}
-                            className={cn(
-                              "border-b border-dashed border-[var(--color-border-soft)]/40 hover:bg-primary/[0.02] transition-colors group cursor-cell",
-                            )}
+                            className="relative border-b border-dashed border-[var(--color-border-soft)]/40 overflow-hidden"
                           >
-                            <span className="opacity-0 group-hover:opacity-100 text-[10px] text-primary/60 pl-1.5 transition-opacity">
-                              + Add
-                            </span>
+                            {!hasSession && !hasSlot && (
+                              <div
+                                onClick={() => {
+                                  setCreateFromTime(hourStart);
+                                  setShowCreateSlot(true);
+                                }}
+                                className="absolute inset-0 group flex items-start cursor-cell hover:bg-primary/[0.02] transition-colors"
+                              >
+                                <span className="opacity-0 group-hover:opacity-100 text-[10px] text-primary/60 pl-1.5 pt-1 transition-opacity">
+                                  + Add
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        ),
-                      )}
+                        );
+                      })}
+
+                      {/* Session chips — absolutely positioned within column, never clipped */}
+                      {dayBuckets[dayIdx].map((s) => {
+                        const start = new Date(s.start);
+                        const top =
+                          (start.getHours() - START_HOUR) * HOUR_HEIGHT +
+                          (start.getMinutes() / 60) * HOUR_HEIGHT;
+                        const height = Math.max(44, (s.durationMinutes / 60) * HOUR_HEIGHT) - 2;
+                        return (
+                          <div
+                            key={s.id}
+                            className="absolute left-1 right-1 z-10 hover:z-20"
+                            style={{ top, height }}
+                          >
+                            <SessionChip
+                              session={s}
+                              onClick={() => setDetailSession(s)}
+                            />
+                          </div>
+                        );
+                      })}
+
+                      {/* Slot chips — absolutely positioned within column */}
+                      {slotDayBuckets[dayIdx]
+                        .filter((sl) => sl.status?.toLowerCase() !== "booked")
+                        .map((sl) => {
+                          const start = new Date(sl.startTime);
+                          const end = new Date(sl.endTime);
+                          const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
+                          const top =
+                            (start.getHours() - START_HOUR) * HOUR_HEIGHT +
+                            (start.getMinutes() / 60) * HOUR_HEIGHT;
+                          const height = Math.max(44, (durationMin / 60) * HOUR_HEIGHT) - 2;
+                          return (
+                            <div
+                              key={sl.id}
+                              className="absolute left-1 right-1 z-10 hover:z-20"
+                              style={{ top, height }}
+                            >
+                              <SlotChip
+                                slot={sl}
+                                onClick={() => setDetailSlot(sl)}
+                              />
+                            </div>
+                          );
+                        })}
 
                       {/* Now indicator */}
                       {isToday && <NowIndicator />}
-
-                      {/* Session blocks */}
-                      {dayBuckets[dayIdx].map((s, i) => (
-                        <SessionBlock
-                          key={s.id}
-                          session={s}
-                          delay={dayIdx * 0.03 + i * 0.04}
-                          reduce={reduce ?? false}
-                          onRefetch={refetch}
-                        />
-                      ))}
-                      {/* Availability slot blocks */}
-                      {slotDayBuckets[dayIdx].map((sl, i) => (
-                        <SlotBlock
-                          key={sl.id}
-                          slot={sl}
-                          delay={dayIdx * 0.03 + i * 0.04 + 0.02}
-                          reduce={reduce ?? false}
-                          onDetailOpen={setDetailSlot}
-                        />
-                      ))}
                     </div>
                   );
                 })}
@@ -637,7 +681,7 @@ export default function CoachSchedulePage() {
                         </p>
                       ) : (
                         items.map((s) => (
-                          <MobileSessionCard key={s.id} session={s} />
+                          <MobileSessionCard key={s.id} session={s} onOpen={() => setDetailSession(s)} />
                         ))
                       )}
                     </div>
@@ -657,6 +701,7 @@ export default function CoachSchedulePage() {
               sessions={todaySessions}
               openSlots={openSlotsToday}
               reduce={reduce ?? false}
+              onOpenSlot={(time) => { setCreateFromTime(time); setShowCreateSlot(true); }}
             />
             <UpcomingSessions
               sessions={upcomingNext}
@@ -668,8 +713,9 @@ export default function CoachSchedulePage() {
       </div>
       {showCreateSlot && (
         <CreateSlotModal
-          onClose={() => setShowCreateSlot(false)}
-          onCreated={() => { setShowCreateSlot(false); refetchSlots(); }}
+          initialTime={createFromTime}
+          onClose={() => { setShowCreateSlot(false); setCreateFromTime(null); }}
+          onCreated={() => { setShowCreateSlot(false); setCreateFromTime(null); refetchSlots(); }}
         />
       )}
       {detailSlot && (
@@ -677,6 +723,13 @@ export default function CoachSchedulePage() {
           slot={detailSlot}
           onClose={() => setDetailSlot(null)}
           onCancelled={() => { setDetailSlot(null); refetchSlots(); }}
+        />
+      )}
+      {detailSession && (
+        <SessionDetailModal
+          session={detailSession}
+          onClose={() => setDetailSession(null)}
+          onRefetch={() => { setDetailSession(null); refetch(); }}
         />
       )}
       </AppShell>
@@ -840,14 +893,30 @@ function PendingConfirmations({
   const handleConfirm = useCallback(async (id: string) => {
     if (isMockMode() || confirming) return;
     setConfirming(id);
-    try { await api.confirmSession(id); onRefetch(); } finally { setConfirming(null); }
+    try {
+      await api.confirmSession(id);
+      showSuccess("Đã xác nhận buổi học.");
+      onRefetch();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setConfirming(null);
+    }
   }, [confirming, onRefetch]);
 
   const handleDecline = useCallback(async (id: string) => {
     if (isMockMode() || declining) return;
     if (!window.confirm("Từ chối yêu cầu buổi tập này?")) return;
     setDeclining(id);
-    try { await api.cancelSession(id, "Huấn luyện viên từ chối"); onRefetch(); } finally { setDeclining(null); }
+    try {
+      await api.cancelSession(id, "Huấn luyện viên từ chối");
+      showSuccess("Đã từ chối yêu cầu buổi học.");
+      onRefetch();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setDeclining(null);
+    }
   }, [declining, onRefetch]);
 
   return (
@@ -937,206 +1006,319 @@ function PendingConfirmations({
 }
 
 // ============================================================================
-// Calendar session block (absolutely positioned)
+// Session chip — compact inline block inside each hour cell
 // ============================================================================
 
-function sessionAccent(type: Session["type"]) {
-  if (type === "AI-Guided") {
-    return {
-      bg: "from-[#10b981]/10 to-[#34d399]/5",
-      border: "border-[#10b981]/30",
-      bar: "bg-gradient-to-b from-[#10b981] to-[#34d399]",
-      pill: "bg-[#10b981]/15 text-[#1f7a4d]",
-      hover: "hover:border-[#10b981]/50",
-    };
-  }
-  if (type === "Group") {
-    return {
-      bg: "from-[#8b5cf6]/10 to-[#c084fc]/5",
-      border: "border-[#8b5cf6]/30",
-      bar: "bg-gradient-to-b from-[#8b5cf6] to-[#c084fc]",
-      pill: "bg-[#8b5cf6]/15 text-[#7c3aed]",
-      hover: "hover:border-[#8b5cf6]/50",
-    };
-  }
-  return {
-    bg: "from-primary/10 to-[#7d6dff]/5",
-    border: "border-primary/25",
-    bar: "bg-gradient-to-b from-primary to-[#7d6dff]",
-    pill: "bg-primary/10 text-primary",
-    hover: "hover:border-primary/50",
-  };
+function chipAccent(type: Session["type"]) {
+  if (type === "AI-Guided") return { bg: "bg-[#10b981]/15 border-[#10b981]/30 text-[#1f7a4d]", bar: "bg-[#10b981]", badge: "AI" };
+  if (type === "Group") return { bg: "bg-[#8b5cf6]/12 border-[#8b5cf6]/30 text-[#7c3aed]", bar: "bg-[#8b5cf6]", badge: "G" };
+  return { bg: "bg-primary/10 border-primary/25 text-primary", bar: "bg-primary", badge: "1:1" };
 }
 
-function SessionBlock({
+const SESSION_STATUS_VI: Record<string, string> = {
+  scheduled: "Đã đặt",
+  confirmed: "Đã đặt",
+  pending_confirmation: "Chờ xác nhận",
+  in_progress: "Đang diễn ra",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+};
+
+function SessionChip({ session, onClick }: { session: Session; onClick: () => void }) {
+  const learner = useLearner(session.learnerId);
+  const a = chipAccent(session.type);
+  const start = new Date(session.start);
+  const time = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={cn(
+        "relative h-full w-full rounded-[8px] border px-2 py-1.5 cursor-pointer hover:shadow-[0_4px_10px_-2px_rgba(15,15,30,0.14)] active:scale-[0.99] transition-all select-none overflow-hidden",
+        a.bg,
+      )}
+    >
+      <span className={cn("absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full", a.bar)} />
+      <div className="pl-2.5 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-1 overflow-hidden">
+          <span className="text-[11px] font-bold tabular-nums leading-tight whitespace-nowrap shrink-0">{time}</span>
+          <span className="text-[10px] font-medium leading-tight opacity-75 truncate">
+            {SESSION_STATUS_VI[session.status] ?? session.status}
+          </span>
+        </div>
+        <p className="text-[10.5px] leading-snug mt-0.5 opacity-85 truncate">
+          {learner?.name ?? "Chưa có học viên"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SlotChip({ slot, onClick }: { slot: AvailabilitySlot; onClick: () => void }) {
+  const start = new Date(slot.startTime);
+  const time = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const isGroup = (slot.maxParticipants ?? 1) > 1;
+  const booked = slot.bookedParticipants ?? 0;
+  const max = slot.maxParticipants ?? 1;
+
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="relative h-full w-full rounded-[8px] border border-dashed border-[#8b5cf6]/40 bg-[#8b5cf6]/8 px-2 py-1.5 cursor-pointer hover:bg-[#8b5cf6]/15 transition-all select-none overflow-hidden"
+    >
+      <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-[#8b5cf6]" />
+      <div className="pl-2.5 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-1 overflow-hidden">
+          <span className="text-[11px] font-bold tabular-nums text-[#7c3aed] leading-tight whitespace-nowrap shrink-0">{time}</span>
+          <span className="text-[10px] text-[#7c3aed]/80 font-medium leading-tight truncate">Khả dụng</span>
+        </div>
+        <p className="text-[10.5px] text-[#7c3aed]/70 leading-snug mt-0.5 truncate">
+          {isGroup ? (
+            <span className="inline-flex items-center gap-0.5">
+              <Users size={9} className="inline" />
+              {booked}/{max} chỗ
+            </span>
+          ) : (
+            booked > 0 ? "Đã có người đặt" : "Cá nhân"
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Session Detail Modal — popup when clicking a session chip
+// ============================================================================
+
+function SessionDetailModal({
   session,
-  delay,
-  reduce,
+  onClose,
   onRefetch,
 }: {
   session: Session;
-  delay: number;
-  reduce: boolean;
+  onClose: () => void;
   onRefetch: () => void;
 }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
   const learner = useLearner(session.learnerId);
   const [cancelling, setCancelling] = useState(false);
   const [completing, setCompleting] = useState(false);
+
   const start = new Date(session.start);
-  const hour = start.getHours();
-  const minute = start.getMinutes();
-
-  // Skip if outside visible range
-  if (hour < START_HOUR || hour >= END_HOUR) return null;
-
-  const top = (hour - START_HOUR) * HOUR_HEIGHT + (minute / 60) * HOUR_HEIGHT;
-  const height = Math.max(
-    36,
-    (session.durationMinutes / 60) * HOUR_HEIGHT - 2,
-  );
-  const a = sessionAccent(session.type);
-  const time = start.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
+  const end = new Date(start.getTime() + session.durationMinutes * 60000);
   const isOnline = session.location?.toLowerCase() === "online";
   const meetingUrl = session.notes?.match(/https?:\/\/\S+/)?.[0];
-  const canJoin = isOnline || !!meetingUrl;
   const isInProgress = session.status === "in_progress";
+  const isCancelled = session.status === "cancelled";
+  const isCompleted = session.status === "completed";
 
-  function handleJoin(e: React.MouseEvent) {
-    e.stopPropagation();
+  const a = chipAccent(session.type);
+
+  const formatDt = (d: Date) =>
+    d.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" }) +
+    " · " +
+    d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+  async function handleJoin() {
     const url = meetingUrl ?? (isOnline ? session.location : undefined);
     if (url && url.startsWith("http")) {
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      alert("Không có link tham gia cho buổi này.");
+      showInfo("Không có link tham gia cho buổi này.");
     }
   }
 
-  async function handleCancel(e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleCancel() {
     if (!window.confirm("Bạn chắc chắn muốn hủy buổi này?")) return;
-    if (isMockMode()) return;
-    if (cancelling) return; // prevent double-click
+    if (isMockMode()) { onRefetch(); return; }
+    if (cancelling) return;
     setCancelling(true);
-    try { await api.cancelSession(session.id); onRefetch(); } finally { setCancelling(false); }
+    try {
+      await api.cancelSession(session.id);
+      showSuccess("Đã hủy buổi học thành công.");
+      onRefetch();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setCancelling(false);
+    }
   }
 
-  async function handleComplete(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!window.confirm(
-      "Hoàn thành buổi học sẽ ghi nhận doanh thu vào ví của bạn.\nBạn có chắc chắn buổi học đã diễn ra?"
-    )) return;
-    if (isMockMode()) return;
-    if (completing) return; // prevent double-click
+  async function handleComplete() {
+    if (!window.confirm("Xác nhận buổi học đã diễn ra? Doanh thu sẽ được ghi nhận.")) return;
+    if (isMockMode()) { onRefetch(); return; }
+    if (completing) return;
     setCompleting(true);
-    try { await api.completeSession(session.id); onRefetch(); } finally { setCompleting(false); }
+    try {
+      await api.completeSession(session.id);
+      showSuccess("Đã hoàn thành buổi học.");
+      onRefetch();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setCompleting(false);
+    }
   }
+
+  const statusPill: Record<string, string> = {
+    confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    pending_confirmation: "bg-[#f59e0b]/10 text-[#b45309] border-[#f59e0b]/30",
+    in_progress: "bg-primary/10 text-primary border-primary/25",
+    completed: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
+    cancelled: "bg-[#ffdad6] text-[#ba1a1a] border-[#f43f5e]/30",
+  };
+  const statusLabel: Record<string, string> = {
+    confirmed: "Đã xác nhận",
+    pending_confirmation: "Chờ xác nhận",
+    in_progress: "Đang diễn ra",
+    completed: "Đã hoàn thành",
+    cancelled: "Đã hủy",
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{
-        duration: reduce ? 0 : 0.4,
-        delay: reduce ? 0 : delay,
-        ease: EASE,
-      }}
-      whileHover={reduce ? {} : { scale: 1.015 }}
-      style={{ top, height }}
-      className={cn(
-        "absolute left-1 right-1 z-10 group cursor-pointer overflow-hidden rounded-[10px] border bg-gradient-to-br shadow-[0_2px_6px_-2px_rgba(15,15,30,0.08)] hover:shadow-[0_8px_22px_-6px_rgba(15,15,30,0.18)] transition-all",
-        a.bg,
-        a.border,
-        a.hover,
-      )}
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <span
-        className={cn(
-          "absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full",
-          a.bar,
-        )}
-      />
-      <div className="pl-2.5 pr-1.5 py-1.5 h-full flex flex-col">
-        <div className="flex items-start justify-between gap-1">
-          <p className="text-[10.5px] font-bold text-on-surface tabular-nums">
-            {time}
-          </p>
-          <span
-            className={cn(
-              "px-1 py-0.5 rounded-full text-[8.5px] font-bold uppercase tracking-wider",
-              a.pill,
-            )}
-          >
-            {session.type === "AI-Guided"
-              ? "AI"
-              : session.type === "Group"
-                ? "Nhóm"
-                : "1:1"}
-          </span>
-        </div>
-        <p className="text-[11px] font-semibold leading-tight line-clamp-1 text-on-surface mt-0.5">
-          {session.title}
-        </p>
-        <div className="flex items-center gap-1 mt-auto pt-1">
-          <div className="w-4 h-4 rounded-full bg-surface-container-high overflow-hidden text-[8px] flex items-center justify-center text-primary font-semibold">
-            {learner?.avatarUrl ? (
-              <img
-                src={learner.avatarUrl}
-                alt={learner.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              initials(learner?.name ?? "?")
-            )}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ duration: 0.25, ease: EASE }}
+        className="w-full sm:max-w-md bg-surface-container-lowest rounded-t-[24px] sm:rounded-[24px] border border-[var(--color-border-soft)] shadow-[0_24px_60px_-12px_rgba(15,15,30,0.35)] overflow-hidden"
+      >
+        {/* Header with learner avatar */}
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--color-border-soft)] flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-surface-container-high overflow-hidden flex items-center justify-center text-[14px] font-bold text-primary shrink-0">
+              {learner?.avatarUrl
+                ? <img src={learner.avatarUrl} alt={learner.name} className="w-full h-full object-cover" />
+                : initials(learner?.name ?? "?")}
+            </div>
+            <div>
+              <p className="text-[15.5px] font-semibold tracking-tight leading-snug">
+                {learner?.name ?? `Học viên ${session.learnerId.slice(0, 6)}`}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={cn("inline-flex items-center border px-2 py-0.5 rounded-full text-[10px] font-semibold", a.bg)}>
+                  {session.type === "AI-Guided" ? "AI" : session.type === "Group" ? "Nhóm" : "1:1"}
+                </span>
+                <span className={cn("inline-flex items-center border px-2 py-0.5 rounded-full text-[10px] font-semibold", statusPill[session.status] ?? statusPill.confirmed)}>
+                  {statusLabel[session.status] ?? session.status}
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="text-[10px] text-on-surface-variant truncate flex-1">
-            {learner?.name?.split(" ")[0]}
-          </p>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors shrink-0"
+          >
+            <X size={14} />
+          </button>
         </div>
-      </div>
 
-      {/* Hover quick actions */}
-      <div className="absolute inset-x-1 bottom-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {isInProgress ? (
+        {/* Body */}
+        <div className="px-5 py-4 space-y-3">
+          {/* Title */}
+          <p className="text-[14px] font-semibold text-on-surface">{session.title}</p>
+
+          {/* Time */}
+          <div className="flex items-start gap-3 p-3 rounded-[12px] bg-surface-container-low/60">
+            <div className="w-8 h-8 rounded-[8px] bg-gradient-to-br from-primary/15 to-[#7d6dff]/10 flex items-center justify-center shrink-0">
+              <Clock size={14} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-on-surface">{formatDt(start)}</p>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                đến {end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                {" "}· {session.durationMinutes} phút
+              </p>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="flex items-center gap-3 p-3 rounded-[12px] bg-surface-container-low/60">
+            <div className="w-8 h-8 rounded-[8px] bg-gradient-to-br from-primary/15 to-[#7d6dff]/10 flex items-center justify-center shrink-0">
+              {isOnline ? <Video size={14} className="text-primary" /> : <MapPin size={14} className="text-primary" />}
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-on-surface">
+                {isOnline ? "Trực tuyến (Online)" : (session.location ?? "Chưa đặt địa điểm")}
+              </p>
+              {meetingUrl && (
+                <a href={meetingUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-[11px] text-primary hover:underline break-all">
+                  {meetingUrl}
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Price */}
+          {session.price > 0 && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-[10px] bg-surface-container-low/60 text-[12px]">
+              <span className="text-on-surface-variant">Học phí</span>
+              <span className="font-semibold text-on-surface tabular-nums">{formatCurrency(session.price)}</span>
+            </div>
+          )}
+
+          {/* Notes */}
+          {session.notes && (
+            <p className="text-[12px] text-on-surface-variant italic px-1">📝 {session.notes}</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 pb-5 flex gap-2 flex-wrap">
           <button
-            onClick={handleComplete}
-            disabled={completing}
-            className="flex-1 h-5 rounded-[6px] bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[9px] font-bold"
+            onClick={onClose}
+            className="flex-1 h-10 rounded-xl border border-[var(--color-border-soft)] text-[13px] font-medium hover:bg-surface-container-low transition-colors"
           >
-            {completing ? "…" : "Hoàn thành"}
+            Đóng
           </button>
-        ) : (
-          <button
-            onClick={handleJoin}
-            title={canJoin ? undefined : "Không có link tham gia"}
-            className={cn(
-              "flex-1 h-5 rounded-[6px] text-[9px] font-bold",
-              canJoin
-                ? "bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary shadow-[0_2px_6px_-1px_rgba(53,37,205,0.5)]"
-                : "bg-surface-container-low text-on-surface-variant cursor-not-allowed",
-            )}
-          >
-            Join
-          </button>
-        )}
-        <button
-          onClick={handleCancel}
-          disabled={cancelling}
-          className="flex-1 h-5 rounded-[6px] bg-surface-container-lowest border border-[#f43f5e]/30 text-[9px] font-bold text-[#ba1a1a] hover:bg-[#f43f5e]/10 transition-colors"
-        >
-          {cancelling ? "…" : "Hủy"}
-        </button>
-      </div>
-    </motion.div>
+
+          {isInProgress && (
+            <button
+              onClick={() => void handleComplete()}
+              disabled={completing}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[13px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+            >
+              {completing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              Hoàn thành
+            </button>
+          )}
+
+          {!isCancelled && !isCompleted && (isOnline || meetingUrl) && (
+            <button
+              onClick={() => void handleJoin()}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_3px_10px_-2px_rgba(53,37,205,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all inline-flex items-center justify-center gap-1.5"
+            >
+              <Video size={14} />
+              Tham gia
+            </button>
+          )}
+
+          {!isCancelled && !isCompleted && (
+            <button
+              onClick={() => void handleCancel()}
+              disabled={cancelling}
+              className="flex-1 h-10 rounded-xl bg-[#f43f5e]/10 border border-[#f43f5e]/30 text-[#ba1a1a] text-[13px] font-semibold hover:bg-[#f43f5e]/20 transition-all disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+            >
+              {cancelling ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+              Hủy buổi
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
-function MobileSessionCard({ session }: { session: Session }) {
+function MobileSessionCard({ session, onOpen }: { session: Session; onOpen: () => void }) {
   const learner = useLearner(session.learnerId);
-  const a = sessionAccent(session.type);
+  const a = chipAccent(session.type);
   const start = new Date(session.start);
   const time = start.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -1145,9 +1327,10 @@ function MobileSessionCard({ session }: { session: Session }) {
   const isOnline = session.location?.toLowerCase() === "online";
   return (
     <div
+      onClick={onOpen}
       className={cn(
-        "relative rounded-[12px] border p-3 bg-surface-container-lowest",
-        a.border,
+        "relative rounded-[12px] border p-3 bg-surface-container-lowest cursor-pointer hover:shadow-[0_4px_12px_-4px_rgba(15,15,30,0.12)] transition-all",
+        a.bg,
       )}
     >
       <span
@@ -1248,11 +1431,11 @@ function AICoachCard({
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-            Sportico AI · Insight
+            Sportico AI · Gợi ý
           </span>
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            Live
+            Trực tiếp
           </span>
         </div>
 
@@ -1265,37 +1448,38 @@ function AICoachCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[14.5px] leading-snug font-semibold text-on-surface">
-              <span className="text-[#b95000]">{count} learners</span> haven&apos;t
-              booked in 2 weeks.
+              <span className="text-[#b95000]">{count} học viên</span> chưa đặt buổi trong 2 tuần.
             </p>
             <p className="text-[12.5px] text-on-surface-variant leading-relaxed mt-1">
-              A quick check-in lifts re-booking by{" "}
-              <span className="text-on-surface font-medium">28%</span>. I&apos;ll
-              draft personalized messages.
+              Một tin nhắn hỏi thăm nhanh có thể tăng tỉ lệ đặt lại lên{" "}
+              <span className="text-on-surface font-medium">28%</span>. Nhắn ngay để duy trì kết nối.
             </p>
           </div>
         </div>
 
-        <button className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+        <Link
+          href="/coach/messages"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
           <Send size={13} />
-          Send Message
-        </button>
+          Nhắn tin học viên
+        </Link>
 
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-primary/10 text-[11px]">
           <div className="flex items-center gap-1.5">
             <Users size={12} className="text-primary" />
-            <span className="text-on-surface-variant">Reach</span>
+            <span className="text-on-surface-variant">Học viên</span>
             <span className="font-semibold">{count}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <TrendingUp size={12} className="text-[#10b981]" />
-            <span className="text-on-surface-variant">Win-back</span>
+            <span className="text-on-surface-variant">Đặt lại</span>
             <span className="font-semibold">+28%</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Clock size={12} className="text-[#f59e0b]" />
-            <span className="text-on-surface-variant">Time</span>
-            <span className="font-semibold">~3m</span>
+            <span className="text-on-surface-variant">Thời gian</span>
+            <span className="font-semibold">~3ph</span>
           </div>
         </div>
       </div>
@@ -1311,10 +1495,12 @@ function TodayAgenda({
   sessions,
   openSlots,
   reduce,
+  onOpenSlot,
 }: {
   sessions: Session[];
   openSlots: Date[];
   reduce: boolean;
+  onOpenSlot: (time: Date) => void;
 }) {
   return (
     <motion.div
@@ -1325,14 +1511,14 @@ function TodayAgenda({
     >
       <div className="px-5 pt-5 pb-2 flex items-center justify-between">
         <div>
-          <h3 className="text-[16px] font-semibold tracking-tight">Today</h3>
+          <h3 className="text-[16px] font-semibold tracking-tight">Hôm nay</h3>
           <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-            {sessions.length} session{sessions.length === 1 ? "" : "s"} ·{" "}
-            {openSlots.length} open
+            {sessions.length} buổi ·{" "}
+            {openSlots.length} slot trống
           </p>
         </div>
         <span className="text-[11px] text-on-surface-variant">
-          {new Date(NOW).toLocaleDateString("en-US", {
+          {new Date(NOW).toLocaleDateString("vi-VN", {
             weekday: "short",
             month: "short",
             day: "numeric",
@@ -1342,7 +1528,7 @@ function TodayAgenda({
       <div className="px-3 pb-3 space-y-1.5">
         {sessions.length === 0 && openSlots.length === 0 && (
           <p className="text-center text-[12px] text-on-surface-variant py-6">
-            Nothing scheduled today.
+            Hôm nay chưa có buổi nào.
           </p>
         )}
         {sessions.map((s, i) => (
@@ -1359,14 +1545,18 @@ function TodayAgenda({
             time={d}
             delay={(sessions.length + i) * 0.05}
             reduce={reduce}
+            onOpen={() => onOpenSlot(d)}
           />
         ))}
 
         {openSlots.length > 0 && (
-          <button className="w-full mt-2 inline-flex items-center justify-center gap-1.5 h-9 rounded-[12px] border border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/[0.04] text-primary text-[12.5px] font-semibold transition-colors">
+          <Link
+            href="/coach/learners"
+            className="w-full mt-2 inline-flex items-center justify-center gap-1.5 h-9 rounded-[12px] border border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/[0.04] text-primary text-[12.5px] font-semibold transition-colors"
+          >
             <Sprout size={13} />
-            Fill {openSlots.length} Slot{openSlots.length === 1 ? "" : "s"}
-          </button>
+            Mời học viên ({openSlots.length} slot)
+          </Link>
         )}
       </div>
     </motion.div>
@@ -1435,13 +1625,15 @@ function OpenSlotRow({
   time,
   delay,
   reduce,
+  onOpen,
 }: {
   time: Date;
   delay: number;
   reduce: boolean;
+  onOpen: () => void;
 }) {
-  const t = time.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const t = time.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
   });
   return (
@@ -1453,25 +1645,26 @@ function OpenSlotRow({
         delay: reduce ? 0 : delay,
         ease: EASE,
       }}
-      className="group flex items-center gap-3 p-2.5 rounded-[12px] border border-dashed border-[var(--color-border-soft)] hover:border-primary/30 hover:bg-primary/[0.02] cursor-pointer transition-all"
+      onClick={onOpen}
+      className="group flex items-center gap-3 p-2.5 rounded-[12px] border border-dashed border-[var(--color-border-soft)] hover:border-primary/30 hover:bg-primary/[0.04] cursor-pointer transition-all"
     >
       <div className="text-center w-14 shrink-0">
-        <p className="text-[11.5px] font-bold tabular-nums leading-none text-on-surface-variant">
+        <p className="text-[11.5px] font-bold tabular-nums leading-none text-on-surface-variant group-hover:text-primary transition-colors">
           {t}
         </p>
         <p className="text-[9.5px] uppercase tracking-wider text-on-surface-variant mt-0.5">
           1h
         </p>
       </div>
-      <div className="w-8 h-8 rounded-full bg-surface-container-low border border-dashed border-[var(--color-border-soft)] flex items-center justify-center shrink-0">
-        <Plus size={13} className="text-on-surface-variant" />
+      <div className="w-8 h-8 rounded-full bg-surface-container-low border border-dashed border-[var(--color-border-soft)] group-hover:border-primary/40 group-hover:bg-primary/[0.06] flex items-center justify-center shrink-0 transition-all">
+        <Plus size={13} className="text-on-surface-variant group-hover:text-primary transition-colors" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12.5px] font-medium text-on-surface-variant">
-          Open Slot
+        <p className="text-[12.5px] font-medium text-on-surface-variant group-hover:text-on-surface transition-colors">
+          Slot trống
         </p>
         <p className="text-[11px] text-on-surface-variant/70 truncate">
-          Tap to book or invite
+          Nhấn để tạo khung giờ
         </p>
       </div>
     </motion.div>
@@ -1710,79 +1903,6 @@ void Zap;
 // Availability Slot Block (absolutely positioned in calendar grid)
 // ============================================================================
 
-const SLOT_STATUS_STYLES: Record<string, { bg: string; border: string; bar: string; label: string }> = {
-  available: {
-    bg: "from-[#8b5cf6]/8 to-[#c084fc]/4",
-    border: "border-dashed border-[#8b5cf6]/35",
-    bar: "bg-gradient-to-b from-[#8b5cf6] to-[#c084fc]",
-    label: "Khả dụng",
-  },
-  booked: {
-    bg: "from-[#10b981]/8 to-[#34d399]/4",
-    border: "border-dashed border-[#10b981]/35",
-    bar: "bg-gradient-to-b from-[#10b981] to-[#34d399]",
-    label: "Đã đặt",
-  },
-  cancelled: {
-    bg: "from-surface-container-low to-surface-container-low/50",
-    border: "border-dashed border-[var(--color-border-soft)]/60",
-    bar: "bg-[var(--color-border-soft)]",
-    label: "Đã hủy",
-  },
-};
-
-function SlotBlock({
-  slot,
-  delay,
-  reduce,
-  onDetailOpen,
-}: {
-  slot: AvailabilitySlot;
-  delay: number;
-  reduce: boolean;
-  onDetailOpen: (slot: AvailabilitySlot) => void;
-}) {
-  const start = new Date(slot.startTime);
-  const end = new Date(slot.endTime);
-  const hour = start.getHours();
-  const minute = start.getMinutes();
-
-  if (hour < START_HOUR || hour >= END_HOUR) return null;
-
-  const top = (hour - START_HOUR) * HOUR_HEIGHT + (minute / 60) * HOUR_HEIGHT;
-  const durationMin = (end.getTime() - start.getTime()) / 60000;
-  const height = Math.max(28, (durationMin / 60) * HOUR_HEIGHT - 2);
-
-  const style = SLOT_STATUS_STYLES[slot.status?.toLowerCase() ?? "available"] ?? SLOT_STATUS_STYLES.available;
-  const timeLabel = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: reduce ? 0 : 0.35, delay: reduce ? 0 : delay, ease: EASE }}
-      onClick={() => onDetailOpen(slot)}
-      style={{ top, height }}
-      className={cn(
-        "absolute left-1 right-1 z-[5] overflow-hidden rounded-[8px] border bg-gradient-to-br opacity-80 hover:opacity-100 transition-all cursor-pointer hover:scale-[1.02] hover:z-[6]",
-        style.bg,
-        style.border,
-      )}
-      title={`${style.label} — nhấn để xem chi tiết`}
-    >
-      <span className={cn("absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full", style.bar)} />
-      <div className="pl-2 pr-1 py-1">
-        <p className="text-[9.5px] font-bold text-on-surface-variant tabular-nums leading-none">
-          {timeLabel}
-        </p>
-        <p className="text-[9px] font-semibold text-on-surface-variant/80 mt-0.5 truncate">
-          {style.label}{slot.isOnline ? " · Online" : slot.location ? ` · ${slot.location}` : ""}
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
 // ============================================================================
 // Create Availability Slot Modal
 // ============================================================================
@@ -1793,18 +1913,33 @@ function toLocalDatetimeString(d: Date): string {
 }
 
 function CreateSlotModal({
+  initialTime,
   onClose,
   onCreated,
 }: {
+  initialTime: Date | null;
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [startTime, setStartTime] = useState(() => toLocalDatetimeString(new Date(Date.now() + 3600_000)));
-  const [endTime, setEndTime] = useState(() => toLocalDatetimeString(new Date(Date.now() + 7200_000)));
+  const [startTime, setStartTime] = useState(() => {
+    if (initialTime) {
+      return toLocalDatetimeString(initialTime);
+    }
+    return toLocalDatetimeString(new Date(Date.now() + 3600_000));
+  });
+  const [endTime, setEndTime] = useState(() => {
+    if (initialTime) {
+      const end = new Date(initialTime);
+      end.setHours(end.getHours() + 1);
+      return toLocalDatetimeString(end);
+    }
+    return toLocalDatetimeString(new Date(Date.now() + 7200_000));
+  });
   const [location, setLocation] = useState("");
   const [isOnline, setIsOnline] = useState(false);
   const [meetingUrl, setMeetingUrl] = useState("");
   const [note, setNote] = useState("");
+  const [maxParticipants, setMaxParticipants] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1834,10 +1969,12 @@ function CreateSlotModal({
         isOnline,
         meetingUrl: isOnline && meetingUrl.trim() ? meetingUrl.trim() : undefined,
         note: note.trim() || undefined,
+        maxParticipants: maxParticipants > 1 ? maxParticipants : undefined,
       });
+      showSuccess("Tạo khung giờ thành công.");
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi. Vui lòng thử lại.");
+      showApiError(err);
     } finally {
       setSubmitting(false);
     }
@@ -1971,6 +2108,43 @@ function CreateSlotModal({
             </div>
           )}
 
+          {/* Max participants */}
+          <div>
+            <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
+              Số học viên tối đa
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setMaxParticipants((n) => Math.max(1, n - 1))}
+                  className="w-8 h-8 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low flex items-center justify-center text-on-surface font-bold transition-colors"
+                >
+                  −
+                </button>
+                <span className="w-10 text-center text-[14px] font-semibold tabular-nums">{maxParticipants}</span>
+                <button
+                  type="button"
+                  onClick={() => setMaxParticipants((n) => Math.min(50, n + 1))}
+                  className="w-8 h-8 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low flex items-center justify-center text-on-surface font-bold transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={cn(
+                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border",
+                  maxParticipants === 1
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : "bg-[#8b5cf6]/10 text-[#7c3aed] border-[#8b5cf6]/20",
+                )}>
+                  <Users size={11} />
+                  {maxParticipants === 1 ? "Cá nhân (1:1)" : `Nhóm (tối đa ${maxParticipants})`}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Note */}
           <div>
             <label className="block text-[11.5px] font-medium text-on-surface-variant mb-1.5">
@@ -2037,7 +2211,6 @@ function SlotDetailModal({
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const start = new Date(slot.startTime);
   const end   = new Date(slot.endTime);
@@ -2045,6 +2218,9 @@ function SlotDetailModal({
   const statusMeta = SLOT_STATUS_LABEL[slot.status?.toLowerCase() ?? "available"] ?? SLOT_STATUS_LABEL.available;
 
   const canCancel = slot.status?.toLowerCase() === "available";
+  const isGroup = (slot.maxParticipants ?? 1) > 1;
+  const bookedCount = slot.bookedParticipants ?? 0;
+  const maxCount = slot.maxParticipants ?? 1;
 
   const formatDt = (d: Date) =>
     d.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" }) +
@@ -2055,12 +2231,12 @@ function SlotDetailModal({
     if (!window.confirm("Bạn chắc chắn muốn hủy khung giờ này?\nHọc viên sẽ không thể đặt slot này nữa.")) return;
     if (isMockMode()) { onCancelled(); return; }
     setCancelling(true);
-    setCancelError(null);
     try {
       await api.cancelSlot(slot.id);
+      showSuccess("Đã hủy khung giờ thành công.");
       onCancelled();
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : "Hủy thất bại. Vui lòng thử lại.");
+      showApiError(err);
       setCancelling(false);
     }
   }
@@ -2140,6 +2316,29 @@ function SlotDetailModal({
             </div>
           </div>
 
+          {/* Capacity row (group slots) */}
+          {isGroup && (
+            <div className="flex items-center gap-3 p-3 rounded-[12px] bg-surface-container-low/60">
+              <div className="w-8 h-8 rounded-[8px] bg-gradient-to-br from-[#8b5cf6]/15 to-[#c084fc]/10 flex items-center justify-center shrink-0">
+                <Users size={14} className="text-[#7c3aed]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-on-surface">
+                  {bookedCount}/{maxCount} chỗ đã đặt
+                </p>
+                <div className="mt-1.5 h-1.5 w-full rounded-full bg-on-surface-variant/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#c084fc] transition-all"
+                    style={{ width: maxCount > 0 ? `${Math.round((bookedCount / maxCount) * 100)}%` : "0%" }}
+                  />
+                </div>
+                <p className="text-[10.5px] text-on-surface-variant mt-0.5">
+                  {slot.remainingParticipants ?? (maxCount - bookedCount)} chỗ còn trống
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Note */}
           {slot.note && (
             <p className="text-[12px] text-on-surface-variant italic px-1">
@@ -2148,10 +2347,23 @@ function SlotDetailModal({
           )}
 
           {/* Booked/Cancelled explanation */}
-          {slot.status?.toLowerCase() === "booked" && (
+          {slot.status?.toLowerCase() === "booked" && !isGroup && (
             <div className="flex items-start gap-2 p-3 rounded-[12px] bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-700">
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
               Slot này đã có học viên đặt lịch — không thể hủy trực tiếp.
+            </div>
+          )}
+          {slot.status?.toLowerCase() === "booked" && isGroup && (
+            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-emerald-50 border border-emerald-200 text-[12px] text-emerald-700">
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+              Slot nhóm đã đầy ({maxCount}/{maxCount} chỗ) — không thể đặt thêm.
+            </div>
+          )}
+          {/* Warn coach if cancelling a group slot with existing bookings */}
+          {canCancel && isGroup && bookedCount > 0 && (
+            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-[#f59e0b]/10 border border-[#f59e0b]/25 text-[12px] text-[#b45309]">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              {bookedCount} học viên đã đặt slot này. Hủy slot sẽ ảnh hưởng đến họ.
             </div>
           )}
           {slot.status?.toLowerCase() === "cancelled" && (
@@ -2161,13 +2373,6 @@ function SlotDetailModal({
             </div>
           )}
 
-          {/* Error */}
-          {cancelError && (
-            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-[#ffdad6] border border-[#f43f5e]/30 text-[12px] text-[#ba1a1a]">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              {cancelError}
-            </div>
-          )}
         </div>
 
         {/* Actions */}

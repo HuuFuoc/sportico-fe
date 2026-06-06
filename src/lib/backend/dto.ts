@@ -143,11 +143,21 @@ export interface BookingResponse {
   coachReceiveAmount: number;
   perSessionCoachAmount: number;
   totalSessions: number;
+  /** Count of sessions in terminal "completed" state only. */
   completedSessions: number;
+  /** Count of all sessions that consume a slot (requested + scheduled + completed + missed). */
+  usedSessions: number;
+  /** totalSessions - usedSessions. Cancelled sessions free a slot. */
+  remainingSessions: number;
+  /** False when remainingSessions <= 0 or booking is not active. Use this to gate booking buttons. */
+  canBookSession: boolean;
+  /** Breakdown by status string key → count (e.g. { "scheduled": 2, "completed": 1 }). */
+  sessionCountsByStatus?: Record<string, number> | null;
   status?: string | null;
   paidAt?: string | null;
   completedAt?: string | null;
   cancelledAt?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -516,6 +526,14 @@ export interface AvailabilitySlotResponse {
   note?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Max number of learners that can book this slot. 1 = individual; >1 = group. */
+  maxParticipants?: number | null;
+  /** Number of learners who have already booked this slot. */
+  bookedParticipants?: number | null;
+  /** Remaining open spots (maxParticipants - bookedParticipants). */
+  remainingParticipants?: number | null;
+  /** True when no spots remain (remainingParticipants === 0). */
+  isFull?: boolean | null;
 }
 
 export interface CreateAvailabilitySlotRequest {
@@ -525,6 +543,8 @@ export interface CreateAvailabilitySlotRequest {
   meetingUrl?: string;
   isOnline?: boolean;
   note?: string;
+  /** Max learners per slot. Omit or set to 1 for 1-on-1; >1 for group slots. */
+  maxParticipants?: number;
 }
 
 // ---- Training plan CRUD request bodies ------------------------------------

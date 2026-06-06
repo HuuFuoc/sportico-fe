@@ -150,7 +150,16 @@ export interface Booking {
   learnerId?: string;
   trainingPackageId?: string;
   totalSessions: number;
+  /** Sessions in terminal "completed" state only. */
   completedSessions: number;
+  /** Sessions that occupy a slot: requested + scheduled + completed + missed. Cancelled sessions free a slot. */
+  usedSessions?: number;
+  /** totalSessions - usedSessions. Use this (not totalSessions - completedSessions) to gate booking. */
+  remainingSessions?: number;
+  /** False when no slots remain or booking is not active. Primary gate for booking button visibility. */
+  canBookSession?: boolean;
+  /** Per-status session counts, e.g. { "scheduled": 2, "completed": 1 }. */
+  sessionCountsByStatus?: Record<string, number>;
   status: string;
   totalAmount: number;
   /** ISO datetime when payment was confirmed. May be null for pending_payment bookings. */
@@ -299,12 +308,21 @@ export interface EarningPoint {
   sessions: number;
 }
 
+export type WithdrawalStatus =
+  | "pending"
+  | "approved"
+  | "processing"
+  | "paid"
+  | "rejected"
+  | "failed"
+  | "cancelled";
+
 export interface Payout {
   id: string;
   coachId: string;
   amount: number;
   currency: string;
-  status: "paid" | "pending" | "approved" | "processing" | "failed" | "rejected";
+  status: WithdrawalStatus;
   date: string; // ISO
   method: string;
   payOsPayoutId?: string;
@@ -312,6 +330,8 @@ export interface Payout {
   payOsPayoutStatus?: string;
   failureReason?: string;
   adminNote?: string;
+  processingAt?: string;
+  paidAt?: string;
 }
 
 export interface PayoutAccount {
@@ -387,12 +407,25 @@ export interface AvailabilitySlot {
   coachId: string;
   startTime: string; // ISO datetime
   endTime: string;   // ISO datetime
+  /**
+   * "available" | "booked" | "cancelled"
+   * NOTE: a group slot keeps status="available" while remainingParticipants > 0.
+   * Do NOT treat "available" as "no one has booked yet" — check bookedParticipants.
+   */
   status: "available" | "booked" | "cancelled" | string;
   location?: string;
   isOnline: boolean;
   meetingUrl?: string;
   note?: string;
   createdAt: string;
+  /** Max learners per slot. 1 = individual, >1 = group. */
+  maxParticipants?: number;
+  /** How many learners have already booked. May be >0 for an "available" group slot. */
+  bookedParticipants?: number;
+  /** Remaining open spots. 0 means fully booked even if status is still "available". */
+  remainingParticipants?: number;
+  /** True when no spots remain. Booking must be blocked regardless of status. */
+  isFull?: boolean;
 }
 
 // ============================================================================

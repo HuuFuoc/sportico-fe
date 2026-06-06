@@ -157,11 +157,13 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Focus ring (subtle indigo) */
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
+/* Focus ring (subtle indigo) — in @layer base so Tailwind utilities (outline-none) can override it */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 /* ============================================================

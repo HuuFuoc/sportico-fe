@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn, formatCurrencyVnd } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { messageForApiError } from "@/lib/errors-vi";
+import { showSuccess, showApiError } from "@/lib/toast";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import {
   VN_BANKS,
@@ -117,10 +117,11 @@ export function WithdrawModal({
         bankAccountNumber: accountNumber.trim(),
         bankAccountHolder: accountHolder.trim(),
       });
+      showSuccess("Đã lưu tài khoản ngân hàng thành công.");
       refetch();
       setView("form");
     } catch (e) {
-      setError(messageForApiError(e));
+      showApiError(e);
     } finally {
       setSubmitting(false);
     }
@@ -139,10 +140,11 @@ export function WithdrawModal({
     setSubmitting(true);
     try {
       await api.createWithdrawal(amountNum);
+      showSuccess("Gửi yêu cầu rút tiền thành công.");
       setView("success");
       onSuccess?.();
     } catch (e) {
-      setError(messageForApiError(e));
+      showApiError(e);
     } finally {
       setSubmitting(false);
     }
@@ -329,7 +331,6 @@ export function WithdrawModal({
                       : "Số tiền không hợp lệ."}
                   </ErrorText>
                 )}
-                {error && <ErrorText>{error}</ErrorText>}
 
                 <button
                   onClick={() => void submitWithdrawal()}
@@ -361,10 +362,10 @@ export function WithdrawModal({
                 <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-[#10b981] to-[#34d399] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.4)]">
                   <CheckCircle2 size={26} className="text-white" />
                 </div>
-                <h4 className="text-[16px] font-bold">Yêu cầu rút tiền đã được gửi</h4>
+                <h4 className="text-[16px] font-bold">Đã gửi yêu cầu rút tiền</h4>
                 <p className="text-[12.5px] text-on-surface-variant mt-1 max-w-xs mx-auto">
-                  {formatCurrencyVnd(amountNum)} đã được tạm giữ và đang chờ quản trị viên duyệt.
-                  Tiền sẽ được chuyển tới {account?.bankName ?? "tài khoản ngân hàng"} sau khi được duyệt.
+                  {formatCurrencyVnd(amountNum)} đã được chuyển sang số dư chờ xử lý.
+                  Tiền sẽ được chuyển tới {account?.bankName ?? "tài khoản ngân hàng"} sau khi admin duyệt và PayOS xác nhận chuyển khoản thành công.
                 </p>
                 <button
                   onClick={onClose}

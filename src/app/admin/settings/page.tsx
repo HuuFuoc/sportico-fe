@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { LoadingState } from "@/components/common/AsyncStates";
 import { PersonalProfileForm } from "@/components/settings/PersonalProfileForm";
 
 // ── Page wrapper (Suspense required for useSearchParams) ──────────────────────
@@ -12,9 +13,7 @@ export default function AdminSettingsPage() {
     <Suspense
       fallback={
         <AppShell role="admin" title="Cài đặt">
-          <div className="flex items-center justify-center py-20 text-on-surface-variant">
-            Đang tải…
-          </div>
+          <LoadingState label="Đang tải cài đặt…" />
         </AppShell>
       }
     >

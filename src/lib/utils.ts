@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { NOW } from "@/lib/mock/clock";
+import { isMockMode } from "@/lib/api-client";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -69,19 +70,21 @@ export function localDateKey(date: Date) {
 }
 
 export function relativeDay(date: Date) {
-  const today = new Date(NOW);
+  const today = isMockMode() ? new Date(NOW) : new Date();
   today.setHours(0, 0, 0, 0);
   const target = new Date(date);
   target.setHours(0, 0, 0, 0);
   const diff = Math.round(
     (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  if (diff === -1) return "Yesterday";
-  if (diff > 1 && diff < 7) return `In ${diff} days`;
-  return target.toLocaleDateString("en-US", {
-    month: "short",
+  if (diff === 0) return "Hôm nay";
+  if (diff === 1) return "Ngày mai";
+  if (diff === -1) return "Hôm qua";
+  if (diff > 1 && diff < 7) return `${diff} ngày nữa`;
+  if (diff < -1 && diff > -7) return `${Math.abs(diff)} ngày trước`;
+  return target.toLocaleDateString("vi-VN", {
     day: "numeric",
+    month: "numeric",
+    year: "numeric",
   });
 }

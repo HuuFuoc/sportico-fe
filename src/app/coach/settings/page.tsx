@@ -4,12 +4,14 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { LoadingState } from "@/components/common/AsyncStates";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import {
   PersonalProfileForm,
   CoachProfileFooter,
 } from "@/components/settings/PersonalProfileForm";
 import { cn } from "@/lib/utils";
+import { showSuccess, showApiError } from "@/lib/toast";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import {
@@ -42,9 +44,7 @@ export default function CoachSettingsPage() {
     <Suspense
       fallback={
         <AppShell role="coach" title="Cài đặt">
-          <div className="flex items-center justify-center py-20 text-on-surface-variant">
-            Đang tải…
-          </div>
+          <LoadingState label="Đang tải cài đặt…" />
         </AppShell>
       }
     >
@@ -396,10 +396,11 @@ function PaymentsTab() {
         bankAccountNumber: accountNumber.trim(),
         bankAccountHolder: accountHolder.trim(),
       });
+      showSuccess("Đã lưu tài khoản nhận tiền thành công.");
       refetch();
       setEditing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không lưu được tài khoản.");
+      showApiError(e);
     } finally {
       setSaving(false);
     }

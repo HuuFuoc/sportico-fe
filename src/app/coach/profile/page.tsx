@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  CheckCircle2,
   Globe2,
   Image as ImageIcon,
   Loader2,
@@ -20,6 +19,7 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 import { getMyCoachProfile, updateMyCoachProfile } from "@/lib/coach-api";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { messageForApiError } from "@/lib/errors-vi";
+import { showSuccess, showApiError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { ImageUpload } from "@/components/common/ImageUpload";
@@ -118,7 +118,6 @@ export default function CoachProfilePage() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [coverPos, setCoverPos] = useState<CoverPosition>(DEFAULT_COVER_POS);
   const [avatarPos, setAvatarPos] = useState<CoverPosition>(DEFAULT_COVER_POS);
 
@@ -157,7 +156,6 @@ export default function CoachProfilePage() {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     setDirty(true);
-    setSaved(false);
   };
 
   const profileUserId = profile?.userId;
@@ -227,11 +225,11 @@ export default function CoachProfilePage() {
     setFormError(null);
     try {
       await updateMyCoachProfile(buildPayload());
-      setSaved(true);
+      showSuccess("Đã cập nhật hồ sơ huấn luyện viên.");
       setDirty(false);
-      refetch(); // re-read GET /api/coaches/me
+      refetch();
     } catch (e) {
-      setFormError(messageForApiError(e));
+      showApiError(e);
     } finally {
       setSaving(false);
     }
@@ -274,22 +272,6 @@ export default function CoachProfilePage() {
             </p>
           </div>
         </div>
-
-        {/* Success toast */}
-        <AnimatePresence>
-          {saved && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              role="status"
-              className="mb-5 flex items-center gap-2.5 rounded-[12px] border border-[#bce8c8] bg-success-container/50 px-4 py-3 text-[13px] font-medium text-[#1f7a4d]"
-            >
-              <CheckCircle2 size={17} />
-              Đã cập nhật hồ sơ huấn luyện viên.
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <div className="space-y-5">
           {/* Thông tin chính */}

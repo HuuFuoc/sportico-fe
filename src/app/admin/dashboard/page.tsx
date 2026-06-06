@@ -6,10 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -22,7 +19,6 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
-  Brain,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -47,20 +43,18 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type {
-  AnalyticsDailyPoint,
   Coach,
-  Learner,
   VerificationRequest,
 } from "@/types";
+import type { AdminDashboardResponse } from "@/lib/backend/dto";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const RANGE_OPTIONS = ["Hôm nay", "Tuần", "Tháng", "Tất cả"] as const;
 type Range = (typeof RANGE_OPTIONS)[number];
-const TAB_OPTIONS = ["HLV", "Học viên"] as const;
-type Tab = (typeof TAB_OPTIONS)[number];
 
 // Fallback demo values used only in mock mode when real API returns null.
 const TOTAL_USERS = 24_592;
@@ -73,6 +67,11 @@ function seedSpark(seed: number, base: number, jitter: number, len = 8) {
     const noise = Math.sin(i * 1.4 + seed) * jitter;
     return { i, v: Math.max(0, base + i * (jitter / 5) + noise) };
   });
+}
+
+// In live mode the API returns no time-series data → don't show fake sparklines.
+function liveSpark(seed: number, base: number, jitter: number) {
+  return isMockMode() ? seedSpark(seed, base, jitter) : [];
 }
 
 // Synthetic mock data
@@ -110,24 +109,19 @@ export default function AdminDashboardPage() {
   const { data, loading, error, refetch } = useApiResource(
     () =>
       Promise.all([
-        api.fetchDailyActiveUsers(),
         api.fetchVerifications(),
         api.fetchCoaches(),
-        api.fetchLearners(),
         api.fetchAdminDashboard(), // real aggregate metrics (null in mock mode)
       ]),
     [],
   );
-  const dau = useMemo(() => data?.[0] ?? [], [data]);
-  const allVerifications = useMemo(() => data?.[1] ?? [], [data]);
-  const allCoaches = useMemo(() => data?.[2] ?? [], [data]);
-  const allLearners = useMemo(() => data?.[3] ?? [], [data]);
+  const allVerifications = useMemo(() => data?.[0] ?? [], [data]);
+  const allCoaches = useMemo(() => data?.[1] ?? [], [data]);
   /** Real platform dashboard — non-null in live mode, null in mock/demo mode. */
-  const dashStats = data?.[4] ?? null;
+  const dashStats = data?.[2] ?? null;
 
   const reduce = useReducedMotion();
   const [range, setRange] = useState<Range>("Tháng");
-  const [tab, setTab] = useState<Tab>("HLV");
 
   // Verification with synthetic risk score
   const verifications = useMemo<VerificationWithRisk[]>(
@@ -162,15 +156,13 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const todayDAU = dau.length > 0 ? dau[dau.length - 1].activeUsers : 0;
-  const dauTotal = dau.reduce((s, d) => s + d.activeUsers, 0);
   const recentCoaches = allCoaches.slice(0, 5);
-  const recentLearners = allLearners.slice(0, 5);
 
-  // Real metrics from backend when available, fallback to hardcoded demo values
-  const displayTotalUsers = dashStats?.totalUsers ?? TOTAL_USERS;
-  const displayActiveCoaches = dashStats?.totalCoaches ?? ACTIVE_COACHES;
-  const displayGrossRevenue = dashStats?.grossRevenue ?? PLATFORM_REVENUE_MTD;
+  // Real metrics from backend. In live mode, show "—" when API fails (dashStats null).
+  // In mock mode, fall back to demo constants so the UI stays populated during design.
+  const displayTotalUsers = dashStats?.totalUsers ?? (isMockMode() ? TOTAL_USERS : null);
+  const displayActiveCoaches = dashStats?.totalCoaches ?? (isMockMode() ? ACTIVE_COACHES : null);
+  const displayGrossRevenue = dashStats?.grossRevenue ?? (isMockMode() ? PLATFORM_REVENUE_MTD : null);
 
   return (
     <AppShell role="admin" title="Admin Dashboard">
@@ -258,8 +250,10 @@ export default function AdminDashboardPage() {
         <HeroCommand
           revenue={displayGrossRevenue}
           users={displayTotalUsers}
-          sessions={dashStats?.activeBookings ?? SESSIONS_TODAY}
+          sessions={dashStats?.activeBookings ?? (isMockMode() ? SESSIONS_TODAY : null)}
           coaches={displayActiveCoaches}
+          totalBookings={dashStats?.totalBookings ?? null}
+          completedBookings={dashStats?.completedBookings ?? null}
           reduce={reduce ?? false}
         />
 
@@ -268,48 +262,48 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={Users}
             label="Tổng người dùng"
-            value={formatNumber(displayTotalUsers)}
-            trend={dashStats ? `${formatNumber(dashStats.totalLearners)} HV · ${formatNumber(dashStats.totalCoaches)} HLV` : "+12%"}
+            value={displayTotalUsers !== null ? formatNumber(displayTotalUsers) : "—"}
+            trend={dashStats ? `${formatNumber(dashStats.totalLearners)} HV · ${formatNumber(dashStats.totalCoaches)} HLV` : isMockMode() ? "+12%" : undefined}
             trendDir={dashStats ? "neutral" : "up"}
-            trendLabel={dashStats ? "" : "tăng trưởng tháng"}
+            trendLabel={dashStats || !isMockMode() ? "" : "tăng trưởng tháng"}
             accent="indigo"
-            spark={seedSpark(1, 18000, 2000)}
+            spark={liveSpark(1, 18000, 2000)}
             delay={0.05}
             reduce={reduce ?? false}
           />
           <KpiCard
             icon={ShieldCheck}
             label="HLV đang hoạt động"
-            value={formatNumber(displayActiveCoaches)}
-            trend={dashStats ? `${formatNumber(dashStats.publishedPackages)} gói đang bán` : "84 mới"}
+            value={displayActiveCoaches !== null ? formatNumber(displayActiveCoaches) : "—"}
+            trend={dashStats ? `${formatNumber(dashStats.publishedPackages)} gói đang bán` : isMockMode() ? "84 mới" : undefined}
             trendDir="up"
-            trendLabel={dashStats ? "" : "tuần này"}
+            trendLabel={dashStats || !isMockMode() ? "" : "tuần này"}
             accent="violet"
-            spark={seedSpark(2, 1100, 60)}
+            spark={liveSpark(2, 1100, 60)}
             delay={0.1}
             reduce={reduce ?? false}
           />
           <KpiCard
             icon={Activity}
             label={dashStats ? "Gói tập hoạt động" : "Buổi tập hôm nay"}
-            value={dashStats ? formatNumber(dashStats.activeBookings) : formatNumber(SESSIONS_TODAY)}
-            trend={dashStats ? `${formatNumber(dashStats.completedBookings)} hoàn thành` : "Đỉnh 14h"}
+            value={dashStats ? formatNumber(dashStats.activeBookings) : isMockMode() ? formatNumber(SESSIONS_TODAY) : "—"}
+            trend={dashStats ? `${formatNumber(dashStats.completedBookings)} hoàn thành` : isMockMode() ? "Đỉnh 14h" : undefined}
             trendDir={dashStats ? "up" : "neutral"}
-            trendLabel={dashStats ? "" : "hiện tại"}
+            trendLabel={dashStats || !isMockMode() ? "" : "hiện tại"}
             accent="emerald"
-            spark={seedSpark(3, 380, 60)}
+            spark={liveSpark(3, 380, 60)}
             delay={0.15}
             reduce={reduce ?? false}
           />
           <KpiCard
             icon={DollarSign}
             label="Doanh thu nền tảng"
-            value={formatCurrency(displayGrossRevenue)}
-            trend={dashStats ? `Phí: ${formatCurrency(dashStats.platformFeeRevenue)}` : "+18%"}
+            value={displayGrossRevenue !== null ? formatCurrency(displayGrossRevenue) : "—"}
+            trend={dashStats ? `Phí: ${formatCurrency(dashStats.platformFeeRevenue)}` : isMockMode() ? "+18%" : undefined}
             trendDir="up"
-            trendLabel={dashStats ? "" : "so tháng trước"}
+            trendLabel={dashStats || !isMockMode() ? "" : "so tháng trước"}
             accent="amber"
-            spark={seedSpark(4, 700000, 60000)}
+            spark={liveSpark(4, 700000, 60000)}
             delay={0.2}
             reduce={reduce ?? false}
           />
@@ -317,11 +311,11 @@ export default function AdminDashboardPage() {
             icon={CreditCard}
             label="Rút tiền chờ"
             value={dashStats ? formatNumber(dashStats.pendingWithdrawals) : "—"}
-            trend={dashStats ? `${formatNumber(dashStats.processingWithdrawals)} đang xử lý` : "Demo"}
+            trend={dashStats ? `${formatNumber(dashStats.processingWithdrawals)} đang xử lý` : undefined}
             trendDir="neutral"
             trendLabel=""
             accent="rose"
-            spark={seedSpark(5, 91, 2)}
+            spark={liveSpark(5, 91, 2)}
             delay={0.25}
             reduce={reduce ?? false}
           />
@@ -333,19 +327,38 @@ export default function AdminDashboardPage() {
           <div className="space-y-5 min-w-0">
             {/* DAU + Revenue */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <DAUChart
-                data={dau}
-                today={todayDAU}
-                total={dauTotal}
-                reduce={reduce ?? false}
+              <AdminChartUnavailable
+                title="Người dùng hoạt động hàng ngày"
+                message="Endpoint DAU theo ngày chưa khả dụng từ backend."
               />
-              <RevenueChart data={REVENUE_TREND} reduce={reduce ?? false} />
+              {isMockMode() ? (
+                <RevenueChart data={REVENUE_TREND} reduce={reduce ?? false} />
+              ) : (
+                <AdminChartUnavailable
+                  title="Doanh thu nền tảng"
+                  message="Endpoint tổng hợp doanh thu theo tháng đang trong lộ trình phát triển."
+                />
+              )}
             </div>
 
             {/* Heatmap + Retention */}
             <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-5">
-              <SessionHeatmap reduce={reduce ?? false} />
-              <RetentionChart data={RETENTION} reduce={reduce ?? false} />
+              {isMockMode() ? (
+                <SessionHeatmap reduce={reduce ?? false} />
+              ) : (
+                <AdminChartUnavailable
+                  title="Mật độ buổi tập"
+                  message="Dữ liệu heatmap theo khung giờ chưa khả dụng."
+                />
+              )}
+              {isMockMode() ? (
+                <RetentionChart data={RETENTION} reduce={reduce ?? false} />
+              ) : (
+                <AdminChartUnavailable
+                  title="Tỷ lệ giữ chân người dùng"
+                  message="Dữ liệu retention theo tuần chưa khả dụng."
+                />
+              )}
             </div>
 
             {/* Verifications */}
@@ -354,21 +367,25 @@ export default function AdminDashboardPage() {
               reduce={reduce ?? false}
             />
 
-            {/* Users with tabs */}
+            {/* Recent coaches */}
             <RecentUsers
-              tab={tab}
-              setTab={setTab}
               coaches={recentCoaches}
-              learners={recentLearners}
               reduce={reduce ?? false}
             />
           </div>
 
           {/* ============ RIGHT SIDEBAR ============ */}
           <aside className="space-y-5">
-            <AIOpsCard reduce={reduce ?? false} />
-            <SystemHealth reduce={reduce ?? false} />
-            <QuickActions reduce={reduce ?? false} />
+            <AIOpsCard
+              dashStats={dashStats}
+              pendingVerificationsCount={allVerifications.length}
+              reduce={reduce ?? false}
+            />
+            {isMockMode() && <SystemHealth reduce={reduce ?? false} />}
+            <QuickActions
+              pendingVerificationsCount={allVerifications.length}
+              reduce={reduce ?? false}
+            />
           </aside>
         </div>
       </div>
@@ -385,12 +402,16 @@ function HeroCommand({
   users,
   sessions,
   coaches,
+  totalBookings,
+  completedBookings,
   reduce,
 }: {
-  revenue: number;
-  users: number;
-  sessions: number;
-  coaches: number;
+  revenue: number | null;
+  users: number | null;
+  sessions: number | null;
+  coaches: number | null;
+  totalBookings: number | null;
+  completedBookings: number | null;
   reduce: boolean;
 }) {
   return (
@@ -407,25 +428,23 @@ function HeroCommand({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] uppercase tracking-wider font-bold text-primary">
-              Doanh thu nền tảng · Tháng hiện tại
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-bold text-[#1f7a4d]">
-              <TrendingUp size={11} />
-              +18% tháng này
+              Doanh thu nền tảng · Lũy kế
             </span>
           </div>
 
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="text-[48px] sm:text-[64px] leading-[1] font-bold tracking-tight tabular-nums bg-gradient-to-br from-on-surface via-primary to-[#7d6dff] bg-clip-text text-transparent">
-              {formatCurrency(revenue)}
+              {revenue !== null ? formatCurrency(revenue) : "—"}
             </span>
-            <span className="text-[14px] text-on-surface-variant">USD</span>
           </div>
 
           <p className="text-[13.5px] text-on-surface-variant mt-3 max-w-xl leading-relaxed">
-            Đang trên đà ghi kỷ lục tháng này. Hiệu suất ghép AI tăng{" "}
-            <span className="text-on-surface font-semibold">+1.1%</span>{" "}
-            mỗi tuần, thúc đẩy tỷ lệ chuyển đổi buổi tập.
+            {totalBookings !== null && completedBookings !== null
+              ? `${formatNumber(totalBookings)} gói tập đã tạo · ${formatNumber(completedBookings)} hoàn thành trên toàn nền tảng.`
+              : users !== null && coaches !== null
+                ? `Nền tảng đang phục vụ ${formatNumber(users)} người dùng và ${formatNumber(coaches)} huấn luyện viên.`
+                : "Đang tải dữ liệu nền tảng…"
+            }
           </p>
 
           <div className="flex items-center gap-2 mt-5 flex-wrap">
@@ -445,17 +464,17 @@ function HeroCommand({
           <HeroStat
             icon={Users}
             label="Tổng người dùng"
-            value={formatNumber(users)}
+            value={users !== null ? formatNumber(users) : "—"}
           />
           <HeroStat
             icon={Activity}
             label="Buổi tập hôm nay"
-            value={formatNumber(sessions)}
+            value={sessions !== null ? formatNumber(sessions) : "—"}
           />
           <HeroStat
             icon={ShieldCheck}
             label="HLV đang hoạt động"
-            value={formatNumber(coaches)}
+            value={coaches !== null ? formatNumber(coaches) : "—"}
           />
         </div>
       </div>
@@ -593,26 +612,28 @@ function KpiCard({
         <p className="text-[22px] sm:text-[24px] leading-none font-bold tracking-tight tabular-nums mt-1">
           {value}
         </p>
-        <div className="h-7 mt-2.5 -mx-1">
-          <ClientOnly fallback={<div className="h-full" />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={spark}
-                margin={{ top: 2, right: 4, bottom: 0, left: 4 }}
-              >
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke={a.stroke}
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={!reduce}
-                  animationDuration={reduce ? 0 : 1100}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ClientOnly>
-        </div>
+        {spark.length > 0 && (
+          <div className="h-7 mt-2.5 -mx-1">
+            <ClientOnly fallback={<div className="h-full" />}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={spark}
+                  margin={{ top: 2, right: 4, bottom: 0, left: 4 }}
+                >
+                  <Line
+                    type="monotone"
+                    dataKey="v"
+                    stroke={a.stroke}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={!reduce}
+                    animationDuration={reduce ? 0 : 1100}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ClientOnly>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 mt-1 text-[11px]">
           {trend && (
             <span
@@ -635,137 +656,29 @@ function KpiCard({
 }
 
 // ============================================================================
-// DAU Chart
+// Chart unavailable placeholder (live mode, missing backend endpoint)
 // ============================================================================
 
-function DAUChart({
-  data,
-  today,
-  total,
-  reduce,
+function AdminChartUnavailable({
+  title,
+  message,
 }: {
-  data: AnalyticsDailyPoint[];
-  today: number;
-  total: number;
-  reduce: boolean;
+  title: string;
+  message: string;
 }) {
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.3, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
-        <div>
-          <h3 className="text-[17px] font-semibold tracking-tight">
-            Người dùng hoạt động hàng ngày
-          </h3>
-          <p className="text-[12px] text-on-surface-variant mt-0.5">
-            30 ngày qua · hôm nay được đánh dấu
-          </p>
-          <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-[28px] font-bold tracking-tight tabular-nums leading-none">
-              {formatNumber(today)}
-            </span>
-            <span className="text-[11.5px] text-on-surface-variant">
-              hôm nay · {formatNumber(total)} tổng cộng
-            </span>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
-          <TrendingUp size={10} />
-          +9% w/w
-        </span>
+    <div className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 flex flex-col justify-between min-h-[220px]">
+      <div>
+        <p className="text-[13px] font-semibold text-on-surface">{title}</p>
+        <p className="text-[11.5px] text-on-surface-variant mt-1 leading-relaxed">
+          {message}
+        </p>
       </div>
-      <div className="h-[200px] -mx-2">
-        <ClientOnly fallback={<div className="h-full" />}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              margin={{ left: -4, right: 8, top: 8, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="dauBar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4f46e5" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#7d6dff" stopOpacity={0.4} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                vertical={false}
-                stroke="#e8e8e5"
-                strokeDasharray="4 6"
-              />
-              <XAxis
-                dataKey="date"
-                stroke="#777587"
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                interval={4}
-                tickFormatter={(v) =>
-                  new Date(v).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                }
-              />
-              <YAxis
-                stroke="#777587"
-                fontSize={10.5}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                width={32}
-              />
-              <Tooltip
-                cursor={{ fill: "rgba(79, 70, 229, 0.06)" }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const p = payload[0].payload as {
-                    date: string;
-                    activeUsers: number;
-                    sessions: number;
-                  };
-                  return (
-                    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] px-3 py-2 shadow-[0_8px_20px_-8px_rgba(15,15,30,0.18)]">
-                      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
-                        {new Date(p.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </p>
-                      <p className="text-[14px] font-bold tabular-nums mt-0.5">
-                        {formatNumber(p.activeUsers)}
-                      </p>
-                      <p className="text-[10.5px] text-on-surface-variant tabular-nums">
-                        {p.sessions} buổi
-                      </p>
-                    </div>
-                  );
-                }}
-              />
-              <Bar
-                dataKey="activeUsers"
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={!reduce}
-                animationDuration={reduce ? 0 : 900}
-              >
-                {data.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={
-                      i === data.length - 1 ? "#4f46e5" : "url(#dauBar)"
-                    }
-                    opacity={i === data.length - 1 ? 1 : 0.6}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ClientOnly>
+      <div className="flex flex-col items-center justify-center flex-1 gap-2 py-6 text-on-surface-variant/40">
+        <Database size={24} />
+        <p className="text-[12px]">Chưa có dữ liệu</p>
       </div>
-    </motion.section>
+    </div>
   );
 }
 
@@ -1253,40 +1166,24 @@ function PendingVerifications({
 }
 
 // ============================================================================
-// Recent Users (tabbed)
+// Recent Users (coaches only — no real learner list endpoint)
 // ============================================================================
 
 function RecentUsers({
-  tab,
-  setTab,
   coaches,
-  learners,
   reduce,
 }: {
-  tab: Tab;
-  setTab: (t: Tab) => void;
   coaches: Coach[];
-  learners: Learner[];
   reduce: boolean;
 }) {
-  const items =
-    tab === "HLV"
-      ? coaches.map((c) => ({
-          id: c.id,
-          avatar: c.avatarUrl,
-          name: c.name,
-          sub: `${c.sport} · tham gia ${new Date(c.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
-          badge: c.verified ? "Đã xác minh" : "Chưa xác minh",
-          tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
-        }))
-      : learners.map((l) => ({
-          id: l.id,
-          avatar: l.avatarUrl,
-          name: l.name,
-          sub: `${l.preferredSports[0] ?? "—"} · tham gia ${new Date(l.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
-          badge: `${l.totalHoursTrained}h`,
-          tone: "neutral" as const,
-        }));
+  const items = coaches.map((c) => ({
+    id: c.id,
+    avatar: c.avatarUrl,
+    name: c.name,
+    sub: `${c.sport} · tham gia ${new Date(c.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
+    badge: c.verified ? "Đã xác minh" : "Chưa xác minh",
+    tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
+  }));
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -1297,48 +1194,19 @@ function RecentUsers({
       <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-[17px] font-semibold tracking-tight">
-            Đăng ký gần đây
+            HLV đăng ký gần đây
           </h3>
           <p className="text-[12px] text-on-surface-variant mt-0.5">
-            Người dùng mới nhất tham gia nền tảng
+            Huấn luyện viên mới nhất tham gia nền tảng
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px]">
-            {TAB_OPTIONS.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={cn(
-                  "relative px-3 h-7 text-[12px] font-medium rounded-[7px] transition-colors",
-                  tab === t
-                    ? "text-on-surface"
-                    : "text-on-surface-variant hover:text-on-surface",
-                )}
-              >
-                {tab === t && (
-                  <motion.span
-                    layoutId="adminUserTab"
-                    className="absolute inset-0 bg-surface-container-lowest rounded-[7px] shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
-                    transition={{
-                      type: "spring",
-                      duration: reduce ? 0 : 0.4,
-                      bounce: 0.2,
-                    }}
-                  />
-                )}
-                <span className="relative">{t}</span>
-              </button>
-            ))}
-          </div>
-          <Link
-            href="/admin/users"
-            className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
-          >
-            Tất cả
-            <ChevronRight size={12} />
-          </Link>
-        </div>
+        <Link
+          href="/admin/users"
+          className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
+        >
+          Tất cả
+          <ChevronRight size={12} />
+        </Link>
       </div>
       <ul className="px-3 pb-3 space-y-1">
         {items.map((it, i) => (
@@ -1390,27 +1258,48 @@ function RecentUsers({
 // AI Ops Card
 // ============================================================================
 
-function AIOpsCard({ reduce }: { reduce: boolean }) {
+function AIOpsCard({
+  dashStats,
+  pendingVerificationsCount,
+  reduce,
+}: {
+  dashStats: AdminDashboardResponse | null;
+  pendingVerificationsCount: number;
+  reduce: boolean;
+}) {
+  const pendingWithdrawals = dashStats?.pendingWithdrawals ?? 0;
+  const processingWithdrawals = dashStats?.processingWithdrawals ?? 0;
+  const failedWithdrawals = dashStats?.failedWithdrawals ?? 0;
+
   const ops = [
     {
       icon: ShieldCheck,
       label: "Xác minh đang chờ",
-      value: "4",
-      tone: "warn" as const,
+      value: String(pendingVerificationsCount),
+      tone: pendingVerificationsCount > 0 ? "warn" as const : "good" as const,
     },
     {
-      icon: Brain,
-      label: "Độ chính xác ghép",
-      value: "94.2%",
-      tone: "good" as const,
+      icon: CreditCard,
+      label: "Rút tiền đang chờ",
+      value: dashStats !== null ? String(pendingWithdrawals) : "—",
+      tone: pendingWithdrawals > 0 ? "warn" as const : "good" as const,
     },
     {
       icon: AlertTriangle,
-      label: "Bất thường thanh toán",
-      value: "2",
-      tone: "danger" as const,
+      label: "Rút tiền thất bại",
+      value: dashStats !== null ? String(failedWithdrawals) : "—",
+      tone: failedWithdrawals > 0 ? "danger" as const : "good" as const,
     },
   ];
+
+  const summaryLine = dashStats !== null
+    ? [
+        pendingVerificationsCount > 0 && `${pendingVerificationsCount} HLV chờ xác minh`,
+        pendingWithdrawals > 0 && `${pendingWithdrawals} yêu cầu rút tiền chờ xử lý`,
+        processingWithdrawals > 0 && `${processingWithdrawals} đang chuyển khoản`,
+      ].filter(Boolean).join(" · ") || "Không có mục nào cần xử lý gấp."
+    : "Đang tải dữ liệu vận hành…";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1425,7 +1314,7 @@ function AIOpsCard({ reduce }: { reduce: boolean }) {
         <div className="flex items-center justify-between mb-4">
           <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary inline-flex items-center gap-1.5">
             <Sparkles size={11} />
-            AI Vận hành
+            Trung tâm vận hành
           </span>
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
@@ -1441,11 +1330,8 @@ function AIOpsCard({ reduce }: { reduce: boolean }) {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[14px] leading-snug font-semibold text-on-surface">
-              <span className="text-[#b95000]">4 HLV</span> đang chờ xác
-              minh ·{" "}
-              <span className="text-[#ba1a1a]">2 bất thường thanh toán</span>{" "}
-              được phát hiện.
+            <p className="text-[13.5px] leading-snug font-semibold text-on-surface">
+              {summaryLine}
             </p>
             <p className="text-[12px] text-on-surface-variant leading-relaxed mt-1">
               Ưu tiên xử lý các mục rủi ro cao để duy trì uy tín nền tảng.
@@ -1596,37 +1482,6 @@ function SystemHealth({ reduce }: { reduce: boolean }) {
 // Quick Actions
 // ============================================================================
 
-const QUICK_ACTIONS = [
-  {
-    icon: ShieldCheck,
-    label: "Duyệt xác minh",
-    desc: "4 đang chờ",
-    href: "/admin/verifications",
-    accent: "indigo" as const,
-  },
-  {
-    icon: FileBarChart,
-    label: "Xuất phân tích",
-    desc: "CSV + PDF",
-    href: "#",
-    accent: "violet" as const,
-  },
-  {
-    icon: Database,
-    label: "Xem báo cáo",
-    desc: "Bảng lưu sẵn",
-    href: "#",
-    accent: "emerald" as const,
-  },
-  {
-    icon: Terminal,
-    label: "Nhật ký hệ thống",
-    desc: "Theo dõi trực tiếp",
-    href: "#",
-    accent: "amber" as const,
-  },
-];
-
 const QA_ACCENT = {
   indigo: "from-primary to-[#7d6dff]",
   violet: "from-[#8b5cf6] to-[#c084fc]",
@@ -1634,7 +1489,43 @@ const QA_ACCENT = {
   amber: "from-[#f59e0b] to-[#fb923c]",
 } as const;
 
-function QuickActions({ reduce }: { reduce: boolean }) {
+function QuickActions({
+  pendingVerificationsCount,
+  reduce,
+}: {
+  pendingVerificationsCount: number;
+  reduce: boolean;
+}) {
+  const actions = [
+    {
+      icon: ShieldCheck,
+      label: "Duyệt xác minh",
+      desc: pendingVerificationsCount > 0 ? `${pendingVerificationsCount} đang chờ` : "Không có mục chờ",
+      href: "/admin/verifications",
+      accent: "indigo" as const,
+    },
+    {
+      icon: FileBarChart,
+      label: "Xuất phân tích",
+      desc: "CSV + PDF",
+      href: "#",
+      accent: "violet" as const,
+    },
+    {
+      icon: Database,
+      label: "Xem báo cáo",
+      desc: "Bảng lưu sẵn",
+      href: "#",
+      accent: "emerald" as const,
+    },
+    {
+      icon: Terminal,
+      label: "Nhật ký hệ thống",
+      desc: "Theo dõi trực tiếp",
+      href: "#",
+      accent: "amber" as const,
+    },
+  ];
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1646,7 +1537,7 @@ function QuickActions({ reduce }: { reduce: boolean }) {
         Thao tác nhanh
       </h3>
       <div className="space-y-2">
-        {QUICK_ACTIONS.map((q, i) => {
+        {actions.map((q, i) => {
           const Icon = q.icon;
           return (
             <motion.div

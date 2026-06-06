@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Banknote,
+  Building2,
   Check,
-  ExternalLink,
   Hourglass,
   Loader2,
+  Receipt,
   RefreshCw,
   RotateCcw,
+  ShieldCheck,
   Wallet,
   X,
   XCircle,
@@ -16,10 +18,12 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/lib/api";
+import type { WithdrawalReceiptResponse } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, initials } from "@/lib/utils";
 import { messageForApiError } from "@/lib/errors-vi";
+import { showSuccess, showError } from "@/lib/toast";
 import type { Payout } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -33,13 +37,25 @@ const AUTO_PAYOUT = process.env.NEXT_PUBLIC_AUTO_PAYOUT_ENABLED === "true";
 // ---------------------------------------------------------------------------
 
 const STATUS_META: Record<string, { label: string; chip: string }> = {
-  pending:    { label: "Chờ duyệt",                    chip: "bg-amber-50 text-amber-700 border-amber-200" },
-  approved:   { label: "Đã duyệt — Chờ chuyển thủ công", chip: "bg-blue-50 text-blue-700 border-blue-200" },
-  processing: { label: "Đang chuyển tiền qua PayOS",   chip: "bg-violet-50 text-violet-700 border-violet-200" },
-  paid:       { label: "Đã chi trả",                   chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  rejected:   { label: "Đã từ chối",                   chip: "bg-red-50 text-red-600 border-red-200" },
-  failed:     { label: "Chi trả thất bại",             chip: "bg-red-50 text-red-600 border-red-200" },
+  pending:    { label: "Cần duyệt",                     chip: "bg-amber-50 text-amber-700 border-amber-200" },
+  approved:   { label: "Manual — chờ mark paid",        chip: "bg-blue-50 text-blue-700 border-blue-200" },
+  processing: { label: "PayOS đang xử lý",              chip: "bg-violet-50 text-violet-700 border-violet-200" },
+  paid:       { label: "Hoàn tất",                      chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  rejected:   { label: "Đã từ chối",                    chip: "bg-red-50 text-red-600 border-red-200" },
+  failed:     { label: "PayOS thất bại — có thể retry", chip: "bg-red-50 text-red-600 border-red-200" },
+  cancelled:  { label: "Đã hủy",                        chip: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]" },
 };
+
+const STATUS_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "all",        label: "Tất cả" },
+  { value: "pending",    label: "Cần duyệt" },
+  { value: "approved",   label: "Manual" },
+  { value: "processing", label: "PayOS đang xử lý" },
+  { value: "paid",       label: "Hoàn tất" },
+  { value: "failed",     label: "Thất bại" },
+  { value: "rejected",   label: "Từ chối" },
+  { value: "cancelled",  label: "Đã hủy" },
+];
 
 function StatusChip({ status }: { status: string }) {
   const meta = STATUS_META[status?.toLowerCase()] ?? {
@@ -68,12 +84,29 @@ export default function AdminWithdrawalsPage() {
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [approveTarget, setApproveTarget] = useState<Payout | null>(null);
   const [note, setNote] = useState("");
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [coachProfiles, setCoachProfiles] = useState<Map<string, { name: string; avatarUrl?: string }>>(new Map());
 
-  const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
+  useEffect(() => {
+    if (!items.length) return;
+    const uniqueIds = [...new Set(items.map((w) => w.coachId).filter(Boolean))];
+    void Promise.allSettled(
+      uniqueIds.map((id) => api.fetchUserProfile(id).then((profile) => ({ id, profile }))),
+    ).then((results) => {
+      const m = new Map<string, { name: string; avatarUrl?: string }>();
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.profile) {
+          m.set(r.value.id, { name: r.value.profile.name, avatarUrl: r.value.profile.avatarUrl ?? undefined });
+        }
+      }
+      if (m.size) setCoachProfiles(m);
+    });
+  }, [items]);
+
+  const filteredItems = useMemo(
+    () => statusFilter === "all" ? items : items.filter((w) => w.status === statusFilter),
+    [items, statusFilter],
+  );
 
   const isBusy = (id: string) => busy === id;
 
@@ -86,10 +119,10 @@ export default function AdminWithdrawalsPage() {
     setBusy(id);
     try {
       await action();
-      showToast(successMsg);
+      showSuccess(successMsg);
       refetch();
     } catch (e) {
-      showToast(messageForApiError(e), false);
+      showError(messageForApiError(e));
     } finally {
       setBusy(null);
     }
@@ -105,17 +138,17 @@ export default function AdminWithdrawalsPage() {
       refetch();
       if (AUTO_PAYOUT) {
         if (updated.status === "paid") {
-          showToast(`Chi trả ${formatCurrency(updated.amount, updated.currency)} thành công.`);
+          showSuccess(`PayOS đã xác nhận chuyển khoản thành công — ${formatCurrency(updated.amount, updated.currency)}.`);
         } else if (updated.status === "failed") {
-          showToast(`Chi trả thất bại. Tiền đã hoàn về ví khả dụng của HLV.`, false);
+          showError(`PayOS xử lý thất bại. Tiền đã hoàn về ví khả dụng của HLV.`);
         } else {
-          showToast(`Đã gửi yêu cầu chuyển tiền ${formatCurrency(updated.amount, updated.currency)} qua PayOS.`);
+          showSuccess(`Đã duyệt yêu cầu. PayOS đang xử lý chuyển khoản ${formatCurrency(updated.amount, updated.currency)}.`);
         }
       } else {
-        showToast(`Đã duyệt rút ${formatCurrency(w.amount, w.currency)}`);
+        showSuccess(`Đã duyệt yêu cầu rút ${formatCurrency(w.amount, w.currency)}. Vui lòng chuyển khoản thủ công rồi bấm xác nhận.`);
       }
     } catch (e) {
-      showToast(messageForApiError(e), false);
+      showError(messageForApiError(e));
     } finally {
       setBusy(null);
     }
@@ -132,14 +165,14 @@ export default function AdminWithdrawalsPage() {
       const updated = await api.refreshPayoutStatus(w.id);
       refetch();
       if (updated.status === "paid") {
-        showToast(`Đã xác nhận PayOS chuyển tiền thành công.`);
+        showSuccess(`PayOS đã xác nhận chuyển khoản thành công.`);
       } else if (updated.status === "failed") {
-        showToast(`PayOS báo lỗi: ${updated.failureReason ?? "Chi trả thất bại."}`, false);
+        showError(`PayOS xử lý thất bại. Số tiền đã hoàn về ví coach. ${updated.failureReason ?? ""}`.trim());
       } else {
-        showToast("Đã cập nhật trạng thái PayOS.");
+        showSuccess("PayOS vẫn đang xử lý giao dịch này.");
       }
     } catch (e) {
-      showToast(messageForApiError(e), false);
+      showError(messageForApiError(e));
     } finally {
       setBusy(null);
     }
@@ -153,17 +186,14 @@ export default function AdminWithdrawalsPage() {
       const updated = await api.retryPayout(w.id);
       refetch();
       if (updated.status === "paid") {
-        showToast(`Chi trả ${formatCurrency(updated.amount, updated.currency)} thành công.`);
+        showSuccess(`Chi trả ${formatCurrency(updated.amount, updated.currency)} thành công.`);
       } else if (updated.status === "failed") {
-        showToast(
-          `Chi trả thất bại: ${updated.failureReason ?? "PayOS từ chối lệnh thanh toán."}`,
-          false,
-        );
+        showError(`Chi trả thất bại: ${updated.failureReason ?? "PayOS từ chối lệnh thanh toán."}`);
       } else {
-        showToast("Đã gửi lại lệnh chuyển tiền — đang xử lý.");
+        showSuccess("Đã gửi lại lệnh chuyển tiền — đang xử lý.");
       }
     } catch (e) {
-      showToast(messageForApiError(e), false);
+      showError(messageForApiError(e));
     } finally {
       setBusy(null);
     }
@@ -223,6 +253,29 @@ export default function AdminWithdrawalsPage() {
               <StatCard icon={Wallet} label="Tất cả yêu cầu" value={String(items.length)} />
             </div>
 
+            {/* Status filter */}
+            <div className="flex items-center gap-1 p-1 bg-surface-container-low rounded-[10px] overflow-x-auto">
+              {STATUS_FILTER_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setStatusFilter(value)}
+                  className={cn(
+                    "px-2.5 h-7 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap",
+                    statusFilter === value
+                      ? "bg-surface-container-lowest text-on-surface shadow-[0_1px_2px_rgba(15,15,30,0.06)]"
+                      : "text-on-surface-variant hover:text-on-surface",
+                  )}
+                >
+                  {label}
+                  {value !== "all" && (
+                    <span className="ml-1 text-[10px] text-on-surface-variant/60">
+                      ({items.filter((w) => w.status === value).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
             {/* Table */}
             <div className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-x-auto">
               <table className="w-full text-left min-w-[780px]">
@@ -239,7 +292,7 @@ export default function AdminWithdrawalsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.length === 0 && (
+                  {filteredItems.length === 0 && (
                     <tr>
                       <td colSpan={AUTO_PAYOUT ? 6 : 5} className="px-5 py-12 text-center">
                         <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-surface-container-low flex items-center justify-center">
@@ -251,12 +304,13 @@ export default function AdminWithdrawalsPage() {
                       </td>
                     </tr>
                   )}
-                  {items.map((w) => (
+                  {filteredItems.map((w) => (
                     <WithdrawalRow
                       key={w.id}
                       w={w}
                       autoPayout={AUTO_PAYOUT}
                       busy={isBusy(w.id)}
+                      coachProfile={coachProfiles.get(w.coachId) ?? null}
                       onApprove={() => setApproveTarget(w)}
                       onReject={() => setRejectId(w.id)}
                       onMarkPaid={() => {
@@ -306,7 +360,7 @@ export default function AdminWithdrawalsPage() {
                   {formatCurrency(approveTarget.amount, approveTarget.currency)}
                 </p>
                 <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-                  HLV ID: <span className="font-mono">{approveTarget.coachId.slice(0, 8)}</span>
+                  HLV: <span className="font-medium">{coachProfiles.get(approveTarget.coachId)?.name ?? <span className="font-mono">{approveTarget.coachId.slice(0, 8).toUpperCase()}</span>}</span>
                 </p>
               </div>
               <p className="text-[13px] text-on-surface-variant leading-relaxed">
@@ -425,19 +479,6 @@ export default function AdminWithdrawalsPage() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className={cn(
-          "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[13px] font-medium shadow-[0_8px_24px_-6px_rgba(15,15,30,0.4)]",
-          toast.ok ? "bg-on-surface" : "bg-[#ba1a1a]",
-        )}>
-          {toast.ok
-            ? <Check size={14} className="text-[#34d399]" />
-            : <XCircle size={14} className="text-white/80" />
-          }
-          {toast.msg}
-        </div>
-      )}
     </AppShell>
   );
 }
@@ -450,6 +491,7 @@ function WithdrawalRow({
   w,
   autoPayout,
   busy,
+  coachProfile,
   onApprove,
   onReject,
   onMarkPaid,
@@ -459,6 +501,7 @@ function WithdrawalRow({
   w: Payout;
   autoPayout: boolean;
   busy: boolean;
+  coachProfile?: { name: string; avatarUrl?: string } | null;
   onApprove: () => void;
   onReject: () => void;
   onMarkPaid: () => void;
@@ -466,13 +509,51 @@ function WithdrawalRow({
   onRetry: () => void;
 }) {
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<WithdrawalReceiptResponse | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+
+  const openReceipt = async () => {
+    setReceiptOpen(true);
+    setReceiptData(null);
+    setReceiptError(null);
+    setReceiptLoading(true);
+    try {
+      const r = await api.fetchAdminWithdrawalReceipt(w.id);
+      setReceiptData(r);
+      if (!r) setReceiptError("Biên lai chưa khả dụng cho yêu cầu này.");
+    } catch {
+      setReceiptError("Không tải được biên lai. Vui lòng thử lại.");
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const canShowReceipt = w.status === "paid" || w.status === "failed";
 
   return (
     <>
       <tr className="border-b border-[var(--color-border-soft)] last:border-b-0 hover:bg-surface-container-low/20 transition-colors">
         <td className="px-5 py-3.5">
-          <p className="text-[13px] font-medium font-mono">{w.coachId.slice(0, 8) || "—"}</p>
-          <p className="text-[11px] text-on-surface-variant">{w.method}</p>
+          <div className="flex items-center gap-2.5">
+            {coachProfile?.avatarUrl ? (
+              <img
+                src={coachProfile.avatarUrl}
+                alt={coachProfile.name}
+                className="w-8 h-8 rounded-full object-cover shrink-0 border border-[var(--color-border-soft)]"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-[11px] font-bold text-primary">
+                {coachProfile?.name ? initials(coachProfile.name) : w.coachId.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium truncate">
+                {coachProfile?.name ?? <span className="font-mono text-on-surface-variant">{w.coachId.slice(0, 8).toUpperCase()}</span>}
+              </p>
+              <p className="text-[11px] text-on-surface-variant">{w.method}</p>
+            </div>
+          </div>
         </td>
         <td className="px-3 py-3.5 text-[12.5px] text-on-surface-variant tabular-nums">
           {new Date(w.date).toLocaleDateString("vi-VN")}
@@ -485,6 +566,16 @@ function WithdrawalRow({
           {w.status === "failed" && w.failureReason && (
             <p className="text-[10px] text-red-500 mt-1 max-w-[160px] mx-auto truncate" title={w.failureReason}>
               {w.failureReason}
+            </p>
+          )}
+          {w.status === "processing" && w.processingAt && (
+            <p className="text-[10px] text-on-surface-variant mt-0.5 tabular-nums">
+              {new Date(w.processingAt).toLocaleDateString("vi-VN")}
+            </p>
+          )}
+          {w.status === "paid" && w.paidAt && (
+            <p className="text-[10px] text-emerald-600 mt-0.5 tabular-nums">
+              ✓ {new Date(w.paidAt).toLocaleDateString("vi-VN")}
             </p>
           )}
         </td>
@@ -521,7 +612,7 @@ function WithdrawalRow({
               </>
             )}
 
-            {/* processing (auto payout): refresh */}
+            {/* processing: refresh payout status only */}
             {w.status === "processing" && (
               <ActionBtn
                 label="Cập nhật trạng thái PayOS"
@@ -532,18 +623,18 @@ function WithdrawalRow({
               />
             )}
 
-            {/* approved: always show mark-paid.
-                In auto mode these are legacy records approved before auto payout was enabled.
-                In manual mode these are the normal flow. */}
+            {/* approved (manual mode): refresh only if payOsPayoutId set, always show mark-paid */}
             {w.status === "approved" && (
               <>
-                <ActionBtn
-                  label="Làm mới"
-                  icon={busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                  disabled={busy}
-                  variant="neutral"
-                  onClick={onRefresh}
-                />
+                {w.payOsPayoutId && (
+                  <ActionBtn
+                    label="Refresh PayOS"
+                    icon={busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                    disabled={busy}
+                    variant="neutral"
+                    onClick={onRefresh}
+                  />
+                )}
                 <ActionBtn
                   label="Xác nhận đã chuyển khoản"
                   icon={busy ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
@@ -554,11 +645,11 @@ function WithdrawalRow({
               </>
             )}
 
-            {/* failed: retry payout */}
+            {/* failed: refresh status + retry payout */}
             {w.status === "failed" && (
               <>
                 <ActionBtn
-                  label="Cập nhật trạng thái"
+                  label="Refresh trạng thái"
                   icon={busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                   disabled={busy}
                   variant="neutral"
@@ -574,26 +665,26 @@ function WithdrawalRow({
               </>
             )}
 
-            {/* paid: view receipt */}
-            {w.status === "paid" && (
+            {/* paid/failed: view receipt */}
+            {canShowReceipt && (
               <ActionBtn
                 label="Xem biên lai"
-                icon={<ExternalLink size={12} />}
-                disabled={false}
+                icon={<Receipt size={12} />}
+                disabled={busy}
                 variant="neutral"
-                onClick={() => setReceiptOpen(true)}
+                onClick={() => void openReceipt()}
               />
             )}
 
-            {/* rejected: read-only */}
-            {w.status === "rejected" && (
+            {/* rejected/cancelled: read-only */}
+            {(w.status === "rejected" || w.status === "cancelled") && (
               <span className="text-[12px] text-on-surface-variant">—</span>
             )}
           </div>
         </td>
       </tr>
 
-      {/* Receipt mini-modal */}
+      {/* Receipt modal */}
       {receiptOpen && (
         <tr>
           <td colSpan={autoPayout ? 6 : 5} className="p-0">
@@ -606,23 +697,86 @@ function WithdrawalRow({
                 className="w-full max-w-sm rounded-[16px] bg-surface-container-lowest shadow-[0_20px_50px_-12px_rgba(15,15,30,0.35)] overflow-hidden"
               >
                 <div className="p-5 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-                  <h3 className="text-[15px] font-bold">Biên lai rút tiền</h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary to-[#5b4ee8] flex items-center justify-center">
+                      <Receipt size={14} className="text-white" />
+                    </div>
+                    <h3 className="text-[15px] font-bold">Biên lai rút tiền</h3>
+                  </div>
                   <button onClick={() => setReceiptOpen(false)} className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center">
                     <X size={14} />
                   </button>
                 </div>
+
                 <div className="p-5 space-y-2 text-[13px]">
-                  <ReceiptRow label="ID" value={w.id.slice(0, 16) + "…"} mono />
-                  <ReceiptRow label="Số tiền" value={formatCurrency(w.amount, w.currency)} />
-                  <ReceiptRow label="Ngày yêu cầu" value={new Date(w.date).toLocaleDateString("vi-VN")} />
-                  <ReceiptRow label="Trạng thái" value="Đã chi trả" />
-                  {w.payOsPayoutId && (
-                    <ReceiptRow label="PayOS Payout ID" value={w.payOsPayoutId} mono />
+                  {receiptLoading && (
+                    <div className="py-8 flex items-center justify-center text-on-surface-variant">
+                      <Loader2 size={18} className="animate-spin text-primary mr-2" />
+                      <span className="text-[12.5px]">Đang tải…</span>
+                    </div>
                   )}
-                  {w.payOsPayoutStatus && (
-                    <ReceiptRow label="PayOS Status" value={w.payOsPayoutStatus} />
+
+                  {receiptError && !receiptLoading && (
+                    <div className="py-4 text-center">
+                      <p className="text-[12.5px] text-on-surface-variant">{receiptError}</p>
+                    </div>
                   )}
+
+                  {receiptData && !receiptLoading && (
+                    <>
+                      <ReceiptRow label="Mã biên lai" value={receiptData.receiptNumber} mono />
+                      <ReceiptRow label="Số tiền" value={formatCurrency(receiptData.amount, receiptData.currency)} />
+                      <ReceiptRow label="Trạng thái" value={STATUS_META[receiptData.status]?.label ?? receiptData.status} />
+                      <ReceiptRow label="Ngày yêu cầu" value={new Date(receiptData.createdAt).toLocaleDateString("vi-VN")} />
+                      {receiptData.processingAt && (
+                        <ReceiptRow label="Ngày bắt đầu chuyển" value={new Date(receiptData.processingAt).toLocaleDateString("vi-VN")} />
+                      )}
+                      {receiptData.paidAt && (
+                        <ReceiptRow label="Ngày hoàn tất" value={new Date(receiptData.paidAt).toLocaleDateString("vi-VN")} />
+                      )}
+                      {(receiptData.bankName || receiptData.maskedAccountNumber) && (
+                        <div className="flex items-center gap-2.5 pt-2 border-t border-[var(--color-border-soft)]">
+                          <div className="w-8 h-8 rounded-[8px] bg-surface-container-high flex items-center justify-center shrink-0">
+                            <Building2 size={14} className="text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-[12.5px] font-semibold">{receiptData.bankName || "—"}</p>
+                            <p className="text-[11px] text-on-surface-variant">
+                              {receiptData.maskedAccountNumber} · {receiptData.accountHolderName}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {receiptData.payOsPayoutId && (
+                        <ReceiptRow label="PayOS Payout ID" value={receiptData.payOsPayoutId} mono />
+                      )}
+                      {receiptData.payOsPayoutStatus && (
+                        <ReceiptRow label="PayOS Status" value={receiptData.payOsPayoutStatus} />
+                      )}
+                    </>
+                  )}
+
+                  {/* Fallback: show data from payout object when receipt not loaded */}
+                  {!receiptData && !receiptLoading && !receiptError && (
+                    <>
+                      <ReceiptRow label="ID" value={w.id.slice(0, 16) + "…"} mono />
+                      <ReceiptRow label="Số tiền" value={formatCurrency(w.amount, w.currency)} />
+                      <ReceiptRow label="Ngày yêu cầu" value={new Date(w.date).toLocaleDateString("vi-VN")} />
+                      <ReceiptRow label="Trạng thái" value={STATUS_META[w.status]?.label ?? w.status} />
+                      {w.payOsPayoutId && <ReceiptRow label="PayOS Payout ID" value={w.payOsPayoutId} mono />}
+                      {w.payOsPayoutStatus && <ReceiptRow label="PayOS Status" value={w.payOsPayoutStatus} />}
+                    </>
+                  )}
+
+                  {/* Commission note */}
+                  <div className="flex items-start gap-2 pt-3 border-t border-[var(--color-border-soft)]">
+                    <ShieldCheck size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-emerald-700">
+                      Phí nền tảng đã được trừ khi học viên mua gói tập. Không có phí bổ sung nào bị trừ trong lần rút tiền này.
+                    </p>
+                  </div>
                 </div>
+
                 <div className="px-5 pb-5">
                   <button
                     onClick={() => setReceiptOpen(false)}

@@ -33,6 +33,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { cn, formatCurrency, relativeDay } from "@/lib/utils";
 import { api, type VerificationKind } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { showSuccess, showError } from "@/lib/toast";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { Coach, VerificationRequest } from "@/types";
 
@@ -104,7 +105,6 @@ export default function VerificationsPage() {
   const [activeId, setActiveId] = useState<string>("");
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
   // Optimistic moderation results — the fetched queue is read-only, so we overlay
   // approved/rejected ids locally and roll back on API failure (no refetch flicker).
   const [statusOverride, setStatusOverride] = useState<
@@ -113,17 +113,24 @@ export default function VerificationsPage() {
 
   // Apply local status overrides + resolve the real coach name from the public
   // directory when available (the moderation DTOs carry only a coachId).
+  // Only show training-package and post kinds — payout-account is handled
+  // by /admin/bank-verifications.
   const items = useMemo<VerificationRequest[]>(
     () =>
-      verificationsData.map((v) => {
-        const coach = coachById.get(v.coachId);
-        return {
-          ...v,
-          status: statusOverride[v.id] ?? v.status,
-          coachName: coach?.name ?? v.coachName,
-          coachAvatar: coach?.avatarUrl ?? v.coachAvatar,
-        };
-      }),
+      verificationsData
+        .filter((v) => {
+          const k = kindOf(v);
+          return k === "training-package" || k === "post";
+        })
+        .map((v) => {
+          const coach = coachById.get(v.coachId);
+          return {
+            ...v,
+            status: statusOverride[v.id] ?? v.status,
+            coachName: coach?.name ?? v.coachName,
+            coachAvatar: coach?.avatarUrl ?? v.coachAvatar,
+          };
+        }),
     [verificationsData, coachById, statusOverride],
   );
 
@@ -173,7 +180,7 @@ export default function VerificationsPage() {
         else next[id] = prev;
         return next;
       });
-      showToast(
+      showError(
         `Không thể ${status === "approved" ? "duyệt" : "từ chối"} mục của ${item.coachName}`,
       );
     });
@@ -182,7 +189,7 @@ export default function VerificationsPage() {
   const handleApprove = () => {
     if (!active) return;
     moderate(active, "approved");
-    showToast(`Đã duyệt mục của ${active.coachName}`);
+    showSuccess(`Đã duyệt mục của ${active.coachName}`);
     navigate(1);
   };
   const openReject = () => {
@@ -192,14 +199,10 @@ export default function VerificationsPage() {
     setRejectOpen(false);
     if (active) {
       moderate(active, "rejected", rejectReason);
-      showToast(`Đã từ chối mục của ${active.coachName}`);
+      showSuccess(`Đã từ chối mục của ${active.coachName}`);
     }
     setRejectReason("");
     navigate(1);
-  };
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2200);
   };
 
   // Keyboard shortcuts
@@ -229,7 +232,7 @@ export default function VerificationsPage() {
 
   if (loading) {
     return (
-      <AppShell role="admin" title="Duyệt nội dung HLV">
+      <AppShell role="admin" title="Duyệt gói tập & bài đăng">
         <LoadingState label="Đang tải hàng chờ kiểm duyệt…" />
       </AppShell>
     );
@@ -237,14 +240,14 @@ export default function VerificationsPage() {
 
   if (error) {
     return (
-      <AppShell role="admin" title="Duyệt nội dung HLV">
+      <AppShell role="admin" title="Duyệt gói tập & bài đăng">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
   }
 
   return (
-    <AppShell role="admin" title="Duyệt nội dung HLV">
+    <AppShell role="admin" title="Duyệt gói tập & bài đăng">
       <div className="max-w-[1500px] mx-auto">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -264,10 +267,10 @@ export default function VerificationsPage() {
               </span>
             </div>
             <h1 className="text-[28px] sm:text-[32px] leading-[1.05] font-bold tracking-tight">
-              Duyệt nội dung HLV
+              Duyệt gói tập & bài đăng
             </h1>
             <p className="text-[13px] text-on-surface-variant mt-1">
-              Kiểm tra & phê duyệt gói tập, bài đăng và tài khoản nhận tiền do huấn luyện viên gửi lên.
+              Kiểm tra & phê duyệt gói huấn luyện và bài đăng do huấn luyện viên gửi lên.
             </p>
           </div>
           <KeyboardHint />
@@ -322,21 +325,6 @@ export default function VerificationsPage() {
         )}
       </AnimatePresence>
 
-      {/* TOAST */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.25, ease: EASE }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-on-surface text-white text-[13px] font-medium shadow-[0_8px_24px_-6px_rgba(15,15,30,0.4)]"
-          >
-            <CheckCircle2 size={14} className="text-[#34d399]" />
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </AppShell>
   );
 }

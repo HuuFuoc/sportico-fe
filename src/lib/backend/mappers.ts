@@ -242,6 +242,10 @@ export function bookingToUi(b: BookingResponse): Booking {
     trainingPackageId: b.trainingPackageId,
     totalSessions: b.totalSessions,
     completedSessions: b.completedSessions,
+    usedSessions: b.usedSessions,
+    remainingSessions: b.remainingSessions,
+    canBookSession: b.canBookSession,
+    sessionCountsByStatus: b.sessionCountsByStatus ?? undefined,
     status: b.status ?? "Active",
     totalAmount: b.totalAmount,
     paidAt: b.paidAt ?? undefined,
@@ -518,6 +522,8 @@ function toPayoutStatus(raw?: string | null): Payout["status"] {
       return "rejected";
     case "failed":
       return "failed";
+    case "cancelled":
+      return "cancelled";
     default:
       return "pending";
   }
@@ -549,6 +555,8 @@ export function withdrawalToPayout(w: WithdrawalRequestResponse): Payout {
     payOsPayoutStatus: w.payOsPayoutStatus ?? undefined,
     failureReason: w.failureReason ?? undefined,
     adminNote: w.adminNote ?? undefined,
+    processingAt: w.processingAt ?? undefined,
+    paidAt: w.paidAt ?? undefined,
   };
 }
 

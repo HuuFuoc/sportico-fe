@@ -49,7 +49,6 @@ import { isMockMode, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { backend } from "@/lib/backend/client";
 import type { AssessmentBody } from "@/lib/backend/client";
-import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole, getCurrentUserId } from "@/lib/auth-session";
 import * as map from "@/lib/backend/mappers";
 import { NOW } from "@/lib/mock/clock";
@@ -142,39 +141,55 @@ function live<T>(
     : liveFn();
 }
 
-/** Like {@link live} but for AUTHENTICATED endpoints. Falls back to the mock
- *  whenever there is no Bearer token — i.e. during SSR / static generation
- *  (no localStorage on the server) and for signed-out dev navigation. This
- *  keeps every page renderable; real data appears once the user logs in. */
+/** Like {@link live} but for AUTHENTICATED endpoints.
+ *
+ *  Mock mode  → always use the local fixture (no real backend).
+ *  Server-side (typeof window === "undefined") → SSR cannot read localStorage,
+ *    so fall back to mock to avoid crashing async Server Components with a 401.
+ *    Dashboard pages that matter are all "use client" with useApiResource hooks
+ *    that only fire after mount — they never hit this SSR path.
+ *  Client live mode → always call liveFn(). CoachGuard / LearnerGuard ensure
+ *    the user is authenticated before any data hook fires, so missing-token is
+ *    an edge case handled by apiFetch's built-in 401 → /login redirect. */
 function liveAuthed<T>(
   liveFn: () => Promise<T>,
   mockFn: () => T | Promise<T>,
 ): Promise<T> {
-  return isMockMode() || !getAccessToken()
-    ? Promise.resolve(mockFn())
-    : liveFn();
+  if (isMockMode()) return Promise.resolve(mockFn());
+  if (typeof window === "undefined") return Promise.resolve(mockFn());
+  return liveFn();
 }
 
-/** Aggregate per-booking sessions into a flat, UI-shaped Session[]. */
+/**
+ * Aggregate per-booking sessions into a flat, UI-shaped Session[].
+ * Uses Promise.all so all booking-session fetches run in parallel instead of
+ * sequentially — reduces wall-clock time from O(N) serial to ~O(1) parallel.
+ */
 async function liveSessionsForBookings(
   bookings: BookingResponse[],
 ): Promise<Session[]> {
-  const out: Session[] = [];
-  for (const b of bookings) {
-    const page = await backend.bookingSessions(b.id, { pageSize: 100 });
-    for (const s of page.items ?? []) out.push(map.sessionToSession(s, b));
-  }
-  return out;
+  if (bookings.length === 0) return [];
+  const results = await Promise.all(
+    bookings.map(async (b) => {
+      const page = await backend.bookingSessions(b.id, { pageSize: 100 });
+      return (page.items ?? []).map((s) => map.sessionToSession(s, b));
+    }),
+  );
+  return results.flat();
 }
 
 async function liveLearnerSessions(): Promise<Session[]> {
   const page = await backend.myBookings({ pageSize: 50 });
-  return liveSessionsForBookings(page.items ?? []);
+  // Only fetch sessions for active bookings — completed/cancelled bookings
+  // have no upcoming sessions and would add unnecessary network requests.
+  const active = (page.items ?? []).filter((b) => b.status === "active");
+  return liveSessionsForBookings(active);
 }
 
 async function liveCoachSessions(): Promise<Session[]> {
   const page = await backend.coachBookings({ pageSize: 50 });
-  return liveSessionsForBookings(page.items ?? []);
+  const active = (page.items ?? []).filter((b) => b.status === "active");
+  return liveSessionsForBookings(active);
 }
 
 // ---- Helpers ---------------------------------------------------------------
@@ -191,6 +206,10 @@ function slotToUi(s: import("@/lib/backend/dto").AvailabilitySlotResponse): Avai
     meetingUrl: s.meetingUrl ?? undefined,
     note: s.note ?? undefined,
     createdAt: s.createdAt,
+    maxParticipants: s.maxParticipants ?? undefined,
+    bookedParticipants: s.bookedParticipants ?? undefined,
+    remainingParticipants: s.remainingParticipants ?? undefined,
+    isFull: s.isFull ?? undefined,
   };
 }
 
@@ -932,6 +951,8 @@ export const api = {
     isOnline?: boolean;
     meetingUrl?: string;
     note?: string;
+    /** Max learners. Omit or 1 = individual; >1 = group slot. */
+    maxParticipants?: number;
   }): Promise<AvailabilitySlot> =>
     liveAuthed(
       async () => slotToUi(await backend.createAvailabilitySlot(body)),
@@ -942,6 +963,10 @@ export const api = {
         isOnline: body.isOnline ?? false,
         status: "available",
         createdAt: new Date().toISOString(),
+        maxParticipants: body.maxParticipants ?? 1,
+        bookedParticipants: 0,
+        remainingParticipants: body.maxParticipants ?? 1,
+        isFull: false,
       }),
     ),
 

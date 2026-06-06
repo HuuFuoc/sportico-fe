@@ -11,6 +11,7 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { AuthButton } from "@/components/ui/AuthButton";
 import { apiFetch, isMockMode } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
+import { showError } from "@/lib/toast";
 import { z } from "zod";
 import { zodResolver } from "@/lib/validation/auth";
 
@@ -33,7 +34,6 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const {
@@ -46,11 +46,8 @@ function ResetPasswordForm() {
   });
 
   const onSubmit = async (values: Values) => {
-    setServerError(null);
     if (!token) {
-      setServerError(
-        "Liên kết đặt lại mật khẩu không hợp lệ. Vui lòng yêu cầu lại.",
-      );
+      showError("Liên kết đặt lại mật khẩu không hợp lệ. Vui lòng yêu cầu lại.");
       return;
     }
     if (isMockMode()) {
@@ -67,15 +64,13 @@ function ResetPasswordForm() {
         },
       );
       if (raw && !raw.isSuccess) {
-        setServerError(
-          raw.error?.message ?? "Đặt lại mật khẩu không thành công.",
-        );
+        showError(raw.error?.message ?? "Đặt lại mật khẩu không thành công.");
         return;
       }
       setSuccess(true);
       setTimeout(() => router.push("/login"), 2500);
     } catch {
-      setServerError("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+      showError("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
     }
   };
 
@@ -138,12 +133,6 @@ function ResetPasswordForm() {
             {...register("confirm")}
             error={errors.confirm?.message}
           />
-
-          {serverError && (
-            <p role="alert" className="text-[13px] text-red-600">
-              {serverError}
-            </p>
-          )}
 
           <AuthButton type="submit" loading={isSubmitting}>
             Đặt lại mật khẩu

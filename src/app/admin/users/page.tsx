@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowDown,
@@ -25,6 +25,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { cn, formatNumber, initials } from "@/lib/utils";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { showSuccess, showError } from "@/lib/toast";
 import * as adminUserService from "@/lib/admin/adminUserService";
 import type { AdminUserItem } from "@/lib/types/admin-user";
 import { UserFormModal } from "./_components/UserFormModal";
@@ -114,12 +115,6 @@ export default function AdminUsersPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<AdminUserItem | null>(null);
   const [deactivating, setDeactivating] = useState(false);
 
-  // ---- Toast -----------------------------------------------------------------
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const showToast = useCallback((msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 2800);
-  }, []);
 
   // ---- Debounce search -------------------------------------------------------
   const handleSearchChange = (v: string) => {
@@ -191,10 +186,10 @@ export default function AdminUsersPage() {
     setDeactivating(true);
     try {
       await adminUserService.deactivateUser(deactivateTarget.id);
-      showToast(`Đã vô hiệu hóa "${deactivateTarget.fullName}".`);
+      showSuccess(`Đã vô hiệu hóa "${deactivateTarget.fullName}".`);
       refetch();
     } catch {
-      showToast("Vô hiệu hóa thất bại. Vui lòng thử lại.", false);
+      showError("Vô hiệu hóa thất bại. Vui lòng thử lại.");
     } finally {
       setDeactivating(false);
       setDeactivateTarget(null);
@@ -505,7 +500,7 @@ export default function AdminUsersPage() {
         open={formOpen}
         user={editUser}
         onClose={() => { setFormOpen(false); setEditUser(null); }}
-        onSuccess={(msg) => { showToast(msg); refetch(); }}
+        onSuccess={(msg) => { showSuccess(msg); refetch(); }}
       />
 
       <UserDetailModal
@@ -562,34 +557,6 @@ export default function AdminUsersPage() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ============ TOAST ============ */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            key="toast"
-            initial={{ opacity: 0, y: 16, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.97 }}
-            transition={{ duration: reduce ? 0 : 0.22, ease: EASE }}
-            className={cn(
-              "fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-[12px] px-4 py-3 text-[13px] font-semibold shadow-[0_8px_24px_-4px_rgba(15,15,30,0.25)]",
-              toast.ok
-                ? "bg-on-surface/95 text-white"
-                : "bg-[#ba1a1a]/95 text-white",
-            )}
-          >
-            {toast.ok ? (
-              <span className="w-5 h-5 rounded-full bg-[#10b981] flex items-center justify-center shrink-0">
-                <span className="text-white text-[10px] font-bold">✓</span>
-              </span>
-            ) : (
-              <Ban size={14} className="shrink-0" />
-            )}
-            {toast.msg}
           </motion.div>
         )}
       </AnimatePresence>

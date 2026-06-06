@@ -20,8 +20,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Info, Loader2, SkipForward } from "lucide-react";
+import { Info, Loader2, SkipForward } from "lucide-react";
 import { api } from "@/lib/api";
+import { showSuccess, showError, showApiError } from "@/lib/toast";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { ImageUpload } from "@/components/common/ImageUpload";
 import { cn } from "@/lib/utils";
@@ -96,10 +97,6 @@ export function PersonalProfileForm({
   });
 
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
   // Seed from auth store. Only run when user identity changes (not on every
   // field update after a save — authUser.id stays the same).
@@ -117,13 +114,6 @@ export function PersonalProfileForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
-  // Auto-dismiss success toast after 4 s
-  useEffect(() => {
-    if (toast?.type !== "success") return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   const set = (key: keyof FormState) => (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -132,30 +122,22 @@ export function PersonalProfileForm({
     e.preventDefault();
     const err = validate(form);
     if (err) {
-      setToast({ type: "error", text: err });
+      showError(err);
       return;
     }
     setSaving(true);
-    setToast(null);
     try {
       await api.updateMyProfile({
         fullName: form.fullName.trim(),
         phone: form.phone.trim() || undefined,
         avatarUrl: form.avatarUrl.trim() || undefined,
-        // Convert YYYY-MM-DD → ISO 8601 UTC string (backend Swagger format)
         dateOfBirth: form.dateOfBirth
           ? new Date(form.dateOfBirth + "T00:00:00.000Z").toISOString()
           : undefined,
       });
-      setToast({ type: "success", text: "Đã cập nhật hồ sơ cá nhân." });
+      showSuccess("Đã cập nhật hồ sơ cá nhân.");
     } catch (err) {
-      setToast({
-        type: "error",
-        text:
-          err instanceof Error
-            ? err.message
-            : "Không thể cập nhật. Vui lòng thử lại.",
-      });
+      showApiError(err);
     } finally {
       setSaving(false);
     }
@@ -193,29 +175,6 @@ export function PersonalProfileForm({
         </div>
       )}
 
-      {/* ── Toast feedback ─────────────────────────────────────────────── */}
-      {toast && (
-        <div
-          role={toast.type === "error" ? "alert" : "status"}
-          aria-live="polite"
-          className={cn(
-            "flex items-start gap-2 rounded-[10px] border px-4 py-3 text-[13px]",
-            toast.type === "success"
-              ? "border-[#bce8c8] bg-success-container/50 text-[#1f7a4d]"
-              : "border-rose-200 bg-rose-50 text-rose-700",
-          )}
-        >
-          <CheckCircle2
-            size={15}
-            className={cn(
-              "mt-0.5 shrink-0",
-              toast.type === "error" && "hidden",
-            )}
-          />
-          {toast.text}
-        </div>
-      )}
-
       {/* ── Form ───────────────────────────────────────────────────────── */}
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
         {/* Avatar — upload from device to S3, store the returned URL */}
@@ -225,7 +184,7 @@ export function PersonalProfileForm({
             value={avatarPreview || undefined}
             folder="avatars"
             onChange={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
-            onError={(text) => setToast({ type: "error", text })}
+            onError={(text) => showError(text)}
           />
           <div className="flex-1 min-w-0 pt-1">
             <p className="text-[13px] font-semibold text-on-surface">

@@ -97,6 +97,7 @@ const ADMIN_NAV: NavGroup[] = [
     label: "Duyệt & Xác minh",
     items: [
       { href: "/admin/verifications", label: "Duyệt gói tập", icon: "inventory_2" },
+      { href: "/admin/bank-verifications", label: "Duyệt tài khoản NH", icon: "account_balance" },
     ],
   },
   {
@@ -157,7 +158,8 @@ export function Sidebar({ role }: { role: AppRole }) {
   const handleLogout = () => {
     logout();
     useAuthStore.getState().clear();
-    router.push("/login");
+    // replace, not push — prevents back-button from returning to a protected page
+    router.replace("/login");
   };
 
   const settingsHref =

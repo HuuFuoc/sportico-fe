@@ -53,6 +53,13 @@ export function LearnerGuard({ children }: { children: React.ReactNode }) {
     }
     if (status === "idle") {
       void hydrate();
+      return;
+    }
+    // Token present but store says unauthenticated: this can happen when the
+    // login page redirects here before the hydrate() it awaited had a chance
+    // to propagate the new status. Re-hydrate with force to resolve the state.
+    if (status === "unauthenticated") {
+      void hydrate({ force: true });
     }
   }, [mounted, status, router, pathname, hydrate]);
 

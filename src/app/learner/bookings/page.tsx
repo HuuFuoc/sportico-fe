@@ -24,6 +24,7 @@ import { BookSessionModal } from "@/components/common/BookSessionModal";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { findOrderCodeForBooking, clearPendingPayos } from "@/lib/payos-pending";
+import { showError } from "@/lib/toast";
 import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
 import type { Booking } from "@/types";
 
@@ -115,7 +116,7 @@ function SyncPaymentButton({
   onSynced?: () => void;
 }) {
   const [syncing, setSyncing] = useState(false);
-  const [result, setResult] = useState<"success" | "pending" | "error" | null>(null);
+  const [result, setResult] = useState<"success" | "pending" | null>(null);
 
   async function handleSync() {
     setSyncing(true);
@@ -145,7 +146,7 @@ function SyncPaymentButton({
       }
       setResult("pending");
     } catch {
-      setResult("error");
+      showError("Không kiểm tra được trạng thái thanh toán. Vui lòng thử lại sau.");
     } finally {
       setSyncing(false);
     }
@@ -173,11 +174,6 @@ function SyncPaymentButton({
       {result === "pending" && (
         <p className="text-[11.5px] text-amber-700">
           Chưa nhận được xác nhận. Nếu bạn vừa thanh toán, hãy đợi 1–2 phút rồi thử lại.
-        </p>
-      )}
-      {result === "error" && (
-        <p className="text-[11.5px] text-red-600">
-          Không kiểm tra được trạng thái. Vui lòng thử lại sau.
         </p>
       )}
     </div>
@@ -330,19 +326,32 @@ function BookingCard({
   onBookSession: (b: Booking) => void;
   onSynced?: () => void;
 }) {
-  const cfg = statusCfg(booking.status);
-  const StatusIcon = cfg.icon;
   const status = (booking.status ?? "").toLowerCase();
+  const cfg = statusCfg(status);
+  const StatusIcon = cfg.icon;
   const isActive = status === "active";
   const isPendingPayment = status === "pending_payment";
   const isCompleted = status === "completed";
   const isCancelled = status === "cancelled";
 
+  // Use backend-supplied usage fields; fall back to completedSessions only.
+  const usedSessions = booking.usedSessions ?? booking.completedSessions;
+  const remainingSessions =
+    booking.remainingSessions ?? Math.max(0, booking.totalSessions - booking.completedSessions);
+  const canBookMore =
+    isActive &&
+    (booking.canBookSession !== false) &&
+    remainingSessions > 0;
+
+  const completedSessions = booking.completedSessions;
   const progress =
     booking.totalSessions > 0
-      ? Math.round((booking.completedSessions / booking.totalSessions) * 100)
+      ? Math.round((completedSessions / booking.totalSessions) * 100)
       : 0;
-  const remaining = Math.max(0, booking.totalSessions - booking.completedSessions);
+  const usedProgress =
+    booking.totalSessions > 0
+      ? Math.round((usedSessions / booking.totalSessions) * 100)
+      : 0;
 
   const coachName = coachProfile?.name;
   const coachAvatar = coachProfile?.avatarUrl ?? avatarFor(booking.coachId);
@@ -413,9 +422,10 @@ function BookingCard({
           <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
             <span className="font-medium text-on-surface">Tiến độ buổi tập</span>
             <span className="tabular-nums font-semibold text-on-surface">
-              {booking.completedSessions}/{booking.totalSessions} buổi
+              {completedSessions}/{booking.totalSessions} hoàn thành
             </span>
           </div>
+          {/* Primary bar: completed sessions */}
           <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
             <div
               className={cn(
@@ -429,15 +439,46 @@ function BookingCard({
               style={{ width: `${progress}%` }}
             />
           </div>
+          {/* Secondary bar: used/reserved slots */}
+          {isActive && usedSessions !== completedSessions && (
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-container-high">
+              <div
+                className="h-full rounded-full bg-primary/30 transition-all duration-500"
+                style={{ width: `${usedProgress}%` }}
+              />
+            </div>
+          )}
+          {/* Info row */}
           <div className="mt-1.5 flex items-center justify-between text-[12px] text-on-surface-variant">
-            <span className="tabular-nums">{progress}% hoàn thành</span>
-            {remaining > 0 && isActive && (
-              <span className="tabular-nums text-emerald-700 font-medium">
-                Còn {remaining} buổi
-              </span>
-            )}
-            {remaining === 0 && booking.totalSessions > 0 && !isCancelled && (
-              <span className="font-semibold text-primary">Đã hoàn thành tất cả buổi</span>
+            {isActive && usedSessions !== completedSessions ? (
+              <>
+                <span className="tabular-nums">
+                  Đã giữ chỗ: <strong className="text-on-surface">{usedSessions}/{booking.totalSessions}</strong>
+                </span>
+                <span
+                  className={cn(
+                    "tabular-nums font-medium",
+                    remainingSessions > 0 ? "text-emerald-700" : "text-red-600",
+                  )}
+                >
+                  Còn {remainingSessions} buổi
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="tabular-nums">{progress}% hoàn thành</span>
+                {remainingSessions > 0 && isActive && (
+                  <span className="tabular-nums text-emerald-700 font-medium">
+                    Còn {remainingSessions} buổi
+                  </span>
+                )}
+                {remainingSessions === 0 && booking.totalSessions > 0 && !isCancelled && isActive && (
+                  <span className="font-semibold text-red-600">Hết lượt đặt</span>
+                )}
+                {(isCompleted || (remainingSessions === 0 && !isActive && !isCancelled)) && (
+                  <span className="font-semibold text-primary">Đã hoàn thành tất cả buổi</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -519,13 +560,20 @@ function BookingCard({
 
           {isActive && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => onBookSession(booking)}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] bg-gradient-to-br from-emerald-500 to-teal-500 px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-[0_3px_10px_-2px_rgba(16,185,129,0.35)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all"
-              >
-                <CalendarPlus size={13} />
-                Đặt buổi tập
-              </button>
+              {canBookMore ? (
+                <button
+                  onClick={() => onBookSession(booking)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] bg-gradient-to-br from-emerald-500 to-teal-500 px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-[0_3px_10px_-2px_rgba(16,185,129,0.35)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  <CalendarPlus size={13} />
+                  Đặt buổi tập
+                </button>
+              ) : (
+                <div className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-red-200 bg-red-50 px-3.5 py-2 text-[12.5px] font-semibold text-red-600">
+                  <XCircle size={13} />
+                  Đã hết lượt đặt
+                </div>
+              )}
               <Link
                 href={`/learner/plan?booking=${booking.id}`}
                 className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[12px] font-medium text-on-surface hover:bg-surface-container-low transition-colors"
@@ -625,13 +673,14 @@ export default function LearnerBookingsPage() {
     });
   }, [allBookings]);
 
-  // Summary stats (computed from real booking data only)
+  // Summary stats — use backend remainingSessions when available.
   const stats = useMemo<SummaryStats>(() => {
     const active = allBookings.filter((b) => b.status?.toLowerCase() === "active");
     return {
       active: active.length,
       remainingSessions: active.reduce(
-        (sum, b) => sum + Math.max(0, b.totalSessions - b.completedSessions),
+        (sum, b) =>
+          sum + (b.remainingSessions ?? Math.max(0, b.totalSessions - b.completedSessions)),
         0,
       ),
       pendingPayment: allBookings.filter(
@@ -641,27 +690,28 @@ export default function LearnerBookingsPage() {
     };
   }, [allBookings]);
 
-  // Tab counts
+  // Tab counts — trust backend status directly.
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: allBookings.length };
     for (const b of allBookings) {
-      const s = b.status?.toLowerCase();
-      if (s) counts[s] = (counts[s] ?? 0) + 1;
+      const s = (b.status ?? "").toLowerCase();
+      counts[s] = (counts[s] ?? 0) + 1;
     }
     return counts;
   }, [allBookings]);
 
-  // Filter + sort
+  // Filter + sort — trust backend status for filtering.
   const filteredBookings = useMemo(() => {
     let result = allBookings;
     if (activeTab !== "all") {
-      result = result.filter((b) => b.status?.toLowerCase() === activeTab);
+      result = result.filter((b) => (b.status ?? "").toLowerCase() === activeTab);
     }
     switch (sortKey) {
       case "remaining":
         result = [...result].sort(
           (a, b) =>
-            b.totalSessions - b.completedSessions - (a.totalSessions - a.completedSessions),
+            (b.remainingSessions ?? Math.max(0, b.totalSessions - b.completedSessions)) -
+            (a.remainingSessions ?? Math.max(0, a.totalSessions - a.completedSessions)),
         );
         break;
       case "action": {

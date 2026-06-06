@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { ArrowRight, MailCheck, Mail, User } from "lucide-react";
 import Link from "next/link";
 import { AuthCard } from "@/components/auth/AuthCard";
@@ -14,6 +14,7 @@ import { AuthInput } from "@/components/ui/AuthInput";
 import { AuthButton } from "@/components/ui/AuthButton";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { register as registerUser, AuthError } from "@/lib/auth-api";
+import { showError } from "@/lib/toast";
 import {
   registerSchema,
   zodResolver,
@@ -22,7 +23,6 @@ import {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
 
   const {
@@ -45,7 +45,6 @@ export default function RegisterPage() {
   const passwordValue = useWatch({ control, name: "password" }) ?? "";
 
   const onSubmit = async (values: RegisterValues) => {
-    setServerError(null);
     try {
       // Backend grants the learner role, creates an INACTIVE user, emails a
       // verification link, and returns NO token. So we do not store a token and
@@ -60,10 +59,10 @@ export default function RegisterPage() {
       // Soft hand-off to login; user can also click the link immediately.
       setTimeout(() => router.push("/login"), 3500);
     } catch (err) {
-      setServerError(
+      showError(
         err instanceof AuthError
           ? err.message
-          : "Đã xảy ra lỗi. Vui lòng thử lại.",
+          : "Không thể đăng ký tài khoản. Vui lòng kiểm tra lại thông tin.",
       );
     }
   };
@@ -176,22 +175,6 @@ export default function RegisterPage() {
               error={errors.terms?.message}
               {...register("terms")}
             />
-
-            <AnimatePresence>
-              {serverError && (
-                <motion.div
-                  role="alert"
-                  initial={{ opacity: 0, y: -4, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: "auto" }}
-                  exit={{ opacity: 0, y: -4, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <p className="rounded-[10px] border border-rose-200 bg-rose-50 px-3 py-2 text-[12.5px] font-medium text-rose-700">
-                    {serverError}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             <AuthButton
               type="submit"
