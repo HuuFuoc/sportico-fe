@@ -72,7 +72,7 @@ export default function AIMatchPage() {
     (step === "Ngân sách" && budget > 0);
 
   return (
-    <AppShell role="learner" title="AI Match">
+    <AppShell role="learner" title="Ghép AI">
       <div className="max-w-[1100px] mx-auto space-y-6">
         {/* Hero */}
         <header className="text-center pt-2 pb-1">

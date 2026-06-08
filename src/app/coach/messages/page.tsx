@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -9,7 +9,7 @@ import { getCurrentUserId } from "@/lib/auth-session";
 
 export default function CoachMessagesPage() {
   return (
-    <AppShell role="coach" title="Messages">
+    <AppShell role="coach" title="Tin nhắn">
       <div className="max-w-[1400px]">
         <Suspense fallback={null}>
           <CoachMessages />

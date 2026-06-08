@@ -199,8 +199,8 @@ function ExerciseRow({
       <div className="rounded-[8px] border border-primary/20 bg-primary/[0.03] p-3 space-y-2">
         <input className="w-full rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-1.5 text-[13px] outline-none focus:border-primary" placeholder="Tên bài tập *" value={eName} onChange={(e) => setEName(e.target.value)} />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Sets" type="number" min="1" value={eSets} onChange={(e) => setESets(e.target.value)} />
-          <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Reps (vd: 10-12)" value={eReps} onChange={(e) => setEReps(e.target.value)} />
+          <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Hiệp" type="number" min="1" value={eSets} onChange={(e) => setESets(e.target.value)} />
+          <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Lần (vd: 10-12)" value={eReps} onChange={(e) => setEReps(e.target.value)} />
           <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Cường độ" value={eIntensity} onChange={(e) => setEIntensity(e.target.value)} />
           <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Nghỉ (giây)" type="number" min="0" value={eRest} onChange={(e) => setERest(e.target.value)} />
         </div>
@@ -308,8 +308,8 @@ function AddExerciseForm({
     <div className="mt-2 rounded-[8px] border border-primary/20 bg-primary/[0.03] p-3 space-y-2">
       <input className="w-full rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-1.5 text-[13px] outline-none focus:border-primary" placeholder="Tên bài tập *" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Sets" type="number" min="1" value={sets} onChange={(e) => setSets(e.target.value)} />
-        <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Reps (vd: 10-12)" value={reps} onChange={(e) => setReps(e.target.value)} />
+        <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Hiệp" type="number" min="1" value={sets} onChange={(e) => setSets(e.target.value)} />
+        <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Lần (vd: 10-12)" value={reps} onChange={(e) => setReps(e.target.value)} />
         <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Cường độ" value={intensity} onChange={(e) => setIntensity(e.target.value)} />
         <input className="rounded-[6px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2 py-1.5 text-[12px] outline-none focus:border-primary" placeholder="Nghỉ (giây)" type="number" min="0" value={rest} onChange={(e) => setRest(e.target.value)} />
       </div>

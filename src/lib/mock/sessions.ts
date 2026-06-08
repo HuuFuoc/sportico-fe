@@ -20,7 +20,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Boulder Reservoir",
-    price: 70,
+    price: 1_750_000,
     aiPlan:
       "Warm-up 15m easy → 4×6m tempo @ marathon-effort → 8×100m strides.",
   },
@@ -34,7 +34,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Reformer Studio B",
-    price: 70,
+    price: 1_750_000,
   },
   {
     id: "sess-3",
@@ -46,7 +46,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Track 4",
-    price: 75,
+    price: 1_875_000,
   },
   {
     id: "sess-4",
@@ -58,7 +58,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Online",
-    price: 65,
+    price: 1_625_000,
   },
   {
     id: "sess-5",
@@ -70,7 +70,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Court 3",
-    price: 95,
+    price: 2_375_000,
   },
   {
     id: "sess-6",
@@ -94,7 +94,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "PR Gym",
-    price: 90,
+    price: 2_250_000,
   },
   {
     id: "sess-8",
@@ -106,7 +106,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "Group",
     location: "Vane Performance",
-    price: 30,
+    price: 750_000,
   },
   {
     id: "sess-9",
@@ -118,7 +118,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Mission Bay",
-    price: 85,
+    price: 2_125_000,
   },
   {
     id: "sess-10",
@@ -130,7 +130,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Online",
-    price: 85,
+    price: 2_125_000,
   },
   {
     id: "sess-11",
@@ -142,7 +142,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Online",
-    price: 75,
+    price: 1_875_000,
   },
   {
     id: "sess-12",
@@ -154,7 +154,7 @@ export const mockSessions: Session[] = [
     status: "scheduled",
     type: "1-on-1",
     location: "Court 2",
-    price: 80,
+    price: 2_000_000,
   },
 
   // ---------- Pending confirmations
@@ -168,7 +168,7 @@ export const mockSessions: Session[] = [
     status: "pending_confirmation",
     type: "1-on-1",
     location: "Online",
-    price: 60,
+    price: 1_500_000,
   },
   {
     id: "sess-14",
@@ -180,7 +180,7 @@ export const mockSessions: Session[] = [
     status: "pending_confirmation",
     type: "1-on-1",
     location: "Houston Park",
-    price: 65,
+    price: 1_625_000,
   },
 
   // ---------- Past sessions (completed)
@@ -194,7 +194,7 @@ export const mockSessions: Session[] = [
     status: "completed",
     type: "1-on-1",
     location: "Court 3",
-    price: 95,
+    price: 2_375_000,
   },
   {
     id: "sess-p2",
@@ -206,7 +206,7 @@ export const mockSessions: Session[] = [
     status: "completed",
     type: "1-on-1",
     location: "Online",
-    price: 65,
+    price: 1_625_000,
   },
   {
     id: "sess-p3",
@@ -218,7 +218,7 @@ export const mockSessions: Session[] = [
     status: "completed",
     type: "1-on-1",
     location: "PR Gym",
-    price: 90,
+    price: 2_250_000,
   },
   {
     id: "sess-p4",
@@ -230,7 +230,7 @@ export const mockSessions: Session[] = [
     status: "completed",
     type: "1-on-1",
     location: "Boulder Track",
-    price: 70,
+    price: 1_750_000,
   },
   {
     id: "sess-p5",
@@ -242,7 +242,7 @@ export const mockSessions: Session[] = [
     status: "completed",
     type: "1-on-1",
     location: "Detroit Gym",
-    price: 80,
+    price: 2_000_000,
   },
   {
     id: "sess-p6",
@@ -268,7 +268,7 @@ export const mockSessions: Session[] = [
     status: "cancelled",
     type: "1-on-1",
     location: "Reformer Studio A",
-    price: 70,
+    price: 1_750_000,
   },
 ];
 

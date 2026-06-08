@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -9,7 +9,7 @@ import { getCurrentUserId } from "@/lib/auth-session";
 
 export default function LearnerMessagesPage() {
   return (
-    <AppShell role="learner" title="Messages">
+    <AppShell role="learner" title="Tin nhắn">
       <div className="max-w-[1400px]">
         <Suspense fallback={null}>
           <LearnerMessages />

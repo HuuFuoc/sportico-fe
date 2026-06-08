@@ -412,7 +412,7 @@ export default function AISettingsPage() {
     .length;
 
   return (
-    <AppShell role="admin" title="AI Model Control Center">
+    <AppShell role="admin" title="Trung tâm AI">
       <div className="mx-auto w-full max-w-[1440px] pb-24">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -1526,7 +1526,7 @@ function SimulationCard({
               value={learner}
               onChange={(e) => setLearner(e.target.value)}
               className="h-9 pl-3 pr-9 appearance-none bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-lg text-[13px] font-medium outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 cursor-pointer"
-              aria-label="Sample learner"
+              aria-label="Học viên mẫu"
             >
               {SIM_LEARNERS.map((l) => (
                 <option key={l} value={l}>

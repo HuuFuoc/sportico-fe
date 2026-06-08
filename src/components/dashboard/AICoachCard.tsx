@@ -47,7 +47,7 @@ export function AICoachCard({
           </p>
         </div>
         <button
-          aria-label="AI Coach settings"
+          aria-label="Cài đặt AI Coach"
           className="ml-auto flex h-8 w-8 items-center justify-center rounded-[8px] text-white/45 transition-colors hover:bg-white/10 hover:text-white"
         >
           <MaterialIcon name="more_horiz" size={18} />
@@ -122,7 +122,7 @@ export function AICoachCard({
       {/* composer */}
       <div className="relative mt-3 flex items-center gap-1.5 rounded-[12px] border border-white/12 bg-white/[0.05] px-1.5 py-1.5 transition-colors focus-within:border-indigo-300/40">
         <button
-          aria-label="Voice input"
+          aria-label="Nhập bằng giọng nói"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-white/55 transition-colors hover:bg-white/10 hover:text-white"
         >
           <MaterialIcon name="mic" size={18} />
@@ -131,13 +131,13 @@ export function AICoachCard({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           name="ai-coach-input"
-          aria-label="Ask the AI coach"
+          aria-label="Hỏi AI coach"
           placeholder="Hỏi AI coach bất cứ điều gì…"
           className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/35"
         />
         <button
           disabled={!input.trim()}
-          aria-label="Send message"
+          aria-label="Gửi tin nhắn"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-gradient-to-br from-indigo-400 to-violet-500 text-white transition-opacity disabled:opacity-35"
         >
           <MaterialIcon name="arrow_upward" size={17} />

@@ -49,6 +49,7 @@ export type Role = "learner" | "coach" | "admin";
 
 export type Sport =
   | "Badminton"
+  | "Pickleball"
   | "Tennis"
   | "Yoga"
   | "HIIT"
@@ -90,7 +91,7 @@ export interface Coach extends UserBase {
   currency: string;
   rating: number; // 0..5
   reviewCount: number;
-  sport: Sport;
+  sport: Sport | null; // null = backend returned no sport data for this coach
   specialties: string[];
   yearsExperience: number;
   verified: boolean;

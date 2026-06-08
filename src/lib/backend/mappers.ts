@@ -56,6 +56,7 @@ import { avatarFor } from "@/lib/utils";
 
 const SPORTS: Sport[] = [
   "Badminton",
+  "Pickleball",
   "Tennis",
   "Yoga",
   "HIIT",
@@ -71,11 +72,13 @@ const SPORTS: Sport[] = [
   "Mindfulness",
 ];
 
-/** Best-effort map of a backend sport name to the UI Sport union. */
-export function toSport(name?: string | null): Sport {
-  if (!name) return "Strength";
+/** Best-effort map of a backend sport name to the UI Sport union.
+ *  Returns null when the backend sent no sport data so callers can
+ *  show "Chưa cập nhật" instead of a wrong fallback. */
+export function toSport(name?: string | null): Sport | null {
+  if (!name) return null;
   const found = SPORTS.find((s) => s.toLowerCase() === name.trim().toLowerCase());
-  return found ?? "Strength";
+  return found ?? null;
 }
 
 /** Short, stable display name derived from a coach id (no name endpoint). */
@@ -336,7 +339,7 @@ export function packageToUi(p: TrainingPackageResponse): TrainingPackage {
     price: p.price,
     sessionCount: p.sessionCount,
     durationDays: p.durationDays,
-    sport: toSport(p.sportName),
+    sport: toSport(p.sportName) ?? "Strength",
     level: p.level ?? undefined,
     goalType: p.goalType ?? undefined,
     status: p.status ?? "Pending",
@@ -351,7 +354,7 @@ export function postToUi(p: PostResponse): CoachPost {
     title: p.title ?? "Bài đăng",
     description: p.description ?? undefined,
     price: p.price,
-    sport: toSport(p.sportName),
+    sport: toSport(p.sportName) ?? "Strength",
     status: p.status ?? "Pending",
     isOnline: p.isOnline,
     createdAt: p.createdAt,
@@ -568,7 +571,7 @@ export function postToVerification(p: PostResponse): VerificationRequest {
     coachId: p.coachId,
     coachName: coachDisplayName(p.coachId),
     coachAvatar: avatarFor(p.coachId),
-    sport: toSport(p.sportName),
+    sport: toSport(p.sportName) ?? "Strength",
     submittedAt: p.createdAt,
     status: "pending",
     documents: [{ id: p.id, name: p.title ?? "Bài đăng", type: "post" }],
@@ -589,7 +592,7 @@ export function trainingPackageToVerification(
     coachId: p.coachId,
     coachName: coachDisplayName(p.coachId),
     coachAvatar: avatarFor(p.coachId),
-    sport: toSport(p.sportName),
+    sport: toSport(p.sportName) ?? "Strength",
     submittedAt: p.createdAt,
     status: "pending",
     documents: [

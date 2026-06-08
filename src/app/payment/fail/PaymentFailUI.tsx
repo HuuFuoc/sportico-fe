@@ -33,7 +33,7 @@ function getScenarioConfig(scenario: FailScenario): ScenarioConfig {
       description: "Bạn đã huỷ quá trình thanh toán. Không có khoản nào bị trừ từ tài khoản của bạn.",
       badgeBg: "bg-amber-50",
       badgeText: "text-amber-700",
-      badgeLabel: "CANCELLED",
+      badgeLabel: "ĐÃ HỦY",
     };
   }
   if (scenario === "failed") {
@@ -44,7 +44,7 @@ function getScenarioConfig(scenario: FailScenario): ScenarioConfig {
       description: "Giao dịch chưa hoàn tất. Vui lòng kiểm tra lại thông tin thanh toán và thử lại.",
       badgeBg: "bg-red-50",
       badgeText: "text-red-700",
-      badgeLabel: "FAILED",
+      badgeLabel: "THẤT BẠI",
     };
   }
   return {
@@ -54,7 +54,7 @@ function getScenarioConfig(scenario: FailScenario): ScenarioConfig {
     description: "Chúng tôi không nhận được xác nhận từ cổng thanh toán. Nếu bạn đã bị trừ tiền, vui lòng liên hệ hỗ trợ.",
     badgeBg: "bg-slate-100",
     badgeText: "text-slate-600",
-    badgeLabel: "UNKNOWN",
+    badgeLabel: "KHÔNG XÁC ĐỊNH",
   };
 }
 

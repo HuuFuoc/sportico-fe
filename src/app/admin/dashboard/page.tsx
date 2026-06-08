@@ -76,7 +76,7 @@ function liveSpark(seed: number, base: number, jitter: number) {
 
 // Synthetic mock data
 const REVENUE_TREND = Array.from({ length: 12 }).map((_, i) => {
-  const month = new Date(2025, i, 1).toLocaleDateString("en-US", {
+  const month = new Date(2025, i, 1).toLocaleDateString("vi-VN", {
     month: "short",
   });
   const base = 600_000 + i * 22_000;
@@ -85,19 +85,19 @@ const REVENUE_TREND = Array.from({ length: 12 }).map((_, i) => {
 });
 
 const RETENTION = [
-  { week: "W1", value: 100 },
-  { week: "W2", value: 78 },
-  { week: "W3", value: 64 },
-  { week: "W4", value: 55 },
-  { week: "W5", value: 48 },
-  { week: "W6", value: 44 },
-  { week: "W7", value: 41 },
-  { week: "W8", value: 39 },
+  { week: "T1", value: 100 },
+  { week: "T2", value: 78 },
+  { week: "T3", value: 64 },
+  { week: "T4", value: 55 },
+  { week: "T5", value: 48 },
+  { week: "T6", value: 44 },
+  { week: "T7", value: 41 },
+  { week: "T8", value: 39 },
 ];
 
 // Session heatmap: 7 days × 4 time buckets
-const HEATMAP_HOURS = ["6AM", "12PM", "6PM", "12AM"];
-const HEATMAP_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HEATMAP_HOURS = ["06:00", "12:00", "18:00", "00:00"];
+const HEATMAP_DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const HEATMAP = HEATMAP_DAYS.map((d, i) =>
   HEATMAP_HOURS.map((_, j) => {
     const v = Math.abs(Math.sin(i * 1.3 + j * 0.7)) * 100;
@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <AppShell role="admin" title="Admin Dashboard">
+      <AppShell role="admin" title="Tổng quan">
         <LoadingState label="Đang tải bảng điều khiển…" />
       </AppShell>
     );
@@ -150,7 +150,7 @@ export default function AdminDashboardPage() {
 
   if (error) {
     return (
-      <AppShell role="admin" title="Admin Dashboard">
+      <AppShell role="admin" title="Tổng quan">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
@@ -165,7 +165,7 @@ export default function AdminDashboardPage() {
   const displayGrossRevenue = dashStats?.grossRevenue ?? (isMockMode() ? PLATFORM_REVENUE_MTD : null);
 
   return (
-    <AppShell role="admin" title="Admin Dashboard">
+    <AppShell role="admin" title="Tổng quan">
       <div className="max-w-[1440px] mx-auto space-y-6">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -182,7 +182,7 @@ export default function AdminDashboardPage() {
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-semibold text-[#1f7a4d]">
                 <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                Live
+                Trực tiếp
               </span>
               <span className="text-[12px] text-on-surface-variant">
                 Cập nhật lúc{" "}
@@ -234,7 +234,7 @@ export default function AdminDashboardPage() {
               Khu vực
             </button>
             <button
-              aria-label="Refresh"
+              aria-label="Làm mới"
               className="w-10 h-10 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low active:scale-95 transition-all flex items-center justify-center"
             >
               <RefreshCw size={14} />
@@ -1117,7 +1117,7 @@ function PendingVerifications({
                   </div>
                   <p className="text-[11.5px] text-on-surface-variant mt-0.5">
                     {v.sport} · {v.documents.length} docs ·{" "}
-                    {new Date(v.submittedAt).toLocaleDateString("en-US", {
+                    {new Date(v.submittedAt).toLocaleDateString("vi-VN", {
                       month: "short",
                       day: "numeric",
                     })}
@@ -1180,7 +1180,7 @@ function RecentUsers({
     id: c.id,
     avatar: c.avatarUrl,
     name: c.name,
-    sub: `${c.sport} · tham gia ${new Date(c.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
+    sub: `${c.sport ?? "HLV"} · tham gia ${new Date(c.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
     badge: c.verified ? "Đã xác minh" : "Chưa xác minh",
     tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
   }));

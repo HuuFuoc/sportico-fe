@@ -49,7 +49,7 @@ const STATUS_META: Record<string, { label: string; chip: string }> = {
 const STATUS_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "all",        label: "Tất cả" },
   { value: "pending",    label: "Cần duyệt" },
-  { value: "approved",   label: "Manual" },
+  { value: "approved",   label: "Thủ công" },
   { value: "processing", label: "PayOS đang xử lý" },
   { value: "paid",       label: "Hoàn tất" },
   { value: "failed",     label: "Thất bại" },

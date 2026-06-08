@@ -73,7 +73,7 @@ export function CoachShowcaseCard({ coach }: { coach: Coach }) {
         {coach.activeLearners > 0 && (
           <Stat value={coach.activeLearners} label="Học viên" />
         )}
-        <Stat value={coach.sport} label="Bộ môn" />
+        <Stat value={coach.sport ?? "—"} label="Bộ môn" />
       </div>
 
       {/* specialties */}

@@ -4,19 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { ArrowRight, CheckCircle2, Lock, Mail } from "lucide-react";
+import { ArrowRight, CheckCircle2, Lock, Mail, RefreshCw } from "lucide-react";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { AuthSwitchLink } from "@/components/auth/AuthSwitchLink";
 import { AuthInput } from "@/components/ui/AuthInput";
 import { AuthButton } from "@/components/ui/AuthButton";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { login, AuthError } from "@/lib/auth-api";
+import { login, resendVerificationEmail, AuthError } from "@/lib/auth-api";
 import { getCurrentUser } from "@/lib/auth-session";
 import { isMockMode } from "@/lib/api-client";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
-import { showError, showInfo } from "@/lib/toast";
+import { showError, showInfo, showSuccess } from "@/lib/toast";
 import type { Role } from "@/types";
 import {
   loginSchema,
@@ -36,12 +36,35 @@ export default function LoginPage() {
   const setRole = useAppStore((s) => s.setRole);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
   const [success, setSuccess] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("session") === "expired") {
       showInfo("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
     }
   }, []);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendCooldown]);
+
+  const handleResend = async () => {
+    if (!unverifiedEmail) return;
+    setResending(true);
+    try {
+      await resendVerificationEmail(unverifiedEmail);
+      showSuccess("Đã gửi lại email xác minh. Vui lòng kiểm tra hộp thư của bạn.");
+      setResendCooldown(60);
+    } catch {
+      showError("Không thể gửi lại email xác minh. Vui lòng thử lại sau.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const {
     register,
@@ -54,6 +77,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginValues) => {
+    setUnverifiedEmail(null);
     try {
       // 1. Authenticate — stores the new access + refresh tokens.
       await login({
@@ -103,6 +127,9 @@ export default function LoginPage() {
       router.push(dest && dest.startsWith("/") ? dest : postLoginHref(role));
     } catch (err) {
       setSuccess(false);
+      if (err instanceof AuthError && err.errorCode === "COMMON_ACCOUNT_NOT_ACTIVE") {
+        setUnverifiedEmail(values.email);
+      }
       showError(
         err instanceof AuthError
           ? err.message
@@ -166,6 +193,29 @@ export default function LoginPage() {
             {success ? "Đang xác minh tài khoản…" : "Đăng nhập"}
           </AuthButton>
         </form>
+
+        {unverifiedEmail && (
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <p className="text-[12px] text-slate-500 mb-2">
+              Email{" "}
+              <span className="font-medium text-slate-700">{unverifiedEmail}</span>{" "}
+              chưa được xác minh.
+            </p>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending || resendCooldown > 0}
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-[12px] border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw size={13} className={resending ? "animate-spin" : ""} />
+              {resending
+                ? "Đang gửi..."
+                : resendCooldown > 0
+                  ? `Gửi lại sau ${resendCooldown}s`
+                  : "Gửi lại email xác minh"}
+            </button>
+          </div>
+        )}
       </AuthCard>
 
       <AuthSwitchLink

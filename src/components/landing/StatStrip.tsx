@@ -35,7 +35,7 @@ export function StatStrip() {
   return (
     <section
       ref={ref}
-      aria-label="Customer trust and platform metrics"
+      aria-label="Tin tưởng của khách hàng và chỉ số nền tảng"
       className="relative overflow-hidden border-t border-slate-200/70 bg-white"
     >
       {/* ============ SOFT MESH BACKGROUND ============ */}
@@ -361,7 +361,7 @@ function CountUp({
   }, [start, value, reduce]);
   return (
     <span className="tabular-nums">
-      {display.toLocaleString("en-US", {
+      {display.toLocaleString("vi-VN", {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       })}

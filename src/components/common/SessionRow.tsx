@@ -29,9 +29,10 @@ export function SessionRow({
     [viewer, session.coachId, session.learnerId],
   );
   const date = new Date(session.start);
-  const time = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
   return (
     <div
@@ -54,7 +55,7 @@ export function SessionRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-body-base font-medium text-on-surface truncate">
-            {other?.name ?? "Unknown"}
+            {other?.name ?? "Không xác định"}
           </p>
           {session.type === "AI-Guided" && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium uppercase tracking-wider">

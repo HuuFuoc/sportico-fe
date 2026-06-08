@@ -136,6 +136,10 @@ export const backendEndpoints = {
 
   // ---- Posts -------------------------------------------------------------
   myPosts: "/api/posts/me",
+  myPostById: (id: string) => `/api/posts/me/${encodeURIComponent(id)}`,
+  createPost: "/api/posts",
+  postById: (id: string) => `/api/posts/${encodeURIComponent(id)}`,
+  postArchive: (id: string) => `/api/posts/${encodeURIComponent(id)}/archive`,
 
   // ---- Admin dashboard ---------------------------------------------------
   /** Aggregate platform dashboard for admins. Optional FromDate/ToDate query. */
@@ -169,6 +173,27 @@ export const backendEndpoints = {
   /** Admin: resolve or reject a review report. */
   adminResolveReviewReport: (id: string) =>
     `/api/admin/review-reports/${encodeURIComponent(id)}/resolve`,
+
+  // ---- Coach teaching locations -----------------------------------------
+  coachTeachingLocations: "/api/coaches/me/teaching-locations",
+  coachTeachingLocationById: (id: string) =>
+    `/api/coaches/me/teaching-locations/${encodeURIComponent(id)}`,
+  coachTeachingLocationSetDefault: (id: string) =>
+    `/api/coaches/me/teaching-locations/${encodeURIComponent(id)}/set-default`,
+
+  // ---- Platform packages (admin-managed subscription tiers) ------------
+  platformPackages: "/api/packages",
+  platformPackageById: (id: number) => `/api/packages/${id}`,
+  platformPackageStatus: (id: number) => `/api/packages/${id}/status`,
+
+  // ---- Coach subscription packages -------------------------------------
+  coachSubscriptionCurrent: "/api/coach-packages/me/current",
+  coachSubscriptionHistory: "/api/coach-packages/me/history",
+  coachSubscriptionPurchasePayos: "/api/coach-packages/purchase/payos",
+  coachSubscriptionPurchaseManual: "/api/coach-packages/purchase/manual",
+
+  // ---- Payments (reconcile all) ----------------------------------------
+  reconcileAllPayos: "/api/payments/payos/reconcile",
 
   // ---- Admin user management --------------------------------------------
   adminUsers: "/api/admin/users",

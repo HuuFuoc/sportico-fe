@@ -17,10 +17,15 @@ import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
   CoachProfileResponse,
   CoachProfileMediaResponse,
+  CoachTeachingLocationResponse,
   RegisterCoachRequest,
   UpdateCoachProfileRequest,
   CoachProfileMediaRequest,
 } from "@/lib/types/coach";
+import type {
+  CreateTeachingLocationRequest,
+  UpdateTeachingLocationRequest,
+} from "@/lib/backend/dto";
 
 // ---- Onboarding ------------------------------------------------------------
 
@@ -76,4 +81,40 @@ export function updateCoachMedia(
 
 export function deleteCoachMedia(id: string): Promise<void> {
   return callVoid(ep.coachMediaById(id), { method: "DELETE" });
+}
+
+// ---- Teaching locations ----------------------------------------------------
+
+export function getMyTeachingLocations(): Promise<CoachTeachingLocationResponse[]> {
+  return callData<CoachTeachingLocationResponse[]>(ep.coachTeachingLocations);
+}
+
+export function createTeachingLocation(
+  payload: CreateTeachingLocationRequest,
+): Promise<CoachTeachingLocationResponse> {
+  return callData<CoachTeachingLocationResponse>(ep.coachTeachingLocations, {
+    method: "POST",
+    ...jsonBody(payload),
+  });
+}
+
+export function updateTeachingLocation(
+  id: string,
+  payload: UpdateTeachingLocationRequest,
+): Promise<CoachTeachingLocationResponse> {
+  return callData<CoachTeachingLocationResponse>(ep.coachTeachingLocationById(id), {
+    method: "PUT",
+    ...jsonBody(payload),
+  });
+}
+
+export function deleteTeachingLocation(id: string): Promise<void> {
+  return callVoid(ep.coachTeachingLocationById(id), { method: "DELETE" });
+}
+
+export function setDefaultTeachingLocation(id: string): Promise<CoachTeachingLocationResponse> {
+  return callData<CoachTeachingLocationResponse>(ep.coachTeachingLocationSetDefault(id), {
+    method: "PUT",
+    ...jsonBody({}),
+  });
 }

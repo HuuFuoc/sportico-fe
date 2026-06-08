@@ -10,10 +10,10 @@ const OVERALL = 98;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const SIGNALS = [
-  { label: "Goal alignment", value: 96, note: "Built for plateau breakthroughs" },
-  { label: "Schedule fit", value: 94, note: "3 open slots match your week" },
-  { label: "Coaching style", value: 99, note: "Tactical · feedback-driven" },
-  { label: "Track record", value: 97, note: "211 athletes hit their goal" },
+  { label: "Phù hợp mục tiêu", value: 96, note: "Thiết kế cho đột phá trần" },
+  { label: "Khớp lịch trình", value: 94, note: "3 khung giờ trống phù hợp tuần bạn" },
+  { label: "Phong cách huấn luyện", value: 99, note: "Chiến thuật · dựa trên phản hồi" },
+  { label: "Thành tích", value: 97, note: "211 học viên đạt mục tiêu" },
 ];
 
 /**
@@ -38,14 +38,14 @@ export function MatchExplainer({ coach }: { coach: Coach }) {
       <div className="relative flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-indigo-200">
           <MaterialIcon name="auto_awesome" filled size={14} />
-          AI Match Analysis
+          Phân tích ghép AI
         </span>
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/55">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </span>
-          Live scoring
+          Chấm điểm trực tiếp
         </span>
       </div>
 
@@ -85,7 +85,7 @@ export function MatchExplainer({ coach }: { coach: Coach }) {
               <AnimatedNumber value={OVERALL} duration={1.9} />%
             </span>
             <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/45">
-              Match
+              Khớp
             </span>
           </div>
         </div>
@@ -117,11 +117,11 @@ export function MatchExplainer({ coach }: { coach: Coach }) {
               {coach.rating.toFixed(1)}
             </span>
             <span className="h-3 w-px bg-white/15" />
-            <span>{coach.reviewCount} reviews</span>
+            <span>{coach.reviewCount} đánh giá</span>
             <span className="h-3 w-px bg-white/15" />
             <span className="inline-flex items-center gap-1 text-emerald-300">
               <MaterialIcon name="verified" filled size={13} />
-              Verified
+              Đã xác minh
             </span>
           </div>
         </div>
@@ -160,12 +160,12 @@ export function MatchExplainer({ coach }: { coach: Coach }) {
       <div className="relative mt-6 rounded-[14px] border border-indigo-300/15 bg-indigo-400/[0.07] p-4">
         <p className="flex items-center gap-1.5 text-[12px] font-semibold text-indigo-200">
           <MaterialIcon name="lightbulb" filled size={14} />
-          Why ProCoach picked {firstName}
+          Tại sao Sportico chọn {firstName}
         </p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-white/65">
-          {firstName}&apos;s tactical, feedback-driven coaching maps directly to
-          your goal of breaking a plateau — and her open slots line up with the
-          way you actually train each week.
+          Phong cách huấn luyện chiến thuật, dựa trên phản hồi của {firstName} phù hợp
+          trực tiếp với mục tiêu vượt qua trần của bạn — và các khung giờ trống
+          khớp với lịch tập thực tế của bạn mỗi tuần.
         </p>
       </div>
     </div>

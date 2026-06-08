@@ -4,10 +4,10 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
-import { ArrowRight, Loader2, MailCheck, TriangleAlert } from "lucide-react";
+import { ArrowRight, Loader2, MailCheck, RefreshCw, TriangleAlert } from "lucide-react";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthSwitchLink } from "@/components/auth/AuthSwitchLink";
-import { verifyEmail, AuthError } from "@/lib/auth-api";
+import { verifyEmail, resendVerificationEmail, AuthError } from "@/lib/auth-api";
 
 type Status = "verifying" | "success" | "error";
 
@@ -42,6 +42,48 @@ function VerifyEmailInner() {
   });
   // Guard against React's double-invoke in dev so we verify exactly once.
   const ran = useRef(false);
+
+  // Resend verification email state
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendEmailError, setResendEmailError] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendFeedback, setResendFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendCooldown]);
+
+  const handleResend = async () => {
+    const trimmed = resendEmail.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setResendEmailError("Vui lòng nhập email hợp lệ.");
+      return;
+    }
+    setResendEmailError("");
+    setResendFeedback(null);
+    setResending(true);
+    try {
+      await resendVerificationEmail(trimmed);
+      setResendFeedback({
+        ok: true,
+        msg: "Đã gửi lại email xác minh. Vui lòng kiểm tra hộp thư của bạn.",
+      });
+      setResendCooldown(60);
+    } catch (err) {
+      setResendFeedback({
+        ok: false,
+        msg:
+          err instanceof AuthError
+            ? err.message
+            : "Không thể gửi lại email xác minh. Vui lòng thử lại sau.",
+      });
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     // Skip the client-side call when the server already resolved the outcome.
@@ -128,6 +170,43 @@ function VerifyEmailInner() {
         Về trang đăng nhập
         <ArrowRight size={15} />
       </Link>
+
+      <div className="mt-6 w-full border-t border-slate-100 pt-5">
+        <p className="text-center text-[12.5px] text-slate-400 mb-3">
+          Chưa nhận được email xác minh?
+        </p>
+        <input
+          type="email"
+          value={resendEmail}
+          onChange={(e) => {
+            setResendEmail(e.target.value);
+            setResendEmailError("");
+          }}
+          placeholder="Nhập địa chỉ email của bạn"
+          className="w-full rounded-[10px] border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors"
+        />
+        {resendEmailError && (
+          <p className="mt-1 text-[11.5px] text-rose-500">{resendEmailError}</p>
+        )}
+        {resendFeedback && (
+          <p className={`mt-2 text-[12px] ${resendFeedback.ok ? "text-emerald-600" : "text-rose-500"}`}>
+            {resendFeedback.msg}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resending || resendCooldown > 0}
+          className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <RefreshCw size={13} className={resending ? "animate-spin" : ""} />
+          {resending
+            ? "Đang gửi..."
+            : resendCooldown > 0
+              ? `Gửi lại sau ${resendCooldown}s`
+              : "Gửi lại email xác minh"}
+        </button>
+      </div>
     </motion.div>
   );
 }

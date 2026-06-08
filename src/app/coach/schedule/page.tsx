@@ -257,17 +257,17 @@ export default function CoachSchedulePage() {
   const revenue = weekSessions.reduce((sum, s) => sum + s.price, 0);
   const openSlots = 8 * 7 - sessionsThisWeek;
 
-  const weekRangeLabel = `${weekStart.toLocaleDateString("en-US", {
+  const weekRangeLabel = `${weekStart.toLocaleDateString("vi-VN", {
     month: "short",
     day: "numeric",
-  })} – ${weekDays[6].toLocaleDateString("en-US", {
+  })} – ${weekDays[6].toLocaleDateString("vi-VN", {
     month: "short",
     day: "numeric",
   })}`;
 
   if (loading) {
     return (
-      <AppShell role="coach" title="Schedule">
+      <AppShell role="coach" title="Lịch">
         <LoadingState label="Đang tải lịch…" />
       </AppShell>
     );
@@ -275,7 +275,7 @@ export default function CoachSchedulePage() {
 
   if (error) {
     return (
-      <AppShell role="coach" title="Schedule">
+      <AppShell role="coach" title="Lịch">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
@@ -283,7 +283,7 @@ export default function CoachSchedulePage() {
 
   return (
     <LearnerLookupContext.Provider value={learnerById}>
-      <AppShell role="coach" title="Schedule">
+      <AppShell role="coach" title="Lịch">
         <div className="max-w-[1400px] mx-auto space-y-6">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -346,7 +346,7 @@ export default function CoachSchedulePage() {
             </div>
 
             <button
-              aria-label="Filter"
+              aria-label="Lọc"
               className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
             >
               <Filter size={13} />
@@ -356,7 +356,7 @@ export default function CoachSchedulePage() {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setWeekOffset((w) => w - 1)}
-                aria-label="Previous week"
+                aria-label="Tuần trước"
                 className="w-10 h-10 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low active:scale-95 transition-all flex items-center justify-center"
               >
                 <ChevronLeft size={16} />
@@ -369,7 +369,7 @@ export default function CoachSchedulePage() {
               </button>
               <button
                 onClick={() => setWeekOffset((w) => w + 1)}
-                aria-label="Next week"
+                aria-label="Tuần sau"
                 className="w-10 h-10 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low active:scale-95 transition-all flex items-center justify-center"
               >
                 <ChevronRight size={16} />
@@ -455,7 +455,7 @@ export default function CoachSchedulePage() {
             <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border-soft)] flex items-center justify-between">
               <div>
                 <h3 className="text-[17px] font-semibold tracking-tight">
-                  {weekStart.toLocaleDateString("en-US", { month: "long" })}{" "}
+                  {weekStart.toLocaleDateString("vi-VN", { month: "long" })}{" "}
                   <span className="text-on-surface-variant font-medium">
                     {weekStart.getFullYear()}
                   </span>
@@ -466,7 +466,7 @@ export default function CoachSchedulePage() {
               </div>
               <div className="flex items-center gap-3 text-[11px]">
                 <LegendDot color="#4f46e5" label="1:1" />
-                <LegendDot color="#8b5cf6" label="Group" />
+                <LegendDot color="#8b5cf6" label="Nhóm" />
                 <LegendDot color="#10b981" label="AI" />
               </div>
             </div>
@@ -971,17 +971,18 @@ function PendingConfirmations({
                     {learner?.name ?? `Học viên ${s.learnerId.slice(0, 6)}`} — {s.title}
                   </p>
                   <p className="text-[12px] text-on-surface-variant mt-0.5">
-                    {new Date(s.start).toLocaleString("en-US", {
+                    {new Date(s.start).toLocaleString("vi-VN", {
                       weekday: "short",
                       month: "short",
                       day: "numeric",
-                      hour: "numeric",
+                      hour: "2-digit",
                       minute: "2-digit",
+                      hour12: false,
                     })}
                   </p>
                 </div>
                 <button
-                  aria-label="Decline"
+                  aria-label="Từ chối"
                   disabled={isDeclining || isConfirming}
                   onClick={() => handleDecline(s.id)}
                   className="h-9 w-9 rounded-lg border border-[var(--color-border-soft)] hover:bg-surface-container-low text-on-surface-variant hover:text-[#ba1a1a] transition-colors flex items-center justify-center disabled:opacity-50"
@@ -1015,40 +1016,41 @@ function chipAccent(type: Session["type"]) {
   return { bg: "bg-primary/10 border-primary/25 text-primary", bar: "bg-primary", badge: "1:1" };
 }
 
-const SESSION_STATUS_VI: Record<string, string> = {
-  scheduled: "Đã đặt",
-  confirmed: "Đã đặt",
-  pending_confirmation: "Chờ xác nhận",
-  in_progress: "Đang diễn ra",
-  completed: "Hoàn thành",
-  cancelled: "Đã hủy",
-};
 
 function SessionChip({ session, onClick }: { session: Session; onClick: () => void }) {
   const learner = useLearner(session.learnerId);
   const a = chipAccent(session.type);
   const start = new Date(session.start);
-  const time = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  // 24h short format saves horizontal space in narrow 7-col grid
+  const time = start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const isPending = session.status === "pending_confirmation";
+  const isCancelled = session.status === "cancelled";
 
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       className={cn(
-        "relative h-full w-full rounded-[8px] border px-2 py-1.5 cursor-pointer hover:shadow-[0_4px_10px_-2px_rgba(15,15,30,0.14)] active:scale-[0.99] transition-all select-none overflow-hidden",
+        "relative h-full w-full rounded-[7px] border cursor-pointer select-none overflow-hidden transition-all hover:shadow-[0_2px_8px_-2px_rgba(15,15,30,0.18)] active:scale-[0.99]",
+        isCancelled && "opacity-55",
         a.bg,
       )}
     >
-      <span className={cn("absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full", a.bar)} />
-      <div className="pl-2.5 min-w-0 overflow-hidden">
-        <div className="flex items-center gap-1 overflow-hidden">
-          <span className="text-[11px] font-bold tabular-nums leading-tight whitespace-nowrap shrink-0">{time}</span>
-          <span className="text-[10px] font-medium leading-tight opacity-75 truncate">
-            {SESSION_STATUS_VI[session.status] ?? session.status}
+      {/* Left accent bar */}
+      <span className={cn("absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full z-[1]", a.bar)} />
+      {/* Content — flex-col with overflow:hidden clips lines that don't fit */}
+      <div className="h-full pl-[9px] pr-1 py-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex items-center gap-[3px] shrink-0 min-w-0 overflow-hidden">
+          <span className="text-[10.5px] font-bold tabular-nums leading-none whitespace-nowrap shrink-0">
+            {time}
           </span>
+          {isPending && (
+            <span className="w-[5px] h-[5px] rounded-full bg-[#f59e0b] shrink-0" />
+          )}
         </div>
-        <p className="text-[10.5px] leading-snug mt-0.5 opacity-85 truncate">
-          {learner?.name ?? "Chưa có học viên"}
-        </p>
+        {/* Second line — clipped naturally if chip height is too small */}
+        <span className="text-[9.5px] leading-none mt-[3px] block truncate opacity-70 whitespace-nowrap overflow-hidden">
+          {learner?.name ?? "—"}
+        </span>
       </div>
     </div>
   );
@@ -1056,7 +1058,7 @@ function SessionChip({ session, onClick }: { session: Session; onClick: () => vo
 
 function SlotChip({ slot, onClick }: { slot: AvailabilitySlot; onClick: () => void }) {
   const start = new Date(slot.startTime);
-  const time = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const time = start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
   const isGroup = (slot.maxParticipants ?? 1) > 1;
   const booked = slot.bookedParticipants ?? 0;
   const max = slot.maxParticipants ?? 1;
@@ -1064,24 +1066,16 @@ function SlotChip({ slot, onClick }: { slot: AvailabilitySlot; onClick: () => vo
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="relative h-full w-full rounded-[8px] border border-dashed border-[#8b5cf6]/40 bg-[#8b5cf6]/8 px-2 py-1.5 cursor-pointer hover:bg-[#8b5cf6]/15 transition-all select-none overflow-hidden"
+      className="relative h-full w-full rounded-[7px] border border-dashed border-[#8b5cf6]/40 bg-[#8b5cf6]/[0.08] cursor-pointer select-none overflow-hidden hover:bg-[#8b5cf6]/15 transition-all"
     >
       <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-[#8b5cf6]" />
-      <div className="pl-2.5 min-w-0 overflow-hidden">
-        <div className="flex items-center gap-1 overflow-hidden">
-          <span className="text-[11px] font-bold tabular-nums text-[#7c3aed] leading-tight whitespace-nowrap shrink-0">{time}</span>
-          <span className="text-[10px] text-[#7c3aed]/80 font-medium leading-tight truncate">Khả dụng</span>
-        </div>
-        <p className="text-[10.5px] text-[#7c3aed]/70 leading-snug mt-0.5 truncate">
-          {isGroup ? (
-            <span className="inline-flex items-center gap-0.5">
-              <Users size={9} className="inline" />
-              {booked}/{max} chỗ
-            </span>
-          ) : (
-            booked > 0 ? "Đã có người đặt" : "Cá nhân"
-          )}
-        </p>
+      <div className="h-full pl-[9px] pr-1 py-1 flex flex-col min-w-0 overflow-hidden">
+        <span className="text-[10.5px] font-bold tabular-nums leading-none whitespace-nowrap text-[#7c3aed] shrink-0 block">
+          {time}
+        </span>
+        <span className="text-[9.5px] leading-none mt-[3px] truncate text-[#7c3aed] opacity-70 block whitespace-nowrap overflow-hidden">
+          {isGroup ? `${booked}/${max} chỗ` : "Khả dụng"}
+        </span>
       </div>
     </div>
   );
@@ -1104,6 +1098,7 @@ function SessionDetailModal({
   const learner = useLearner(session.learnerId);
   const [cancelling, setCancelling] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const start = new Date(session.start);
   const end = new Date(start.getTime() + session.durationMinutes * 60000);
@@ -1112,6 +1107,7 @@ function SessionDetailModal({
   const isInProgress = session.status === "in_progress";
   const isCancelled = session.status === "cancelled";
   const isCompleted = session.status === "completed";
+  const isPending = session.status === "pending_confirmation";
 
   const a = chipAccent(session.type);
 
@@ -1119,6 +1115,21 @@ function SessionDetailModal({
     d.toLocaleDateString("vi-VN", { weekday: "short", month: "short", day: "numeric" }) +
     " · " +
     d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+  async function handleConfirm() {
+    if (isMockMode()) { onRefetch(); return; }
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      await api.confirmSession(session.id);
+      showSuccess("Đã xác nhận buổi học.");
+      onRefetch();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   async function handleJoin() {
     const url = meetingUrl ?? (isOnline ? session.location : undefined);
@@ -1264,9 +1275,31 @@ function SessionDetailModal({
             </div>
           )}
 
-          {/* Notes */}
-          {session.notes && (
+          {/* General notes */}
+          {session.notes && !session.learnerNote && !session.coachNote && (
             <p className="text-[12px] text-on-surface-variant italic px-1">📝 {session.notes}</p>
+          )}
+
+          {/* Learner note */}
+          {session.learnerNote && (
+            <div className="flex items-start gap-2.5 p-3 rounded-[12px] bg-surface-container-low/60 text-[12px]">
+              <span className="shrink-0 mt-[1px]">📝</span>
+              <div className="min-w-0">
+                <p className="font-semibold text-on-surface mb-0.5">Ghi chú học viên</p>
+                <p className="text-on-surface-variant break-words">{session.learnerNote}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Coach note */}
+          {session.coachNote && (
+            <div className="flex items-start gap-2.5 p-3 rounded-[12px] bg-surface-container-low/60 text-[12px]">
+              <span className="shrink-0 mt-[1px]">📋</span>
+              <div className="min-w-0">
+                <p className="font-semibold text-on-surface mb-0.5">Ghi chú của bạn</p>
+                <p className="text-on-surface-variant break-words">{session.coachNote}</p>
+              </div>
+            </div>
           )}
         </div>
 
@@ -1278,6 +1311,17 @@ function SessionDetailModal({
           >
             Đóng
           </button>
+
+          {isPending && (
+            <button
+              onClick={() => void handleConfirm()}
+              disabled={confirming}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[13px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+            >
+              {confirming ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              Xác nhận
+            </button>
+          )}
 
           {isInProgress && (
             <button
@@ -1320,9 +1364,10 @@ function MobileSessionCard({ session, onOpen }: { session: Session; onOpen: () =
   const learner = useLearner(session.learnerId);
   const a = chipAccent(session.type);
   const start = new Date(session.start);
-  const time = start.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = start.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
   const isOnline = session.location?.toLowerCase() === "online";
   return (
@@ -1573,9 +1618,10 @@ function TodayRow({
   reduce: boolean;
 }) {
   const learner = useLearner(session.learnerId);
-  const time = new Date(session.start).toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = new Date(session.start).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
   return (
     <motion.div
@@ -1731,9 +1777,10 @@ function UpcomingRow({
   const learner = useLearner(session.learnerId);
   const date = new Date(session.start);
   const isToday = date.toDateString() === NOW.toDateString();
-  const time = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
   return (
     <motion.div
@@ -1749,7 +1796,7 @@ function UpcomingRow({
     >
       <div className="text-center w-11 shrink-0">
         <p className="text-[9.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
-          {date.toLocaleDateString("en-US", { month: "short" })}
+          {date.toLocaleDateString("vi-VN", { month: "short" })}
         </p>
         <p
           className={cn(
@@ -1760,7 +1807,7 @@ function UpcomingRow({
           {date.getDate()}
         </p>
         <p className="text-[9px] uppercase tracking-wider text-on-surface-variant mt-0.5">
-          {date.toLocaleDateString("en-US", { weekday: "short" })}
+          {date.toLocaleDateString("vi-VN", { weekday: "short" })}
         </p>
       </div>
       <div className="flex-1 min-w-0">

@@ -440,7 +440,7 @@ export default function AdminUsersPage() {
                           {/* Created */}
                           <td className="px-3 py-3 hidden lg:table-cell">
                             <p className="text-[12.5px] text-on-surface tabular-nums">
-                              {new Date(u.createdAt).toLocaleDateString("en-US", {
+                              {new Date(u.createdAt).toLocaleDateString("vi-VN", {
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",

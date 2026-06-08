@@ -32,15 +32,7 @@ import type { SportOption } from "@/lib/types/coach";
  */
 export const STABLE_SPORTS: SportOption[] = [
   { id: 1, name: "Cầu lông" },
-  { id: 2, name: "Tennis" },
-  { id: 3, name: "Bóng đá" },
-  { id: 4, name: "Bóng rổ" },
-  { id: 5, name: "Bơi lội" },
-  { id: 6, name: "Gym / Thể hình" },
-  { id: 7, name: "Yoga" },
-  { id: 8, name: "Chạy bộ" },
   { id: 9, name: "Pickleball" },
-  { id: 10, name: "Boxing" },
 ];
 
 /**

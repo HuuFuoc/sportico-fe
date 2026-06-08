@@ -12,21 +12,32 @@ interface PageProps {
 }
 
 const DATA_POINTS = [
-  { label: "Avg HR", value: "152 bpm", icon: "favorite", trend: "+4%" },
-  { label: "Peak HR", value: "178 bpm", icon: "trending_up", trend: "Z4" },
-  { label: "Calories", value: "612", icon: "local_fire_department" },
-  { label: "Pace", value: "5:42 /km", icon: "speed", trend: "PR-likely" },
+  { label: "Nhịp tim TB", value: "152 bpm", icon: "favorite", trend: "+4%" },
+  { label: "Nhịp tim cao", value: "178 bpm", icon: "trending_up", trend: "Z4" },
+  { label: "Calo", value: "612", icon: "local_fire_department" },
+  { label: "Tốc độ", value: "5:42 /km", icon: "speed", trend: "Kỷ lục cá nhân" },
 ];
 
 const NOTES_PRE = [
-  "Hip flexor mobility — issue raised last session",
-  "Wants to test marathon goal pace today",
+  "Linh hoạt cơ háng — vấn đề từ buổi trước",
+  "Muốn thử pace mục tiêu marathon hôm nay",
 ];
 
 const NOTES_POST = [
-  "Strong second-half pacing, controlled breathing through interval 3",
-  "Watch for over-striding when fatigued — drills next session",
+  "Tốc độ nửa sau ổn định, thở đều qua interval 3",
+  "Chú ý bước chân quá dài khi mệt — luyện bài tập kỹ thuật buổi tới",
 ];
+
+function translateSessionStatus(status: string): string {
+  const map: Record<string, string> = {
+    scheduled: "Đã lên lịch",
+    in_progress: "Đang diễn ra",
+    completed: "Hoàn thành",
+    cancelled: "Đã hủy",
+    pending_confirmation: "Chờ xác nhận",
+  };
+  return map[status] ?? status;
+}
 
 export async function generateStaticParams() {
   const sessions = await api.fetchSessions();
@@ -53,7 +64,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
             className="inline-flex items-center gap-1 text-body-sm text-on-surface-variant hover:text-primary"
           >
             <MaterialIcon name="chevron_left" size={18} />
-            Back to schedule
+            Quay lại lịch
           </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -61,26 +72,27 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 <AIBadge label="AI-Guided" />
               )}
               <span className="text-[11px] uppercase tracking-wider text-on-surface-variant font-medium">
-                {session.status.replace("_", " ")}
+                {translateSessionStatus(session.status)}
               </span>
             </div>
             <h1 className="text-h1">{session.title}</h1>
             <p className="text-body-base text-on-surface-variant mt-1">
               {learner?.name} • {relativeDay(date)}{" "}
-              {date.toLocaleTimeString("en-US", {
-                hour: "numeric",
+              {date.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
                 minute: "2-digit",
+                hour12: false,
               })}{" "}
               • {session.durationMinutes}m • {session.location}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
             <button className="px-4 py-2 border border-[var(--color-border-soft)] rounded-[6px] text-body-base hover:bg-surface-container-low">
-              Reschedule
+              Đổi lịch
             </button>
             <button className="px-5 py-2 bg-primary text-on-primary rounded-[6px] text-body-base font-medium hover:bg-[#2d20b8] inline-flex items-center gap-1.5">
               <MaterialIcon name="video_call" size={18} />
-              Start Session
+              Bắt đầu
             </button>
           </div>
         </div>
@@ -106,18 +118,18 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 </div>
               </div>
               <div className="absolute bottom-3 left-3 text-white">
-                <p className="text-body-sm opacity-80">Video review</p>
-                <p className="text-h3">{learner?.name} — gait analysis</p>
+                <p className="text-body-sm opacity-80">Xem video</p>
+                <p className="text-h3">{learner?.name} — phân tích kỹ thuật</p>
               </div>
             </div>
 
             {/* Live data points */}
             <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-h3">Live data points</h3>
+                <h3 className="text-h3">Chỉ số trực tiếp</h3>
                 <span className="text-body-sm text-on-surface-variant inline-flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-[#1f7a4d] animate-pulse" />
-                  Streaming
+                  Đang phát
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -152,9 +164,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 insight={{
                   id: "plan",
                   audience: "coach",
-                  title: "AI suggested plan",
+                  title: "Kế hoạch AI đề xuất",
                   body: session.aiPlan,
-                  cta: { label: "Apply to session", href: "#" },
+                  cta: { label: "Áp dụng cho buổi tập", href: "#" },
                   severity: "info",
                   createdAt: "2026-05-22",
                 }}
@@ -163,11 +175,11 @@ export default async function SessionDetailPage({ params }: PageProps) {
 
             {/* Notes */}
             <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4">
-              <h3 className="text-h3 mb-3">Session notes</h3>
+              <h3 className="text-h3 mb-3">Ghi chú buổi tập</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">
-                    Pre-session
+                    Trước buổi
                   </p>
                   <ul className="space-y-1.5">
                     {NOTES_PRE.map((n, i) => (
@@ -188,7 +200,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 </div>
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-on-surface-variant font-medium mb-2">
-                    Post-session
+                    Sau buổi
                   </p>
                   <ul className="space-y-1.5">
                     {NOTES_POST.map((n, i) => (
@@ -209,7 +221,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 </div>
               </div>
               <textarea
-                placeholder="Add a new note..."
+                placeholder="Thêm ghi chú..."
                 rows={3}
                 className="w-full mt-4 px-3 py-2 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[6px] text-body-base outline-none focus:border-primary transition-colors resize-none"
               />
@@ -228,20 +240,19 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 <div className="min-w-0">
                   <p className="text-h3 truncate">{learner?.name}</p>
                   <p className="text-body-sm text-on-surface-variant">
-                    {learner?.totalHoursTrained}h trained · {learner?.streakDays}
-                    d streak
+                    {learner?.totalHoursTrained}h tập · {learner?.streakDays} ngày liên tiếp
                   </p>
                 </div>
               </div>
               <div className="space-y-2">
-                <KV label="Goal" value={learner?.goals[0] ?? "—"} />
+                <KV label="Mục tiêu" value={learner?.goals[0] ?? "—"} />
                 <KV
-                  label="Sports"
+                  label="Môn thể thao"
                   value={learner?.preferredSports.join(" · ") ?? "—"}
                 />
                 <KV
-                  label="Joined"
-                  value={new Date(learner?.joinedAt ?? "").toLocaleDateString()}
+                  label="Tham gia"
+                  value={new Date(learner?.joinedAt ?? "").toLocaleDateString("vi-VN")}
                 />
               </div>
               <Link
@@ -249,22 +260,22 @@ export default async function SessionDetailPage({ params }: PageProps) {
                 className="mt-3 w-full inline-flex items-center justify-center gap-1 px-3 py-2 border border-[var(--color-border-soft)] rounded-[6px] text-body-sm hover:bg-surface-container-low"
               >
                 <MaterialIcon name="mail" size={16} />
-                Message {learner?.name.split(" ")[0]}
+                Nhắn tin {learner?.name.split(" ")[0]}
               </Link>
             </section>
 
             <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4 space-y-2">
-              <h3 className="text-h3 mb-1">Session info</h3>
+              <h3 className="text-h3 mb-1">Thông tin buổi tập</h3>
               <KV
-                label="Coach"
+                label="Huấn luyện viên"
                 value={coach?.name ?? "—"}
               />
-              <KV label="Type" value={session.type} />
-              <KV label="Location" value={session.location ?? "Online"} />
-              <KV label="Price" value={formatCurrency(session.price)} />
+              <KV label="Loại" value={session.type} />
+              <KV label="Địa điểm" value={session.location ?? "Online"} />
+              <KV label="Giá" value={formatCurrency(session.price)} />
               <KV
-                label="Duration"
-                value={`${session.durationMinutes} min`}
+                label="Thời lượng"
+                value={`${session.durationMinutes} phút`}
               />
             </section>
           </aside>

@@ -64,9 +64,10 @@ export function AskAIPanel({ className }: { className?: string }) {
                 {m.text}
               </div>
               <span className="text-[10px] uppercase tracking-wider text-on-surface-variant">
-                {new Date(m.sentAt).toLocaleTimeString("en-US", {
-                  hour: "numeric",
+                {new Date(m.sentAt).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
                   minute: "2-digit",
+                  hour12: false,
                 })}
               </span>
             </div>

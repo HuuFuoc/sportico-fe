@@ -33,8 +33,8 @@ export function CoachCard({
           className="w-full h-full object-cover"
         />
         {showMatch && typeof coach.matchPercent === "number" && (
-          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/95 backdrop-blur text-[10px] font-medium text-primary border border-primary/20 uppercase tracking-wider">
-            {coach.matchPercent}% Match
+          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/95 backdrop-blur text-[10px] font-medium text-primary border border-primary/20">
+            {coach.matchPercent}% phù hợp
           </span>
         )}
         {coach.verified && (
@@ -45,7 +45,7 @@ export function CoachCard({
               size={12}
               className="text-primary"
             />
-            Verified
+            Đã xác minh
           </span>
         )}
       </div>
@@ -73,7 +73,7 @@ export function CoachCard({
             <span className="text-on-surface-variant font-normal">/hr</span>
           </span>
           <span className="text-body-sm text-on-surface-variant">
-            {coach.sport}
+            {coach.sport ?? "HLV"}
           </span>
         </div>
       </div>

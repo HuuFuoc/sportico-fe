@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  ChevronDown,
   Globe2,
   Image as ImageIcon,
   Loader2,
@@ -26,6 +27,22 @@ import { ImageUpload } from "@/components/common/ImageUpload";
 import type { UpdateCoachProfileRequest } from "@/lib/types/coach";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+// Vietnam Provinces 2025 API (post-reform: province → ward, no district level)
+const VN_PROVINCES_API = "https://provinces.open-api.vn/api";
+
+interface VnProvince {
+  code: number;
+  name: string;
+  division_type: string;
+}
+
+interface VnWard {
+  code: number;
+  name: string;
+  division_type: string;
+  province_code: number;
+}
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -120,6 +137,11 @@ export default function CoachProfilePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [coverPos, setCoverPos] = useState<CoverPosition>(DEFAULT_COVER_POS);
   const [avatarPos, setAvatarPos] = useState<CoverPosition>(DEFAULT_COVER_POS);
+  const [provinces, setProvinces] = useState<VnProvince[]>([]);
+  const [provincesLoading, setProvincesLoading] = useState(false);
+  const [provinceCode, setProvinceCode] = useState<number | null>(null);
+  const [wards, setWards] = useState<VnWard[]>([]);
+  const [wardsLoading, setWardsLoading] = useState(false);
 
   // Seed the form from the loaded profile.
   useEffect(() => {
@@ -151,7 +173,42 @@ export default function CoachProfilePage() {
       websiteUrl: profile.websiteUrl ?? "",
     });
     setDirty(false);
+    setProvinceCode(null);
   }, [profile]);
+
+  useEffect(() => {
+    setProvincesLoading(true);
+    fetch(`${VN_PROVINCES_API}/p/`)
+      .then((r) => r.json() as Promise<VnProvince[]>)
+      .then(setProvinces)
+      .catch(() => {})
+      .finally(() => setProvincesLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (provinceCode === null) { setWards([]); return; }
+    setWardsLoading(true);
+    setWards([]);
+    fetch(`${VN_PROVINCES_API}/w/?province=${provinceCode}`)
+      .then((r) => r.json() as Promise<VnWard[]>)
+      .then(setWards)
+      .catch(() => {})
+      .finally(() => setWardsLoading(false));
+  }, [provinceCode]);
+
+  // When provinces load, try to match the stored teachingCity → province code
+  // so the ward dropdown works even on an already-saved profile.
+  useEffect(() => {
+    if (!form.teachingCity || provinces.length === 0 || provinceCode !== null) return;
+    const normalize = (s: string) =>
+      s.replace(/^(Thành phố |Tỉnh )/i, "").trim().toLowerCase();
+    const needle = normalize(form.teachingCity);
+    const match =
+      provinces.find((p) => p.name === form.teachingCity) ??
+      provinces.find((p) => normalize(p.name) === needle) ??
+      provinces.find((p) => normalize(p.name).includes(needle) || needle.includes(normalize(p.name)));
+    if (match) setProvinceCode(match.code);
+  }, [form.teachingCity, provinces, provinceCode]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -316,47 +373,39 @@ export default function CoachProfilePage() {
 
           {/* Địa điểm dạy */}
           <Section icon={MapPin} title="Địa điểm dạy" delay={0.08}>
-            <Field label="Địa chỉ dạy">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Tỉnh / Thành phố">
+                <SearchableSelect
+                  options={provinces.map((p) => ({ label: p.name, value: p.code }))}
+                  value={form.teachingCity}
+                  loading={provincesLoading}
+                  placeholder="Chọn tỉnh / thành phố"
+                  onChange={(label, code) => {
+                    set("teachingCity", label);
+                    setProvinceCode(code as number);
+                    set("teachingDistrict", "");
+                    setWards([]);
+                  }}
+                />
+              </Field>
+              <Field label="Phường / Xã">
+                <SearchableSelect
+                  options={wards.map((w) => ({ label: w.name, value: w.code }))}
+                  value={form.teachingDistrict}
+                  loading={wardsLoading}
+                  disabled={provinceCode === null && !form.teachingDistrict}
+                  placeholder={provinceCode === null ? "Chọn tỉnh/thành trước" : "Chọn phường / xã"}
+                  onChange={(label) => set("teachingDistrict", label)}
+                />
+              </Field>
+            </div>
+            <Field label="Địa chỉ cụ thể" hint="Số nhà, tên đường…">
               <Input
                 value={form.teachingAddress}
                 onChange={(e) => set("teachingAddress", e.target.value)}
                 placeholder="VD: 123 Nguyễn Văn Cừ"
               />
             </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Thành phố">
-                <Input
-                  value={form.teachingCity}
-                  onChange={(e) => set("teachingCity", e.target.value)}
-                  placeholder="VD: Hà Nội"
-                />
-              </Field>
-              <Field label="Quận/Huyện">
-                <Input
-                  value={form.teachingDistrict}
-                  onChange={(e) => set("teachingDistrict", e.target.value)}
-                  placeholder="VD: Long Biên"
-                />
-              </Field>
-              <Field label="Tọa độ vĩ độ" hint="-90 đến 90 (tùy chọn).">
-                <Input
-                  type="number"
-                  className="tabular-nums"
-                  value={form.teachingLatitude}
-                  onChange={(e) => set("teachingLatitude", e.target.value)}
-                  placeholder="VD: 21.0285"
-                />
-              </Field>
-              <Field label="Tọa độ kinh độ" hint="-180 đến 180 (tùy chọn).">
-                <Input
-                  type="number"
-                  className="tabular-nums"
-                  value={form.teachingLongitude}
-                  onChange={(e) => set("teachingLongitude", e.target.value)}
-                  placeholder="VD: 105.8542"
-                />
-              </Field>
-            </div>
           </Section>
 
           {/* Hình thức dạy */}
@@ -916,6 +965,127 @@ function AvatarRepositioner({
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+// ---- SearchableSelect -------------------------------------------------------
+
+function SearchableSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+  loading,
+  disabled,
+}: {
+  options: { label: string; value: string | number }[];
+  value: string;
+  onChange: (label: string, rawValue: string | number) => void;
+  placeholder?: string;
+  loading?: boolean;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = search.trim()
+    ? options.filter((o) =>
+        o.label.toLowerCase().includes(search.trim().toLowerCase()),
+      )
+    : options;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const toggle = () => {
+    if (disabled || loading) return;
+    setOpen((v) => !v);
+    if (open) setSearch("");
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={toggle}
+        className={cn(
+          fieldCls,
+          "h-11 flex items-center justify-between gap-2 text-left",
+          disabled && "opacity-50 cursor-not-allowed",
+          open && "border-primary",
+          !value && "text-on-surface-variant/60",
+        )}
+      >
+        <span className="truncate flex-1 min-w-0">
+          {loading ? "Đang tải…" : value || placeholder || "Chọn…"}
+        </span>
+        <ChevronDown
+          size={14}
+          className={cn(
+            "shrink-0 text-on-surface-variant transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: EASE }}
+            className="absolute z-50 top-[calc(100%+4px)] left-0 right-0 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] shadow-[0_8px_24px_-6px_rgba(15,15,30,0.18)] overflow-hidden"
+          >
+            <div className="p-2 border-b border-[var(--color-border-soft)]">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm…"
+                className="w-full px-3 h-8 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[6px] outline-none focus:border-primary text-[13px] transition-colors"
+              />
+            </div>
+            <div className="max-h-52 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <div className="px-3 py-6 text-center text-[12px] text-on-surface-variant">
+                  Không tìm thấy kết quả
+                </div>
+              ) : (
+                filtered.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.label, opt.value);
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className={cn(
+                      "w-full px-3.5 py-2.5 text-left text-[13.5px] transition-colors hover:bg-surface-container-low",
+                      opt.label === value &&
+                        "text-primary font-medium bg-primary/5",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

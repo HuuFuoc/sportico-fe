@@ -20,15 +20,19 @@ import type {
   CoachDashboardResponse,
   CoachPayoutAccountResponse,
   CoachReviewSummaryResponse,
+  CoachSubscriptionResponse,
   CoachWalletResponse,
   CoachWalletTransactionResponse,
+  CoachTeachingLocationResponse,
   ConfirmSessionRequest,
   CreateAvailabilitySlotRequest,
   CreateDayRequest,
   CreateExerciseRequest,
+  CreatePostRequest,
   CreateReviewRequest,
   CreateReviewReportRequest,
   CreateSessionRequest,
+  CreateTeachingLocationRequest,
   CreateTrainingPlanRequest,
   CreateWeekRequest,
   CurrentUserResponse,
@@ -36,11 +40,14 @@ import type {
   LearnerAssessmentResponse,
   NotificationResponse,
   PagedResult,
+  PlatformPackageResponse,
   PostResponse,
   ProgressCheckInResponse,
   PublicCoachDetailResponse,
   PublicCoachListItemResponse,
   PublicUserResponseDto,
+  PurchaseCoachPackagePayOsResponse,
+  PurchaseCoachPackageRequest,
   PurchasePayOsResponse,
   ReconcilePayOsResponse,
   ResolveReviewReportRequest,
@@ -57,7 +64,9 @@ import type {
   UpdateCheckInFeedbackRequest,
   UpdateExerciseRequest,
   UpdateMeRequest,
+  UpdatePostRequest,
   UpdateReviewRequest,
+  UpdateTeachingLocationRequest,
   UpdateTrainingPlanRequest,
   WithdrawalReceiptResponse,
   WithdrawalRequestResponse,
@@ -762,6 +771,122 @@ export const backend = {
     return unwrap(
       await PUT<ReviewReportResponse>(ep.adminResolveReviewReport(id), body),
     );
+  },
+
+  // ---- Teaching locations (coach) ----------------------------------------
+
+  /** GET /api/coaches/me/teaching-locations — list coach's teaching locations. */
+  async myTeachingLocations() {
+    return unwrap(
+      await GET<CoachTeachingLocationResponse[]>(ep.coachTeachingLocations),
+    );
+  },
+  /** POST /api/coaches/me/teaching-locations — add a teaching location. */
+  async createTeachingLocation(body: CreateTeachingLocationRequest) {
+    return unwrap(
+      await POST<CoachTeachingLocationResponse>(ep.coachTeachingLocations, body),
+    );
+  },
+  /** PUT /api/coaches/me/teaching-locations/{id} — update a teaching location. */
+  async updateTeachingLocation(id: string, body: UpdateTeachingLocationRequest) {
+    return unwrap(
+      await PUT<CoachTeachingLocationResponse>(ep.coachTeachingLocationById(id), body),
+    );
+  },
+  /** DELETE /api/coaches/me/teaching-locations/{id} — remove a teaching location. */
+  async deleteTeachingLocation(id: string) {
+    await apiFetch(ep.coachTeachingLocationById(id), { method: "DELETE" });
+  },
+  /** PUT /api/coaches/me/teaching-locations/{id}/set-default — mark as default. */
+  async setDefaultTeachingLocation(id: string) {
+    return unwrap(
+      await PUT<CoachTeachingLocationResponse>(ep.coachTeachingLocationSetDefault(id)),
+    );
+  },
+
+  // ---- Posts (coach write) -----------------------------------------------
+
+  /** POST /api/posts — create a new post (submitted for admin approval). */
+  async createPost(body: CreatePostRequest) {
+    return unwrap(await POST<PostResponse>(ep.createPost, body));
+  },
+  /** GET /api/posts/me/{id} — get coach's own post by id. */
+  async myPostById(id: string) {
+    return unwrap(await GET<PostResponse>(ep.myPostById(id)));
+  },
+  /** PUT /api/posts/{id} — update a post (pending/rejected only). */
+  async updatePost(id: string, body: UpdatePostRequest) {
+    return unwrap(await PUT<PostResponse>(ep.postById(id), body));
+  },
+  /** PUT /api/posts/{id}/archive — archive a post. */
+  async archivePost(id: string) {
+    return unwrap(await PUT<PostResponse>(ep.postArchive(id)));
+  },
+
+  // ---- Training session general update/delete ----------------------------
+
+  /** PUT /api/training-sessions/{id} — general session update (e.g. reschedule). */
+  async updateTrainingSession(id: string, body: Partial<{ location: string; meetingUrl: string; startTime: string; endTime: string; coachNote: string }>) {
+    return unwrap(await PUT<TrainingSessionResponse>(ep.trainingSessionById(id), body));
+  },
+  /** DELETE /api/training-sessions/{id} — hard delete a session (admin/coach). */
+  async deleteTrainingSession(id: string) {
+    await apiFetch(ep.trainingSessionById(id), { method: "DELETE" });
+  },
+
+  // ---- Platform packages (admin-managed subscription tiers) --------------
+
+  /** GET /api/packages — list platform subscription tiers. */
+  async platformPackages(p?: ListParams & { isActive?: boolean }) {
+    const query = qs({
+      Keyword: p?.keyword,
+      IsActive: p?.isActive,
+      PageNumber: p?.pageNumber,
+      PageSize: p?.pageSize,
+    });
+    return unwrapPage(
+      await GET<PagedResult<PlatformPackageResponse>>(ep.platformPackages + query),
+    );
+  },
+  /** GET /api/packages/{id} — get a platform package by id. */
+  async platformPackageById(id: number) {
+    return unwrap(await GET<PlatformPackageResponse>(ep.platformPackageById(id)));
+  },
+
+  // ---- Coach subscription packages ---------------------------------------
+
+  /** GET /api/coach-packages/me/current — coach's active platform subscription. */
+  async myCoachSubscription() {
+    return unwrap(
+      await GET<CoachSubscriptionResponse>(ep.coachSubscriptionCurrent),
+    );
+  },
+  /** GET /api/coach-packages/me/history — coach's subscription history. */
+  async myCoachSubscriptionHistory(p?: ListParams) {
+    return unwrapPage(
+      await GET<PagedResult<CoachSubscriptionResponse>>(
+        ep.coachSubscriptionHistory + listQuery(p),
+      ),
+    );
+  },
+  /** POST /api/coach-packages/purchase/payos — purchase platform subscription via PayOS. */
+  async purchaseCoachSubscriptionPayos(body: PurchaseCoachPackageRequest) {
+    return unwrap(
+      await POST<PurchaseCoachPackagePayOsResponse>(ep.coachSubscriptionPurchasePayos, body),
+    );
+  },
+  /** POST /api/coach-packages/purchase/manual — purchase platform subscription manually. */
+  async purchaseCoachSubscriptionManual(body: PurchaseCoachPackageRequest) {
+    return unwrap(
+      await POST<CoachSubscriptionResponse>(ep.coachSubscriptionPurchaseManual, body),
+    );
+  },
+
+  // ---- Payments (reconcile all) ------------------------------------------
+
+  /** POST /api/payments/payos/reconcile — reconcile all pending PayOS payments (admin). */
+  async reconcileAllPayos() {
+    return unwrap(await POST<ReconcilePayOsResponse>(ep.reconcileAllPayos));
   },
 };
 

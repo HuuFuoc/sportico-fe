@@ -170,7 +170,7 @@ export default function LearnerProgressPage() {
 
   if (loading) {
     return (
-      <AppShell role="learner" title="My Progress">
+      <AppShell role="learner" title="Tiến độ">
         <LoadingState label="Đang tải tiến độ…" />
       </AppShell>
     );
@@ -178,14 +178,14 @@ export default function LearnerProgressPage() {
 
   if (error || !learner) {
     return (
-      <AppShell role="learner" title="My Progress">
+      <AppShell role="learner" title="Tiến độ">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
   }
 
   return (
-    <AppShell role="learner" title="My Progress">
+    <AppShell role="learner" title="Tiến độ">
       <div className="max-w-[1280px] mx-auto space-y-6">
         {/* ============ HERO HEADER ============ */}
         <motion.header

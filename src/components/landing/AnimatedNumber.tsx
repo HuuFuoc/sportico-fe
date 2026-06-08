@@ -44,7 +44,7 @@ export function AnimatedNumber({
   return (
     <span ref={ref} className={className}>
       {prefix}
-      {display.toLocaleString("en-US", {
+      {display.toLocaleString("vi-VN", {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       })}

@@ -317,7 +317,7 @@ export default function AdminRevenuePage() {
 
   if (loading) {
     return (
-      <AppShell role="admin" title="Revenue & Payouts">
+      <AppShell role="admin" title="Doanh thu & Thanh toán">
         <LoadingState label="Đang tải dữ liệu doanh thu…" />
       </AppShell>
     );
@@ -325,7 +325,7 @@ export default function AdminRevenuePage() {
 
   if (error) {
     return (
-      <AppShell role="admin" title="Revenue & Payouts">
+      <AppShell role="admin" title="Doanh thu & Thanh toán">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
@@ -338,7 +338,7 @@ export default function AdminRevenuePage() {
 
   return (
     <CoachLookupContext.Provider value={coachById}>
-      <AppShell role="admin" title="Revenue & Payouts">
+      <AppShell role="admin" title="Doanh thu & Thanh toán">
       <div className="max-w-[1500px] mx-auto pb-24 space-y-4">
         {/* ============ HEADER ============ */}
         <motion.header
@@ -1387,7 +1387,7 @@ function PayoutTable({
                 <SmallCheckbox
                   checked={allSelected}
                   onChange={toggleAll}
-                  aria-label="Select all"
+                  aria-label="Chọn tất cả"
                 />
               </th>
               <th className="px-2 py-2 font-bold">Coach</th>
@@ -1466,7 +1466,7 @@ function PayoutTable({
                             )}
                           </p>
                           <p className="text-[10.5px] text-on-surface-variant truncate">
-                            {new Date(p.date).toLocaleDateString("en-US", {
+                            {new Date(p.date).toLocaleDateString("vi-VN", {
                               month: "short",
                               day: "numeric",
                             })}
@@ -2155,7 +2155,7 @@ function BulkBar({
           <BulkBtn icon={Download} label="Xuất" />
           <button
             onClick={onClear}
-            aria-label="Clear"
+            aria-label="Xóa"
             className="ml-1 w-8 h-8 rounded-md hover:bg-white/10 text-white/70 hover:text-white transition-colors flex items-center justify-center"
           >
             <XCircle size={13} />

@@ -76,13 +76,13 @@ const WEEK_BARS = [
 ];
 
 const EARNINGS_TREND = [
-  { m: "Jan", v: 2800 },
-  { m: "Feb", v: 3100 },
-  { m: "Mar", v: 3450 },
-  { m: "Apr", v: 3200 },
-  { m: "May", v: 3700 },
-  { m: "Jun", v: 4100 },
-  { m: "Jul", v: 4250 },
+  { m: "T1", v: 70_000_000 },
+  { m: "T2", v: 77_500_000 },
+  { m: "T3", v: 86_250_000 },
+  { m: "T4", v: 80_000_000 },
+  { m: "T5", v: 92_500_000 },
+  { m: "T6", v: 102_500_000 },
+  { m: "T7", v: 106_250_000 },
 ];
 
 const ENGAGEMENT_SEGMENTS = [
@@ -138,7 +138,7 @@ export default function CoachDashboardPage() {
 
   if (loading) {
     return (
-      <AppShell role="coach" title="Dashboard">
+      <AppShell role="coach" title="Tổng quan">
         <LoadingState label="Đang tải bảng điều khiển…" />
       </AppShell>
     );
@@ -146,14 +146,14 @@ export default function CoachDashboardPage() {
 
   if (error) {
     return (
-      <AppShell role="coach" title="Dashboard">
+      <AppShell role="coach" title="Tổng quan">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
   }
 
   return (
-    <AppShell role="coach" title="Dashboard">
+    <AppShell role="coach" title="Tổng quan">
       <div className="max-w-[1340px] mx-auto space-y-6">
         {/* ============ HERO ============ */}
         <Hero
@@ -327,7 +327,7 @@ function Hero({
               Bảng điều khiển
             </span>
             <span className="text-[12px] text-on-surface-variant">
-              {(isMockMode() ? NOW : new Date()).toLocaleDateString("en-US", {
+              {(isMockMode() ? NOW : new Date()).toLocaleDateString("vi-VN", {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
@@ -660,7 +660,7 @@ function EarningsLineChart({ reduce }: { reduce: boolean }) {
         {formatCurrency(latest)}
       </p>
       <p className="text-[11px] text-on-surface-variant mt-0.5">
-        in {EARNINGS_TREND[EARNINGS_TREND.length - 1].m}
+        {EARNINGS_TREND[EARNINGS_TREND.length - 1].m}
       </p>
       <div className="h-[100px] mt-3 -mx-2">
         <ClientOnly fallback={<div className="h-full" />}>
@@ -880,9 +880,10 @@ function TodayRow({
   delay: number;
   reduce: boolean;
 }) {
-  const time = new Date(session.start).toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = new Date(session.start).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
   const isOnline = session.location?.toLowerCase() === "online";
   return (
@@ -1247,9 +1248,10 @@ function UpcomingRow({
 }) {
   const date = new Date(session.start);
   const isToday = date.toDateString() === (isMockMode() ? NOW : new Date()).toDateString();
-  const time = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
   return (
     <motion.div
@@ -1265,7 +1267,7 @@ function UpcomingRow({
     >
       <div className="text-center w-11 shrink-0">
         <p className="text-[9.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
-          {date.toLocaleDateString("en-US", { month: "short" })}
+          {date.toLocaleDateString("vi-VN", { month: "short" })}
         </p>
         <p
           className={cn(
@@ -1276,7 +1278,7 @@ function UpcomingRow({
           {date.getDate()}
         </p>
         <p className="text-[9px] uppercase tracking-wider text-on-surface-variant mt-0.5">
-          {date.toLocaleDateString("en-US", { weekday: "short" })}
+          {date.toLocaleDateString("vi-VN", { weekday: "short" })}
         </p>
       </div>
       <div className="flex-1 min-w-0">

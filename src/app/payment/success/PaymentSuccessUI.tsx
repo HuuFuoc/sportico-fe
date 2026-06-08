@@ -98,7 +98,7 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
         "Giao dịch của bạn đã được ghi nhận. Gói tập của bạn đã được kích hoạt.",
       badgeBg: "bg-emerald-50",
       badgeText: "text-emerald-700",
-      badgeLabel: "PAID",
+      badgeLabel: "ĐÃ THANH TOÁN",
     };
   }
 
@@ -111,7 +111,7 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
         "Thanh toán đã được ghi nhận nhưng gói tập chưa được kích hoạt. Nhấn nút đồng bộ để thử lại.",
       badgeBg: "bg-amber-50",
       badgeText: "text-amber-700",
-      badgeLabel: "PENDING",
+      badgeLabel: "ĐANG CHỜ",
     };
   }
 
@@ -125,7 +125,7 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
           "Bạn đã huỷ quá trình thanh toán. Không có khoản nào bị trừ.",
         badgeBg: "bg-amber-50",
         badgeText: "text-amber-700",
-        badgeLabel: "CANCELLED",
+        badgeLabel: "ĐÃ HỦY",
       };
     }
     return {
@@ -136,7 +136,7 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
         "Thông tin thanh toán không hợp lệ hoặc chưa đầy đủ. Nếu bạn đã thanh toán, vui lòng kiểm tra lại lịch sử đơn hàng.",
       badgeBg: "bg-amber-50",
       badgeText: "text-amber-700",
-      badgeLabel: "INVALID",
+      badgeLabel: "KHÔNG HỢP LỆ",
     };
   }
 
@@ -149,7 +149,7 @@ function getStatusConfig(state: PaymentState, reason?: string): StatusConfig {
       "Không thể kết nối với hệ thống để xác minh giao dịch. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
     badgeBg: "bg-red-50",
     badgeText: "text-red-700",
-    badgeLabel: "ERROR",
+    badgeLabel: "LỖI",
   };
 }
 

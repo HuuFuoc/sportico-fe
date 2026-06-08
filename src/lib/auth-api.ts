@@ -27,6 +27,7 @@
 
 import { apiFetch, ApiError, isMockMode } from "@/lib/api-client";
 import { endpoints } from "@/lib/api-endpoints";
+import { backendEndpoints } from "@/lib/backend/endpoints";
 import {
   setAuthTokens,
   clearAuthTokens,
@@ -237,6 +238,30 @@ export async function getCurrentUser(): Promise<CurrentUserResponse> {
     );
   }
   return result.data;
+}
+
+// ---- Resend verification email ---------------------------------------------
+
+/**
+ * Request a new email verification link for an unverified account.
+ * Safe to call from the post-register screen or the login "resend" prompt.
+ */
+export async function resendVerificationEmail(email: string): Promise<void> {
+  if (isMockMode()) return;
+
+  const result = await request(backendEndpoints.auth.resendVerification, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+  if (!result.isSuccess) {
+    throw new AuthError(
+      messageForCode(result.errorCode) ??
+        result.message ??
+        "Không gửi được email xác minh. Vui lòng thử lại.",
+      result.errorCode,
+    );
+  }
 }
 
 // ---- Logout (client-side only) ---------------------------------------------

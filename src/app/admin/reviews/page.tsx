@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   CheckCircle2,
@@ -308,50 +308,64 @@ function ReportRow({
       transition={{ duration: 0.25, ease: EASE }}
       className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest overflow-hidden"
     >
-      {/* Row header */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-container-low transition-colors"
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-red-50">
-          <Flag size={14} className="text-red-500" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[13px] font-semibold text-on-surface truncate">
-              {report.reason || "Không có lý do"}
-            </p>
-            <StatusBadge status={report.status} />
-            {report.actionTaken && report.actionTaken !== "none" && (
-              <span className={cn(
-                "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-                ACTION_BADGE[report.actionTaken] ?? ACTION_BADGE.none,
-              )}>
-                {report.actionTaken === "review_hidden" ? (
-                  <><EyeOff size={10} className="mr-1" />Đã ẩn review</>
-                ) : report.actionTaken === "review_deleted" ? (
-                  "Đã xoá review"
-                ) : report.actionTaken}
-              </span>
-            )}
+      {/* Row header — a flex row of sibling controls. The expand toggle and the
+          "Giải quyết" action are SEPARATE buttons (never nested) to keep the DOM
+          valid and avoid a hydration mismatch. */}
+      <div className="flex w-full items-center gap-3 px-4 py-3.5 transition-colors hover:bg-surface-container-low">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="flex flex-1 min-w-0 items-center gap-3 text-left"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-red-50">
+            <Flag size={14} className="text-red-500" />
           </div>
-          <p className="text-[11px] text-on-surface-variant tabular-nums">
-            {new Date(report.createdAt).toLocaleDateString("vi-VN")}
-          </p>
-        </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[13px] font-semibold text-on-surface truncate">
+                {report.reason || "Không có lý do"}
+              </p>
+              <StatusBadge status={report.status} />
+              {report.actionTaken && report.actionTaken !== "none" && (
+                <span className={cn(
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                  ACTION_BADGE[report.actionTaken] ?? ACTION_BADGE.none,
+                )}>
+                  {report.actionTaken === "review_hidden" ? (
+                    <><EyeOff size={10} className="mr-1" />Đã ẩn review</>
+                  ) : report.actionTaken === "review_deleted" ? (
+                    "Đã xoá review"
+                  ) : report.actionTaken}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-on-surface-variant tabular-nums">
+              {new Date(report.createdAt).toLocaleDateString("vi-VN")}
+            </p>
+          </div>
+        </button>
         {!isSettled && (
           <button
-            onClick={(e) => { e.stopPropagation(); onAction(report); }}
+            type="button"
+            onClick={() => onAction(report)}
             className="shrink-0 rounded-[7px] border border-primary/25 bg-primary/[0.06] px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/[0.1] transition-colors"
           >
             Giải quyết
           </button>
         )}
-        <ChevronDown
-          size={15}
-          className={cn("shrink-0 text-on-surface-variant transition-transform", expanded && "rotate-180")}
-        />
-      </button>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Thu gọn" : "Mở rộng"}
+          className="shrink-0 rounded p-0.5 text-on-surface-variant hover:bg-surface-container"
+        >
+          <ChevronDown
+            size={15}
+            className={cn("transition-transform", expanded && "rotate-180")}
+          />
+        </button>
+      </div>
 
       {/* Expanded detail */}
       <AnimatePresence initial={false}>
@@ -444,7 +458,7 @@ export default function AdminReviewsPage() {
     [statusFilter, page, refreshKey],
   );
 
-  const reports = data?.items ?? [];
+  const reports = useMemo(() => data?.items ?? [], [data]);
   const hasNext = data?.hasNext ?? false;
   const totalCount = data?.totalCount ?? 0;
 

@@ -7,8 +7,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number, currency: string = "USD") {
-  return new Intl.NumberFormat("en-US", {
+export function formatCurrency(value: number, currency: string = "VND") {
+  return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
@@ -40,7 +40,7 @@ export function formatCurrencyVndCompact(amount: number): string {
 }
 
 export function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("vi-VN").format(value);
 }
 
 export function initials(name: string) {

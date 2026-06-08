@@ -186,7 +186,7 @@ export function WithdrawModal({
             </div>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label="Đóng"
               className="w-8 h-8 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors flex items-center justify-center"
             >
               <X size={14} />
@@ -319,7 +319,7 @@ export function WithdrawModal({
                       }
                       className="flex-1 h-8 rounded-lg border border-[var(--color-border-soft)] hover:border-primary/40 hover:bg-primary/[0.04] text-[12px] font-medium transition-colors"
                     >
-                      {pct === 1 ? "Max" : `${pct * 100}%`}
+                      {pct === 1 ? "Tối đa" : `${pct * 100}%`}
                     </button>
                   ))}
                 </div>

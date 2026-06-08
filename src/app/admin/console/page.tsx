@@ -23,35 +23,35 @@ const SERVICES: ServiceHealth[] = [
   },
   {
     id: "auth",
-    name: "Auth Service",
+    name: "Dịch vụ xác thực",
     status: "operational",
     uptime: "99.98%",
     latency: "28ms",
   },
   {
     id: "match",
-    name: "AI Matching",
+    name: "Ghép AI",
     status: "operational",
     uptime: "99.95%",
     latency: "115ms",
   },
   {
     id: "pay",
-    name: "Payments",
+    name: "Thanh toán",
     status: "degraded",
     uptime: "99.82%",
     latency: "290ms",
   },
   {
     id: "video",
-    name: "Video Sessions",
+    name: "Phiên video",
     status: "operational",
     uptime: "99.91%",
     latency: "65ms",
   },
   {
     id: "notif",
-    name: "Notifications",
+    name: "Thông báo",
     status: "operational",
     uptime: "99.96%",
     latency: "38ms",
@@ -114,28 +114,28 @@ const FEATURE_FLAGS = [
   {
     id: "ai_chat",
     label: "AI Coach Chat",
-    description: "Inline chat panel on dashboard.",
+    description: "Bảng chat inline trên trang tổng quan.",
     enabled: true,
     rollout: 100,
   },
   {
     id: "auto_match",
-    label: "Auto-confirm AI Matches",
-    description: "Skip review for sub-90% matches.",
+    label: "Tự xác nhận ghép AI",
+    description: "Bỏ qua xem xét cho các ghép dưới 90%.",
     enabled: false,
     rollout: 0,
   },
   {
     id: "video_v3",
     label: "Video Engine v3",
-    description: "New WebRTC backend with HD recording.",
+    description: "Backend WebRTC mới với ghi hình HD.",
     enabled: true,
     rollout: 25,
   },
   {
     id: "marketplace_v2",
     label: "Coach Marketplace v2",
-    description: "Redesigned discovery experience.",
+    description: "Giao diện khám phá được thiết kế lại.",
     enabled: false,
     rollout: 5,
   },
@@ -145,6 +145,12 @@ const STATUS_STYLES: Record<string, string> = {
   operational: "bg-[#d1f4dd] text-[#1f7a4d]",
   degraded: "bg-amber-50 text-amber-700",
   down: "bg-[#ffdad6] text-[#ba1a1a]",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  operational: "Hoạt động",
+  degraded: "Suy giảm",
+  down: "Ngừng",
 };
 
 const LOG_LEVEL: Record<string, string> = {
@@ -165,47 +171,47 @@ export default function AdminConsolePage() {
     );
 
   return (
-    <AppShell role="admin" title="Console">
+    <AppShell role="admin" title="Bảng điều khiển">
       <div className="max-w-[1500px] space-y-5">
         <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="text-h1">Admin Console</h1>
+            <h1 className="text-h1">Bảng điều khiển Admin</h1>
             <p className="text-body-base text-on-surface-variant mt-1">
-              System health, logs, feature flags and emergency actions.
+              Tình trạng hệ thống, log, cờ tính năng và hành động khẩn cấp.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border-soft)] rounded-[6px] text-body-sm hover:bg-surface-container-low">
               <MaterialIcon name="refresh" size={16} />
-              Refresh
+              Làm mới
             </button>
             <button className="inline-flex items-center gap-1.5 px-3 py-2 border border-error text-error rounded-[6px] text-body-sm font-medium hover:bg-error/5">
               <MaterialIcon name="warning" size={16} />
-              Maintenance Mode
+              Chế độ bảo trì
             </button>
           </div>
         </header>
 
         {/* Status overview */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Uptime (30d)" value="99.96%" trend="+0.02%" />
+          <Stat label="Uptime (30 ngày)" value="99.96%" trend="+0.02%" />
           <Stat
-            label="Requests / min"
+            label="Yêu cầu / phút"
             value={formatNumber(18_420)}
             trend="+8%"
           />
-          <Stat label="Error rate" value="0.18%" trend="-0.04%" />
-          <Stat label="DB connections" value="142 / 200" trend="" tone="neutral" />
+          <Stat label="Tỉ lệ lỗi" value="0.18%" trend="-0.04%" />
+          <Stat label="Kết nối DB" value="142 / 200" trend="" tone="neutral" />
         </section>
 
         {/* Services + logs */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <section className="lg:col-span-5 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-              <h3 className="text-h3">Services</h3>
+              <h3 className="text-h3">Dịch vụ</h3>
               <span className="text-body-sm text-on-surface-variant">
                 {SERVICES.filter((s) => s.status === "operational").length} /{" "}
-                {SERVICES.length} operational
+                {SERVICES.length} hoạt động
               </span>
             </div>
             <ul className="divide-y divide-[var(--color-border-soft)]">
@@ -246,7 +252,7 @@ export default function AdminConsolePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-body-base font-medium">{s.name}</p>
                     <p className="text-body-sm text-on-surface-variant">
-                      Uptime {s.uptime} · Latency {s.latency}
+                      Uptime {s.uptime} · Độ trễ {s.latency}
                     </p>
                   </div>
                   <span
@@ -255,7 +261,7 @@ export default function AdminConsolePage() {
                       STATUS_STYLES[s.status],
                     )}
                   >
-                    {s.status}
+                    {STATUS_LABEL[s.status] ?? s.status}
                   </span>
                 </li>
               ))}
@@ -265,7 +271,7 @@ export default function AdminConsolePage() {
           {/* Logs */}
           <section className="lg:col-span-7 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-              <h3 className="text-h3">Recent Logs</h3>
+              <h3 className="text-h3">Log gần đây</h3>
               <div className="inline-flex items-center bg-surface-container-low border border-[var(--color-border-soft)] rounded-[6px] p-0.5">
                 {(["all", "info", "warn", "error"] as const).map((l) => (
                   <button
@@ -278,7 +284,7 @@ export default function AdminConsolePage() {
                         : "text-on-surface-variant",
                     )}
                   >
-                    {l}
+                    {l === "all" ? "Tất cả" : l}
                   </button>
                 ))}
               </div>
@@ -318,11 +324,11 @@ export default function AdminConsolePage() {
                 size={20}
                 className="text-primary"
               />
-              <h2 className="text-h2">Feature Flags</h2>
+              <h2 className="text-h2">Cờ tính năng</h2>
             </div>
             <button className="text-body-sm text-primary hover:underline inline-flex items-center gap-1">
               <MaterialIcon name="add" size={16} />
-              New flag
+              Thêm cờ
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

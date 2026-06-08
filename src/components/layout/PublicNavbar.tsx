@@ -28,9 +28,9 @@ interface NavLink {
 // Public-facing nav links. "Huấn Luyện Viên" points to the public /coaches
 // page (standalone, no dashboard chrome) — NOT to /learner/coaches.
 const BASE_LINKS: NavLink[] = [
-  { label: "Huấn Luyện Viên", href: "/coaches" },
+  { label: "Huấn luyện viên", href: "/coaches" },
   { label: "Ghép nối", href: "/ai-match" },
-  { label: "Về Chúng Tôi", href: "/about" },
+  { label: "Về chúng tôi", href: "/about" },
 ];
 
 const BECOME_COACH_HREF = "/onboarding";
@@ -158,7 +158,7 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
                   : "border-primary/30 bg-primary/[0.06] text-primary hover:bg-primary/10",
               )}
             >
-              Trở Thành HLV
+              Trở thành HLV
             </Link>
           )}
 

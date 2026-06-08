@@ -807,3 +807,104 @@ export interface ResolveReviewReportRequest {
   hideOrDeleteReview: boolean;
   resolutionNote?: string | null;
 }
+
+// ---- Coach teaching locations -----------------------------------------------
+
+export interface CreateTeachingLocationRequest {
+  address: string;
+  city?: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface UpdateTeachingLocationRequest {
+  address: string;
+  city?: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+// ---- Posts (coach listings) -------------------------------------------------
+
+export interface CreatePostRequest {
+  sportId: number;
+  title: string;
+  description?: string;
+  price: number;
+  location?: string;
+  isOnline: boolean;
+  imageUrls?: string[];
+}
+
+export interface UpdatePostRequest {
+  sportId?: number;
+  title?: string;
+  description?: string;
+  price?: number;
+  location?: string;
+  isOnline?: boolean;
+  imageUrls?: string[];
+}
+
+// ---- Platform packages (admin-managed subscription tiers) -------------------
+
+/** A platform subscription tier as managed by admin (GET/POST/PUT /api/packages). */
+export interface PlatformPackageResponse {
+  id: number;
+  name?: string | null;
+  description?: string | null;
+  price: number;
+  durationDays: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePlatformPackageRequest {
+  name: string;
+  description?: string;
+  price: number;
+  durationDays: number;
+}
+
+export interface UpdatePlatformPackageRequest {
+  name?: string;
+  description?: string;
+  price?: number;
+  durationDays?: number;
+}
+
+export interface UpdatePlatformPackageStatusRequest {
+  isActive: boolean;
+}
+
+// ---- Coach subscription packages -------------------------------------------
+
+/** A coach's subscription to a platform package tier. */
+export interface CoachSubscriptionResponse {
+  id: string;
+  coachId: string;
+  packageId: number;
+  packageName?: string | null;
+  startDate: string;
+  endDate: string;
+  status?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseCoachPackageRequest {
+  packageId: number;
+}
+
+export interface PurchaseCoachPackagePayOsResponse {
+  coachPackageId: string;
+  paymentId: string;
+  orderCode: number;
+  checkoutUrl?: string | null;
+  status?: string | null;
+  expiredAt?: string | null;
+}

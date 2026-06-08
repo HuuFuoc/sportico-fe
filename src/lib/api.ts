@@ -73,6 +73,22 @@ export type { ReconcilePayOsResponse };
 export type { WithdrawalReceiptResponse };
 import { AVAILABLE_SPORTS } from "@/lib/constants";
 
+// --- module-level cache: sport name (lowercase) → backend sport ID ----------
+// Populated during live fetchCoaches so that subsequent sport-filtered fetches
+// can pass the correct `SportId` query param to the backend.
+const _sportIdCache = new Map<string, number>();
+
+/** Look up the backend sport ID for a given Sport key. Returns undefined when
+ *  the cache is empty (first render) or the sport hasn't appeared in results.
+ *  Exported so CoachBrowser can decide whether to use client-side fallback. */
+export function getSportId(sport: Sport): number | undefined {
+  return _sportIdCache.get(sport.toLowerCase());
+}
+
+function _cachedSportId(sport: Sport): number | undefined {
+  return getSportId(sport);
+}
+
 // --- mock fixtures: imported in THIS FILE ONLY ------------------------------
 import {
   getCoaches,
@@ -215,12 +231,49 @@ function slotToUi(s: import("@/lib/backend/dto").AvailabilitySlotResponse): Avai
 
 export const api = {
   // ---- Users -------------------------------------------------------------
-  fetchCoaches: (): Promise<Coach[]> =>
+  fetchCoaches: (params?: { sport?: Sport }): Promise<Coach[]> =>
     live(async () => {
-      // pageSize capped at 50 — backend service enforces this maximum.
-      const page = await backend.publicCoaches({ pageSize: 50 });
+      // Try to use a cached sport ID for server-side filtering. If the sport
+      // has no cached ID, we skip the SportId param — backend returns all
+      // coaches and the component applies client-side filtering.
+      const sportId = params?.sport ? _cachedSportId(params.sport) : undefined;
+
+      // On the first unfiltered call, also fetch training packages to warm
+      // the sport-ID cache. If packages have sportId + sportName, future
+      // sport-chip clicks can use server-side filtering.
+      const needsCacheWarm = !params?.sport && _sportIdCache.size === 0;
+      const [page, pkgsResult] = await Promise.all([
+        // pageSize capped at 50 — backend service enforces this maximum.
+        backend.publicCoaches({ pageSize: 50, sportId }),
+        needsCacheWarm
+          ? backend.publicTrainingPackages({ pageSize: 50 }).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
+      // Populate cache from coach list's sports (if the backend includes them).
+      for (const item of page.items ?? []) {
+        if (Array.isArray(item.sports)) {
+          for (const s of item.sports) {
+            if (s.id && s.name) {
+              _sportIdCache.set(s.name.trim().toLowerCase(), s.id);
+            }
+          }
+        }
+      }
+      // Populate cache from training packages (more reliable source of sport IDs).
+      if (pkgsResult) {
+        for (const pkg of pkgsResult.items ?? []) {
+          if (pkg.sportId && pkg.sportName) {
+            _sportIdCache.set(pkg.sportName.trim().toLowerCase(), pkg.sportId);
+          }
+        }
+      }
+
       return (page.items ?? []).map(map.publicCoachListItemToCoach);
-    }, () => getCoaches()),
+    }, () => {
+      const all = getCoaches();
+      return params?.sport ? all.filter((c) => c.sport === params.sport) : all;
+    }),
   fetchCoach: (id: string): Promise<Coach | undefined> =>
     live(async () => {
       try {
@@ -890,6 +943,12 @@ export const api = {
       const page = await backend.notifications({ pageSize: 50 });
       return (page.items ?? []).map(map.notificationToItem);
     }, () => getNotifications()),
+  /** Fetch just the unread notification count (badge only — avoids fetching all notifications). */
+  fetchUnreadNotificationCount: (): Promise<number> =>
+    liveAuthed(
+      () => backend.unreadNotificationCount(),
+      () => 0,
+    ),
   markNotificationRead: (id: string): Promise<void> =>
     liveAuthed<void>(() => backend.markNotificationRead(id), () => undefined),
   markAllNotificationsRead: (): Promise<void> =>

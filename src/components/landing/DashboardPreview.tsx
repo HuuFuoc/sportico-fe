@@ -4,9 +4,9 @@ import { MaterialIcon } from "@/components/icons/MaterialIcon";
 const TREND = [60, 63, 65, 68, 70, 73, 75, 78];
 
 const TILES = [
-  { icon: "timer", value: "24h", label: "Trained" },
-  { icon: "local_fire_department", value: "8-day", label: "Streak" },
-  { icon: "auto_awesome", value: "98%", label: "Match rate" },
+  { icon: "timer", value: "24h", label: "Đã tập" },
+  { icon: "local_fire_department", value: "8 ngày", label: "Chuỗi" },
+  { icon: "auto_awesome", value: "98%", label: "Tỉ lệ khớp" },
 ];
 
 /**
@@ -50,7 +50,7 @@ export function DashboardPreview() {
         <div className="flex items-end justify-between">
           <div>
             <p className="text-[13px] font-medium text-on-surface-variant">
-              Fitness Score Trend
+              Xu hướng điểm thể lực
             </p>
             <p className="mt-1 flex items-baseline gap-2">
               <span
@@ -61,12 +61,12 @@ export function DashboardPreview() {
               </span>
               <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-[#1f7a4d]">
                 <MaterialIcon name="trending_up" size={13} />
-                +12% vs last block
+                +12% so chu kỳ trước
               </span>
             </p>
           </div>
           <span className="hidden rounded-full border border-[var(--color-border-soft)] px-2.5 py-1 text-[11px] font-medium text-on-surface-variant sm:inline-block">
-            Last 8 weeks
+            8 tuần qua
           </span>
         </div>
 
@@ -139,9 +139,9 @@ export function DashboardPreview() {
             <MaterialIcon name="auto_awesome" filled size={14} />
           </div>
           <p className="text-[12px] leading-relaxed text-on-surface">
-            <span className="font-semibold text-primary">AI insight — </span>
-            Your HRV dipped 6%. Take an easy mobility day before the next
-            strength block to protect your streak.
+            <span className="font-semibold text-primary">AI nhận xét — </span>
+            HRV của bạn giảm 6%. Hãy nghỉ ngơi nhẹ nhàng trước chu kỳ sức mạnh
+            tiếp theo để bảo vệ chuỗi tập của bạn.
           </p>
         </div>
       </div>

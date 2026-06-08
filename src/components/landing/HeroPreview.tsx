@@ -227,7 +227,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
           <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-soft)] pt-3">
             <span className="inline-flex items-center gap-1.5 text-[13px] text-on-surface-variant">
               <MaterialIcon name="sports_tennis" size={16} />
-              {coach.sport}
+              {coach.sport ?? "HLV"}
             </span>
             <span className="text-[13px] text-on-surface-variant">
               from{" "}

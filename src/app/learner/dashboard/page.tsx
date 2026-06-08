@@ -56,7 +56,7 @@ export default async function LearnerDashboardPage() {
   const weekMinutes = wellness.weeklyTraining.reduce((a, b) => a + b, 0);
 
   return (
-    <AppShell role="learner" title="Dashboard">
+    <AppShell role="learner" title="Tổng quan">
       <div className="mx-auto max-w-[1280px] space-y-6 pb-4">
         {/* ---------- Greeting ---------- */}
         <header
@@ -396,9 +396,10 @@ export default async function LearnerDashboardPage() {
               {upcoming.map((s) => {
                 const coach = coachById.get(s.coachId);
                 const d = new Date(s.start);
-                const time = d.toLocaleTimeString("en-US", {
-                  hour: "numeric",
+                const time = d.toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
                   minute: "2-digit",
+                  hour12: false,
                 });
                 return (
                   <li

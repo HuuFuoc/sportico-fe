@@ -39,6 +39,15 @@ function useCurrentUser(): { name: string; avatarUrl: string | null } | null {
 export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
   const [showNotifs, setShowNotifs] = useState(false);
   const toggleMobileSidebar = useAppStore((s) => s.toggleMobileSidebar);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = isMockMode() || Boolean(authUser);
+
+  const { data: unreadCountData, refetch: refetchUnreadCount } = useApiResource(
+    () => isAuthenticated ? api.fetchUnreadNotificationCount() : Promise.resolve(0),
+    [isAuthenticated],
+  );
+  const unreadCount = unreadCountData ?? 0;
+
   const { data: notificationsData } = useApiResource(
     () => api.fetchNotifications(),
     [],
@@ -55,24 +64,28 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
       })),
     [notificationsData, localRead],
   );
-  const unread = notifications.filter((n) => !n.read).length;
+  const localUnreadCount = notifications.filter((n) => !n.read).length;
   const user = useCurrentUser();
 
   const markRead = (id: string) => {
     setLocalRead((prev) => new Set(prev).add(id));
-    void api.markNotificationRead(id).catch(() => {
-      setLocalRead((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
+    void api.markNotificationRead(id)
+      .then(() => refetchUnreadCount())
+      .catch(() => {
+        setLocalRead((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       });
-    });
   };
 
   const markAllRead = () => {
     const prev = localRead;
     setLocalRead(new Set((notificationsData ?? []).map((n) => n.id)));
-    void api.markAllNotificationsRead().catch(() => setLocalRead(prev));
+    void api.markAllNotificationsRead()
+      .then(() => refetchUnreadCount())
+      .catch(() => setLocalRead(prev));
   };
 
   const placeholder =
@@ -89,7 +102,7 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
         <button
           onClick={toggleMobileSidebar}
           className="lg:hidden -ml-1 p-2 rounded hover:bg-surface-container-low"
-          aria-label="Toggle navigation"
+          aria-label="Mở/đóng điều hướng"
         >
           <MaterialIcon name="menu" size={20} />
         </button>
@@ -127,15 +140,17 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
           <button
             onClick={() => setShowNotifs((v) => !v)}
             className="relative p-2 rounded hover:bg-surface-container-low transition-colors"
-            aria-label="Notifications"
+            aria-label="Thông báo"
           >
             <MaterialIcon
               name="notifications"
               size={20}
               className="text-on-surface-variant"
             />
-            {unread > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-error text-white text-[9px] font-bold leading-none px-1 ring-2 ring-surface-container-lowest tabular-nums">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
             )}
           </button>
           {showNotifs && (
@@ -146,17 +161,22 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
               />
               <div className="absolute right-0 mt-2 w-80 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] shadow-sm z-50 overflow-hidden">
                 <div className="px-4 py-3 border-b border-[var(--color-border-soft)] flex items-center justify-between">
-                  <p className="text-h3 text-on-surface">Notifications</p>
+                  <p className="text-h3 text-on-surface">Thông báo</p>
                   <button
                     onClick={markAllRead}
-                    disabled={unread === 0}
+                    disabled={localUnreadCount === 0}
                     className="text-body-sm text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-default"
                   >
-                    Mark all read
+                    Đánh dấu tất cả đã đọc
                   </button>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((n) => (
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-on-surface-variant">
+                      <MaterialIcon name="notifications" size={28} className="opacity-30 mb-2" />
+                      <p className="text-body-sm">Chưa có thông báo</p>
+                    </div>
+                  ) : notifications.map((n) => (
                     <Link
                       key={n.id}
                       href={n.href ?? "#"}
@@ -194,7 +214,7 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
 
         <button
           className="p-2 rounded hover:bg-surface-container-low transition-colors hidden sm:block"
-          aria-label="Help"
+          aria-label="Trợ giúp"
         >
           <MaterialIcon
             name="help"
