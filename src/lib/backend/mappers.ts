@@ -72,13 +72,44 @@ const SPORTS: Sport[] = [
   "Mindfulness",
 ];
 
+/** Vietnamese → Sport enum. Handles backends that return Vietnamese sport names. */
+const VI_TO_SPORT: Record<string, Sport> = {
+  "cầu lông": "Badminton",
+  "cau long": "Badminton",
+  "pickleball": "Pickleball",
+  "quần vợt": "Tennis",
+  "quan vot": "Tennis",
+  "yoga": "Yoga",
+  "hiit": "HIIT",
+  "sức mạnh": "Strength",
+  "suc manh": "Strength",
+  "chạy bộ": "Running",
+  "chay bo": "Running",
+  "bơi lội": "Swimming",
+  "boi loi": "Swimming",
+  "quyền anh": "Boxing",
+  "quyen anh": "Boxing",
+  "pilates": "Pilates",
+  "đạp xe": "Cycling",
+  "dap xe": "Cycling",
+  "bóng rổ": "Basketball",
+  "bong ro": "Basketball",
+  "bóng đá": "Football",
+  "bong da": "Football",
+  "golf": "Golf",
+  "thiền": "Mindfulness",
+  "mindfulness": "Mindfulness",
+};
+
 /** Best-effort map of a backend sport name to the UI Sport union.
- *  Returns null when the backend sent no sport data so callers can
- *  show "Chưa cập nhật" instead of a wrong fallback. */
+ *  Handles both English ("Badminton") and Vietnamese ("Cầu lông") names.
+ *  Returns null when the backend sent no sport data or an unrecognised name. */
 export function toSport(name?: string | null): Sport | null {
   if (!name) return null;
-  const found = SPORTS.find((s) => s.toLowerCase() === name.trim().toLowerCase());
-  return found ?? null;
+  const lower = name.trim().toLowerCase();
+  const byEnum = SPORTS.find((s) => s.toLowerCase() === lower);
+  if (byEnum) return byEnum;
+  return VI_TO_SPORT[lower] ?? null;
 }
 
 /** Short, stable display name derived from a coach id (no name endpoint). */

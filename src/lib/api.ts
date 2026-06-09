@@ -71,7 +71,7 @@ import type {
 } from "@/lib/backend/dto";
 export type { ReconcilePayOsResponse };
 export type { WithdrawalReceiptResponse };
-import { AVAILABLE_SPORTS } from "@/lib/constants";
+import { AVAILABLE_SPORTS, SPORT_LABEL_VI } from "@/lib/constants";
 
 // --- module-level cache: sport name (lowercase) → backend sport ID ----------
 // Populated during live fetchCoaches so that subsequent sport-filtered fetches
@@ -80,9 +80,14 @@ const _sportIdCache = new Map<string, number>();
 
 /** Look up the backend sport ID for a given Sport key. Returns undefined when
  *  the cache is empty (first render) or the sport hasn't appeared in results.
- *  Exported so CoachBrowser can decide whether to use client-side fallback. */
+ *  Tries English name first ("badminton"), then Vietnamese label ("cầu lông"),
+ *  because the backend may store sport names in either language. */
 export function getSportId(sport: Sport): number | undefined {
-  return _sportIdCache.get(sport.toLowerCase());
+  return (
+    _sportIdCache.get(sport.toLowerCase()) ??
+    _sportIdCache.get((SPORT_LABEL_VI[sport] ?? "").toLowerCase()) ??
+    undefined
+  );
 }
 
 function _cachedSportId(sport: Sport): number | undefined {

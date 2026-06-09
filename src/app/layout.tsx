@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { ScrollRestoration } from "@/components/common/ScrollRestoration";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
+import { ServiceWorkerRegister } from "@/components/common/ServiceWorkerRegister";
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
 import "./globals.css";
 
@@ -17,10 +18,21 @@ export const metadata: Metadata = {
   title: "Sportico — Nền tảng huấn luyện thông minh",
   description:
     "Nền tảng huấn luyện sử dụng AI để ghép nối học viên với HLV ưu tú.",
+  applicationName: "Sportico",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Sportico",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: "/logo.png",
-    apple: "/logo.png",
+    apple: "/icons/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#3525cd",
 };
 
 export default function RootLayout({
@@ -37,6 +49,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-surface text-on-surface font-sans">
+        <ServiceWorkerRegister />
         <AuthBootstrap />
         <ScrollRestoration />
         {children}

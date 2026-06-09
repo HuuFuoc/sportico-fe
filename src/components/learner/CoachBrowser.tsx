@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Search, X, ChevronDown } from "lucide-react";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { cn, initials } from "@/lib/utils";
 import { api, getSportId } from "@/lib/api";
@@ -10,23 +11,97 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState } from "@/components/common/AsyncStates";
 import type { Coach, Sport } from "@/types";
 
+// ── Types & constants ─────────────────────────────────────────────────────────
+
 const SORTS = [
   { key: "match", label: "Phù hợp nhất" },
   { key: "rating", label: "Đánh giá cao nhất" },
+  { key: "experienced", label: "Kinh nghiệm nhiều nhất" },
   { key: "newest", label: "Mới nhất" },
+  { key: "name_az", label: "Tên A-Z" },
 ] as const;
 
 type SortKey = (typeof SORTS)[number]["key"];
 
+type ExperienceKey = "all" | "0-2" | "3-5" | "6-10" | "10+";
+
+const EXPERIENCE_OPTIONS: { key: ExperienceKey; label: string }[] = [
+  { key: "all", label: "Kinh nghiệm" },
+  { key: "0-2", label: "0–2 năm" },
+  { key: "3-5", label: "3–5 năm" },
+  { key: "6-10", label: "6–10 năm" },
+  { key: "10+", label: "10+ năm" },
+];
+
+type RatingKey = "all" | "4.5+" | "4.0+" | "has_reviews";
+
+const RATING_OPTIONS: { key: RatingKey; label: string }[] = [
+  { key: "all", label: "Đánh giá" },
+  { key: "4.5+", label: "★ 4.5 trở lên" },
+  { key: "4.0+", label: "★ 4.0 trở lên" },
+  { key: "has_reviews", label: "Đã có đánh giá" },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function normalizeText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+function getCoachExperienceYears(coach: Coach): number {
+  return coach.yearsExperience ?? 0;
+}
+
+function matchesExperienceRange(years: number, range: ExperienceKey): boolean {
+  if (range === "all") return true;
+  if (range === "0-2") return years >= 0 && years <= 2;
+  if (range === "3-5") return years >= 3 && years <= 5;
+  if (range === "6-10") return years >= 6 && years <= 10;
+  if (range === "10+") return years >= 10;
+  return true;
+}
+
+function matchesRatingFilter(coach: Coach, key: RatingKey): boolean {
+  if (key === "all") return true;
+  const rating = coach.rating ?? 0;
+  const hasReviews = (coach.reviewCount ?? 0) > 0;
+  if (key === "4.5+") return hasReviews && rating >= 4.5;
+  if (key === "4.0+") return hasReviews && rating >= 4.0;
+  if (key === "has_reviews") return hasReviews;
+  return true;
+}
+
+function sortCoaches(coaches: Coach[], key: SortKey): Coach[] {
+  return [...coaches].sort((a, b) => {
+    switch (key) {
+      case "rating":
+        return (b.rating ?? 0) - (a.rating ?? 0);
+      case "experienced":
+        return getCoachExperienceYears(b) - getCoachExperienceYears(a);
+      case "newest":
+        return new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime();
+      case "name_az":
+        return a.name.localeCompare(b.name, "vi");
+      default:
+        return (b.matchPercent ?? 0) - (a.matchPercent ?? 0);
+    }
+  });
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export function CoachBrowser() {
   const [query, setQuery] = useState("");
   const [sport, setSport] = useState<Sport | "All">("All");
-  const [topRated, setTopRated] = useState(false);
+  const [expRange, setExpRange] = useState<ExperienceKey>("all");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [ratingKey, setRatingKey] = useState<RatingKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("match");
 
   // Re-fetch from backend whenever the selected sport changes.
-  // In live mode this passes SportId so the backend does server-side filtering;
-  // in mock mode it filters the local fixture by sport name.
   const {
     data: coachesData,
     loading,
@@ -36,65 +111,79 @@ export function CoachBrowser() {
     () => api.fetchCoaches(sport !== "All" ? { sport } : undefined),
     [sport],
   );
+
   const allCoaches = useMemo(() => coachesData ?? [], [coachesData]);
 
-  const coaches = useMemo(() => {
-    return allCoaches
-      .filter((c) => {
-        if (!c.id || !c.name?.trim()) return false;
-        const nameLower = c.name.toLowerCase();
-        if (nameLower === "system" || nameLower.startsWith("system ")) return false;
-        if (query) {
-          const q = query.toLowerCase();
-          if (
-            !c.name.toLowerCase().includes(q) &&
-            !c.headline.toLowerCase().includes(q) &&
-            !c.specialties.join(" ").toLowerCase().includes(q)
-          )
-            return false;
-        }
-        // Global constraint: only Cầu lông and Pickleball coaches are shown.
-        // Coaches with sport=null (no sport data from backend) are kept to avoid
-        // silently hiding valid coaches who haven't configured their sport yet.
-        if (c.sport !== null && c.sport !== "Badminton" && c.sport !== "Pickleball")
-          return false;
-        // Sport chip filter:
-        // • If sportId is in cache → backend already filtered, skip client check.
-        // • Fallback (no cached sportId): exclude coaches whose sport is KNOWN and
-        //   different. Coaches with sport=null are kept in the filtered view.
-        if (sport !== "All" && !getSportId(sport)) {
-          if (c.sport !== null && c.sport !== sport) return false;
-        }
-        if (topRated && c.rating < 4.8) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortKey === "rating") return b.rating - a.rating;
-        return (b.matchPercent ?? 0) - (a.matchPercent ?? 0);
-      });
-  }, [allCoaches, query, sport, topRated, sortKey]);
+  // Derive unique location options from the loaded coach list.
+  const locationOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of allCoaches) {
+      const loc = c.location?.trim();
+      if (loc) seen.add(loc);
+    }
+    return Array.from(seen).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [allCoaches]);
 
-  const filtersActive = query !== "" || sport !== "All" || topRated;
+  const coaches = useMemo(() => {
+    const filtered = allCoaches.filter((c) => {
+      if (!c.id || !c.name?.trim()) return false;
+      const nameLower = c.name.toLowerCase();
+      if (nameLower === "system" || nameLower.startsWith("system ")) return false;
+
+      // Platform constraint: only Badminton and Pickleball coaches.
+      // sport=null coaches (no sport configured yet) are kept to avoid silently
+      // hiding valid coaches.
+      if (c.sport !== null && c.sport !== "Badminton" && c.sport !== "Pickleball")
+        return false;
+
+      // Sport chip filter. When sportId is cached, backend already filtered;
+      // fall back to client-side check when sportId is unavailable.
+      if (sport !== "All" && !getSportId(sport)) {
+        if (c.sport !== null && c.sport !== sport) return false;
+      }
+
+      // Full-text search across name, headline, bio, location, sport, specialties.
+      if (query.trim()) {
+        const q = normalizeText(query.trim());
+        const haystack = normalizeText(
+          [c.name, c.headline, c.bio, c.location ?? "", c.sport ?? "", ...c.specialties].join(
+            " ",
+          ),
+        );
+        if (!haystack.includes(q)) return false;
+      }
+
+      if (!matchesExperienceRange(getCoachExperienceYears(c), expRange)) return false;
+
+      // Location: exact match against dropdown values derived from the dataset.
+      if (locationFilter !== "all" && c.location?.trim() !== locationFilter) return false;
+
+      if (!matchesRatingFilter(c, ratingKey)) return false;
+
+      return true;
+    });
+
+    return sortCoaches(filtered, sortKey);
+  }, [allCoaches, query, sport, expRange, locationFilter, ratingKey, sortKey]);
+
+  const filtersActive =
+    query !== "" ||
+    sport !== "All" ||
+    expRange !== "all" ||
+    locationFilter !== "all" ||
+    ratingKey !== "all";
 
   const resetFilters = () => {
     setQuery("");
     setSport("All");
-    setTopRated(false);
+    setExpRange("all");
+    setLocationFilter("all");
+    setRatingKey("all");
   };
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-[1200px] space-y-6 pb-6">
-        <PageHeader />
-        <AIMatchBanner />
-        <SkeletonGrid />
-      </div>
-    );
-  }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-[1200px] space-y-6 pb-6">
+      <div className="mx-auto max-w-[1200px] space-y-5 pb-6">
         <PageHeader />
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </div>
@@ -102,113 +191,130 @@ export function CoachBrowser() {
   }
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6 pb-6">
-      {/* Header */}
+    <div className="mx-auto max-w-[1200px] space-y-5 pb-6">
       <PageHeader />
 
-      {/* AI Match compact banner */}
-      <AIMatchBanner />
-
-      {/* Filter panel */}
-      <section className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3.5 shadow-[0_1px_2px_rgba(16,16,16,0.03)]">
-        {/* Search bar */}
-        <div className="flex h-11 items-center rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 transition-colors focus-within:border-primary">
-          <MaterialIcon
-            name="search"
-            size={19}
-            className="shrink-0 text-on-surface-variant"
-          />
-          <input
-            type="text"
-            name="coach-search"
-            aria-label="Tìm kiếm huấn luyện viên"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Tìm theo tên, môn thể thao hoặc chuyên môn…"
-            className="ml-2.5 flex-1 bg-transparent text-[14px] outline-none placeholder:text-on-surface-variant/70"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery("")}
-              aria-label="Xóa tìm kiếm"
-              className="shrink-0 rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-container"
-            >
-              <MaterialIcon name="close" size={16} />
-            </button>
-          )}
+      {/* Unified filter panel — search + filters + result footer all in one box */}
+      <section className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(16,16,16,0.03)]">
+        {/* Search */}
+        <div className="px-4 pt-4">
+          <div className="flex h-11 items-center rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low px-3.5 transition-colors focus-within:border-primary">
+            <Search
+              className="h-[18px] w-[18px] shrink-0 text-on-surface-variant"
+              strokeWidth={2}
+            />
+            <input
+              type="text"
+              name="coach-search"
+              aria-label="Tìm kiếm huấn luyện viên"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm theo tên, chuyên môn hoặc khu vực…"
+              className="ml-2.5 flex-1 bg-transparent text-[14px] outline-none placeholder:text-on-surface-variant/70"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label="Xóa tìm kiếm"
+                className="shrink-0 rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-container"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Sport chips — horizontal scroll with fade edge */}
-        <div className="relative mt-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <SportChip
-              active={sport === "All"}
-              onClick={() => setSport("All")}
-              label="Tất cả"
-            />
+        {/* Filter row: sport chips left, dropdowns right */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 px-4">
+          {/* Sport chips */}
+          <div className="flex flex-shrink-0 gap-1.5">
+            <SportChip active={sport === "All"} onClick={() => setSport("All")} label="Tất cả" />
             {AVAILABLE_SPORTS.map((s) => (
-              <SportChip
-                key={s}
-                active={sport === s}
-                onClick={() => setSport(s)}
-                label={sportLabel(s)}
-              />
+              <SportChip key={s} active={sport === s} onClick={() => setSport(s)} label={sportLabel(s)} />
             ))}
           </div>
-          {/* Right fade hint */}
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface-container-lowest to-transparent" />
-        </div>
-      </section>
 
-      {/* Results bar */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <p className="text-[14px] text-on-surface-variant">
-          <span className="font-semibold text-on-surface">{coaches.length}</span>{" "}
-          huấn luyện viên
-          {filtersActive && (
+          <div className="h-5 w-px bg-[var(--color-border-soft)]" />
+
+          {/* Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterSelect
+              value={expRange}
+              onChange={(v) => setExpRange(v as ExperienceKey)}
+              active={expRange !== "all"}
+            >
+              {EXPERIENCE_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>{o.label}</option>
+              ))}
+            </FilterSelect>
+
+            {locationOptions.length > 0 && (
+              <FilterSelect
+                value={locationFilter}
+                onChange={(v) => setLocationFilter(v)}
+                active={locationFilter !== "all"}
+              >
+                <option value="all">Khu vực</option>
+                {locationOptions.map((loc) => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </FilterSelect>
+            )}
+
+            <FilterSelect
+              value={ratingKey}
+              onChange={(v) => setRatingKey(v as RatingKey)}
+              active={ratingKey !== "all"}
+            >
+              {RATING_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>{o.label}</option>
+              ))}
+            </FilterSelect>
+          </div>
+        </div>
+
+        {/* Footer row — result count + clear + sort, inside the panel */}
+        <div className="mt-3 flex items-center gap-x-3 border-t border-[var(--color-border-soft)] px-4 py-2.5">
+          <span className="text-[13px] text-on-surface-variant">
+            {loading ? (
+              <span className="animate-pulse opacity-60">Đang tải…</span>
+            ) : (
+              <>
+                <span className="font-semibold text-on-surface">{coaches.length}</span>
+                {" huấn luyện viên"}
+              </>
+            )}
+          </span>
+
+          {filtersActive && !loading && (
             <button
               onClick={resetFilters}
-              className="ml-2.5 inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"
+              className="inline-flex items-center gap-1 rounded-[6px] bg-surface-container-low px-2.5 py-1 text-[12px] font-medium text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
             >
-              <MaterialIcon name="close" size={13} />
+              <X className="h-3 w-3" />
               Xóa bộ lọc
             </button>
           )}
-        </p>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setTopRated((v) => !v)}
-            aria-pressed={topRated}
-            className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-[8px] border px-3 text-[13px] font-medium transition-colors",
-              topRated
-                ? "border-primary/30 bg-primary/[0.08] text-primary"
-                : "border-[var(--color-border-soft)] text-on-surface-variant hover:border-primary/40",
-            )}
-          >
-            <MaterialIcon name="star" filled size={14} />
-            Đánh giá cao
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] text-on-surface-variant">Sắp xếp</span>
-            <SortSelect
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-[12px] text-on-surface-variant">Sắp xếp</span>
+            <FilterSelect
               value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              onChange={(v) => setSortKey(v as SortKey)}
+              active={sortKey !== "match"}
             >
               {SORTS.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
+                <option key={s.key} value={s.key}>{s.label}</option>
               ))}
-            </SortSelect>
+            </FilterSelect>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Results grid */}
-      {coaches.length > 0 ? (
+      {/* Results */}
+      {loading ? (
+        <SkeletonGrid />
+      ) : coaches.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {coaches.map((coach, i) => (
             <CoachCard key={coach.id} coach={coach} index={i} />
@@ -221,7 +327,7 @@ export function CoachBrowser() {
   );
 }
 
-/* ── Static sub-components ───────────────────────────────────────────────── */
+// ── Static sub-components ─────────────────────────────────────────────────────
 
 function PageHeader() {
   return (
@@ -234,33 +340,6 @@ function PageHeader() {
         phong cách huấn luyện.
       </p>
     </header>
-  );
-}
-
-function AIMatchBanner() {
-  return (
-    <section className="flex flex-col gap-4 rounded-[14px] border border-primary/20 bg-primary/[0.04] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-primary/[0.1]">
-          <MaterialIcon name="auto_awesome" filled size={20} className="text-primary" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[14px] font-semibold text-on-surface">
-            Chưa biết chọn huấn luyện viên nào?
-          </p>
-          <p className="mt-0.5 line-clamp-2 text-[13px] text-on-surface-variant">
-            Trả lời vài câu hỏi ngắn để hệ thống gợi ý HLV phù hợp với mục tiêu của bạn.
-          </p>
-        </div>
-      </div>
-      <Link
-        href="/learner/ai-match"
-        className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-[8px] bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] sm:self-auto"
-      >
-        <MaterialIcon name="auto_awesome" filled size={14} />
-        Tìm HLV phù hợp
-      </Link>
-    </section>
   );
 }
 
@@ -315,7 +394,7 @@ function EmptyState({
       </p>
       <p className="mt-1 text-[14px] text-on-surface-variant">
         {filtersActive
-          ? "Thử thay đổi từ khóa hoặc bộ lọc để xem thêm kết quả."
+          ? "Thử đổi môn thể thao, khu vực hoặc số năm kinh nghiệm."
           : "Hiện chưa có huấn luyện viên nào trong hệ thống."}
       </p>
       {filtersActive && (
@@ -323,14 +402,14 @@ function EmptyState({
           onClick={onReset}
           className="mt-5 inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8]"
         >
-          Xóa tất cả bộ lọc
+          Xóa bộ lọc
         </button>
       )}
     </div>
   );
 }
 
-/* ── SportChip ───────────────────────────────────────────────────────────── */
+// ── SportChip ─────────────────────────────────────────────────────────────────
 
 function SportChip({
   active,
@@ -356,43 +435,53 @@ function SportChip({
   );
 }
 
-/* ── SortSelect ──────────────────────────────────────────────────────────── */
+// ── FilterSelect ──────────────────────────────────────────────────────────────
 
-function SortSelect({
+function FilterSelect({
   value,
   onChange,
+  active,
   children,
-  ...rest
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="relative">
       <select
         value={value}
-        onChange={onChange}
-        className="h-9 cursor-pointer appearance-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest pl-3 pr-8 text-[13px] font-medium text-on-surface outline-none transition-colors hover:border-primary/40 focus:border-primary"
-        {...rest}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "h-9 cursor-pointer appearance-none rounded-[8px] border pl-3 pr-8 text-[13px] font-medium outline-none transition-colors",
+          active
+            ? "border-primary/30 bg-primary/[0.06] text-primary focus:border-primary"
+            : "border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface hover:border-primary/40 focus:border-primary",
+        )}
       >
         {children}
       </select>
-      <MaterialIcon
-        name="expand_more"
-        size={16}
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant"
+      <ChevronDown
+        className={cn(
+          "pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2",
+          active ? "text-primary" : "text-on-surface-variant",
+        )}
       />
     </div>
   );
 }
 
-/* ── CoachCard ───────────────────────────────────────────────────────────── */
+// ── CoachCard ─────────────────────────────────────────────────────────────────
 
 function CoachCard({ coach, index }: { coach: Coach; index: number }) {
   const [saved, setSaved] = useState(false);
   const [imgError, setImgError] = useState(false);
+
   const profileHref = `/coaches/${coach.id}`;
-  const hasRating = coach.rating > 0 && coach.reviewCount > 0;
+  const hasRating = (coach.rating ?? 0) > 0 && (coach.reviewCount ?? 0) > 0;
   const hasLocation = Boolean(coach.location?.trim());
-  const isBookingFast = coach.activeLearners >= 24;
-  const isTopMatch = (coach.matchPercent ?? 0) >= 98;
+  const hasExperience = (coach.yearsExperience ?? 0) > 0;
   const sportName = sportLabel(coach.sport, "");
 
   return (
@@ -402,7 +491,6 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
     >
       {/* Header: avatar + identity */}
       <div className="flex items-start gap-3.5">
-        {/* Avatar with verified badge */}
         <div className="relative shrink-0">
           {!imgError && coach.avatarUrl ? (
             <img
@@ -426,7 +514,6 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
           )}
         </div>
 
-        {/* Name + sport + match badge */}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <Link
@@ -445,16 +532,10 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
           <p className="mt-0.5 truncate text-[13px] text-on-surface-variant">
             {sportName || coach.headline || "Huấn luyện viên Sportico"}
           </p>
-          {isTopMatch && (
-            <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-primary">
-              <MaterialIcon name="bolt" filled size={12} />
-              Phù hợp nhất
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Short bio / headline */}
+      {/* Short bio */}
       <p className="mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-relaxed text-on-surface-variant">
         {coach.bio || coach.headline || "Chưa có mô tả."}
       </p>
@@ -467,13 +548,10 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
             <span className="font-semibold text-on-surface">
               {coach.rating.toFixed(1)}
             </span>
-            <span>
-              ({coach.reviewCount}{" "}
-              {coach.reviewCount === 1 ? "đánh giá" : "đánh giá"})
-            </span>
+            <span>({coach.reviewCount} đánh giá)</span>
           </span>
         ) : (
-          <span className="text-on-surface-variant/60">Chưa có đánh giá</span>
+          <span className="text-[12px] text-on-surface-variant/60">Chưa có đánh giá</span>
         )}
         {hasLocation && (
           <>
@@ -486,7 +564,7 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
         )}
       </div>
 
-      {/* Tags: sport + specialties */}
+      {/* Sport + specialty tags */}
       <div className="mt-3.5 flex flex-wrap gap-1.5">
         {sportName && (
           <span className="rounded-[6px] bg-primary/[0.06] px-2 py-1 text-[11px] font-medium text-primary">
@@ -508,25 +586,16 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
         )}
       </div>
 
-      {/* Availability */}
-      <div className="mt-3.5 flex items-center gap-1.5 text-[12px] font-medium">
-        <span
-          className={cn(
-            "h-1.5 w-1.5 shrink-0 rounded-full",
-            isBookingFast ? "bg-amber-500" : "bg-emerald-500",
-          )}
-        />
-        <span className={isBookingFast ? "text-amber-700" : "text-emerald-700"}>
-          {isBookingFast ? "Đặt lịch nhanh — còn ít chỗ" : "Còn lịch tuần này"}
-        </span>
-      </div>
-
       {/* Footer CTA */}
       <div className="mt-auto flex items-center justify-between border-t border-[var(--color-border-soft)] pt-4">
         <div className="min-w-0">
-          {coach.yearsExperience > 0 && (
+          {hasExperience ? (
             <span className="text-[12px] text-on-surface-variant">
               {coach.yearsExperience} năm kinh nghiệm
+            </span>
+          ) : (
+            <span className="text-[12px] text-on-surface-variant/50">
+              Chưa cập nhật kinh nghiệm
             </span>
           )}
         </div>
