@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
+import { Menu, X } from "lucide-react";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { PillNav, type PillNavItem } from "@/components/ui/PillNav";
+import {
+  AnimatedNavigationTabs,
+  type AnimatedNavItem,
+} from "@/components/ui/animated-navigation-tabs";
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { logout } from "@/lib/auth-api";
 import { avatarFor, cn } from "@/lib/utils";
@@ -19,36 +24,26 @@ interface PublicNavbarProps {
   variant?: "transparent" | "solid";
 }
 
-// Role-aware center menus. Routes are mapped to pages that actually exist in
-// this app (e.g. become-coach → /onboarding, /coach → /coach/dashboard).
-const GUEST_LINKS: PillNavItem[] = [
-  { label: "Huấn luyện viên", href: "/coaches" },
-  { label: "Về chúng tôi", href: "/about" },
-  { label: "Trở thành HLV", href: "/onboarding" },
+// Base nav (always visible). Routes are the project's real pages — there is no
+// `/become-coach` route, so "Trở thành HLV" points to the real `/onboarding`.
+const NAV_BASE: AnimatedNavItem[] = [
+  { id: 1, tile: "Trang chủ", href: "/" },
+  { id: 2, tile: "Huấn luyện viên", href: "/coaches" },
+  { id: 3, tile: "Về chúng tôi", href: "/about" },
 ];
+const BECOME_COACH: AnimatedNavItem = { id: 4, tile: "Trở thành HLV", href: "/onboarding" };
 
-const LEARNER_LINKS: PillNavItem[] = [
-  { label: "Huấn luyện viên", href: "/coaches" },
-  { label: "Lịch học", href: "/learner/bookings" },
-];
+function buildNavItems(role: Role | null): AnimatedNavItem[] {
+  // Hide "Trở thành HLV" for coaches/admins; guests + learners still see it.
+  const showBecomeCoach = role !== "coach" && role !== "admin";
+  return showBecomeCoach ? [...NAV_BASE, BECOME_COACH] : NAV_BASE;
+}
 
-const COACH_LINKS: PillNavItem[] = [
-  { label: "Dashboard", href: "/coach/dashboard" },
-  { label: "Học viên", href: "/coach/learners" },
-  { label: "Lịch dạy", href: "/coach/schedule" },
-];
-
-const ADMIN_LINKS: PillNavItem[] = [
-  { label: "Dashboard", href: "/admin/dashboard" },
-  { label: "Người dùng", href: "/admin/users" },
-  { label: "Báo cáo", href: "/admin/reviews" },
-];
-
-function menuFor(isAuthenticated: boolean, role: Role): PillNavItem[] {
-  if (!isAuthenticated) return GUEST_LINKS;
-  if (role === "admin") return ADMIN_LINKS;
-  if (role === "coach") return COACH_LINKS;
-  return LEARNER_LINKS;
+/** The active item's href: exact for "/", prefix-match for sub-routes. */
+function resolveActiveHref(items: AnimatedNavItem[], pathname: string): string | undefined {
+  return items.find((i) =>
+    i.href === "/" ? pathname === "/" : pathname === i.href || pathname.startsWith(`${i.href}/`),
+  )?.href;
 }
 
 function dashboardHref(role: Role): string {
@@ -65,7 +60,9 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const mobileRef = useRef<HTMLDivElement | null>(null);
 
   // Auth state from the hydrated store
   const authUser = useAuthStore((s) => s.user);
@@ -73,11 +70,14 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const isAuthenticated = authStatus === "authenticated" && authUser !== null;
 
   // Derive the UI role from the real auth user: admin > coach > learner.
-  const role: Role = primaryRole(authUser) ?? "learner";
+  const role = primaryRole(authUser);
+  const menuRole: Role = role ?? "learner";
 
   const displayName = authUser?.fullName ?? "Người dùng";
   const avatarSrc = authUser?.avatarUrl ?? avatarFor(authUser?.id ?? "guest");
-  const items = menuFor(isAuthenticated, role);
+
+  const navItems = buildNavItems(role);
+  const activeHref = resolveActiveHref(navItems, pathname);
 
   // Logout handler: clear tokens + auth store + go to login
   const handleLogout = () => {
@@ -107,48 +107,34 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
+  // Close mobile menu on outside click
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (mobileRef.current && !mobileRef.current.contains(e.target as Node)) {
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [mobileOpen]);
+
   const transparent = variant === "transparent" && !scrolled;
 
-  // Ghost pills (text only) when inactive; filled when active/hovered. Colors
-  // flip with the header state so contrast holds on both the white solid bar
-  // and the dark hero. baseColor = the fill of the hover circle + active pill.
-  const pillColors = transparent
-    ? { base: "#ffffff", pill: "transparent", text: "#ffffff", hover: "#3525cd" }
-    : { base: "#3525cd", pill: "transparent", text: "#3525cd", hover: "#ffffff" };
-
-  const rightContent = isAuthenticated ? (
-    <UserMenu
-      displayName={displayName}
-      avatarSrc={avatarSrc}
-      role={role}
-      transparent={transparent}
-      open={menuOpen}
-      onToggle={() => setMenuOpen((v) => !v)}
-      onClose={() => setMenuOpen(false)}
-      onLogout={handleLogout}
-      menuRef={menuRef}
-    />
-  ) : (
-    <>
-      <Link
-        href="/login"
-        className={cn(
-          "rounded-full border px-5 py-3 text-body-base font-semibold transition-colors",
-          transparent
-            ? "border-white/40 text-white hover:bg-white/10"
-            : "border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface hover:bg-surface-container-low",
-        )}
-      >
-        Đăng nhập
-      </Link>
-      <Link
-        href="/register"
-        className="hidden rounded-full bg-primary px-5 py-3 text-body-base font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] sm:inline-flex"
-      >
-        Bắt đầu
-      </Link>
-    </>
-  );
+  // Tab colors flip with the header state so contrast holds on both surfaces.
+  const tabColors = transparent
+    ? {
+        active: "text-white",
+        inactive: "text-white/70 hover:text-white",
+        indicator: "bg-white",
+        hover: "bg-white/10",
+      }
+    : {
+        active: "text-primary",
+        inactive: "text-on-surface-variant hover:text-primary",
+        indicator: "bg-primary",
+        hover: "bg-primary/10",
+      };
 
   return (
     <header
@@ -159,19 +145,117 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
           : "border-b border-[var(--color-border-soft)] bg-surface-container-lowest",
       )}
     >
-      <div className="mx-auto flex h-full max-w-7xl items-center px-6">
-        <PillNav
-          logo="/logo.png"
-          logoAlt="Sportico"
-          items={items}
-          activeHref={pathname}
-          baseColor={pillColors.base}
-          pillColor={pillColors.pill}
-          pillTextColor={pillColors.text}
-          hoveredPillTextColor={pillColors.hover}
-          initialLoadAnimation={variant === "transparent"}
-          rightContent={rightContent}
-        />
+      <div className="relative mx-auto flex h-full max-w-7xl items-center px-6">
+        {/* Logo (left) */}
+        <Link href="/" aria-label="Trang chủ" className="flex shrink-0 items-center">
+          <img
+            src="/logo.png"
+            alt="Sportico"
+            className="h-12 w-auto rounded-[8px] ring-1 ring-black/5"
+          />
+        </Link>
+
+        {/* Desktop tabs — absolutely centered, independent of side widths */}
+        <nav
+          aria-label="Chính"
+          className="absolute left-1/2 hidden w-max -translate-x-1/2 md:block"
+        >
+          <AnimatedNavigationTabs
+            items={navItems}
+            activeHref={activeHref}
+            activeClassName={tabColors.active}
+            inactiveClassName={tabColors.inactive}
+            indicatorClassName={tabColors.indicator}
+            hoverClassName={tabColors.hover}
+          />
+        </nav>
+
+        {/* Right cluster (auth actions + mobile hamburger) */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {isAuthenticated ? (
+            <UserMenu
+              displayName={displayName}
+              avatarSrc={avatarSrc}
+              role={menuRole}
+              transparent={transparent}
+              open={menuOpen}
+              onToggle={() => setMenuOpen((v) => !v)}
+              onClose={() => setMenuOpen(false)}
+              onLogout={handleLogout}
+              menuRef={menuRef}
+            />
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className={cn(
+                  "rounded-full border px-5 py-3 text-body-base font-semibold transition-colors",
+                  transparent
+                    ? "border-white/40 text-white hover:bg-white/10"
+                    : "border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface hover:bg-surface-container-low",
+                )}
+              >
+                Đăng nhập
+              </Link>
+              <Link
+                href="/register"
+                className="hidden rounded-full bg-primary px-5 py-3 text-body-base font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] sm:inline-flex"
+              >
+                Bắt đầu
+              </Link>
+            </>
+          )}
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            aria-label="Mở menu"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors md:hidden",
+              transparent ? "text-white hover:bg-white/10" : "text-on-surface hover:bg-surface-container-low",
+            )}
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
+
+        {/* Mobile dropdown menu */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              ref={mobileRef}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute left-4 right-4 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-2 shadow-[0_12px_32px_-12px_rgba(15,15,30,0.18),0_2px_6px_rgba(15,15,30,0.06)] md:hidden"
+            >
+              <ul className="flex flex-col gap-1">
+                {navItems.map((item) => {
+                  const active = item.href === activeHref;
+                  return (
+                    <li key={item.id}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "block rounded-[10px] px-4 py-3 text-body-base font-semibold transition-colors",
+                          active
+                            ? "bg-primary/10 text-primary"
+                            : "text-on-surface hover:bg-surface-container-low",
+                        )}
+                      >
+                        {item.tile}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );
