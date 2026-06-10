@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { StaggeredMenuButton } from "@/components/landing/StaggeredMenu";
+import { PillNav, type PillNavItem } from "@/components/ui/PillNav";
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { logout } from "@/lib/auth-api";
-import { avatarFor } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { avatarFor, cn } from "@/lib/utils";
 import type { Role } from "@/types";
 
 interface PublicNavbarProps {
@@ -20,27 +19,36 @@ interface PublicNavbarProps {
   variant?: "transparent" | "solid";
 }
 
-interface NavLink {
-  label: string;
-  href: string;
-}
-
-// Public-facing nav links. "Huấn Luyện Viên" points to the public /coaches
-// page (standalone, no dashboard chrome) — NOT to /learner/coaches.
-const BASE_LINKS: NavLink[] = [
+// Role-aware center menus. Routes are mapped to pages that actually exist in
+// this app (e.g. become-coach → /onboarding, /coach → /coach/dashboard).
+const GUEST_LINKS: PillNavItem[] = [
   { label: "Huấn luyện viên", href: "/coaches" },
-  { label: "Ghép nối", href: "/ai-match" },
   { label: "Về chúng tôi", href: "/about" },
+  { label: "Trở thành HLV", href: "/onboarding" },
 ];
 
-const BECOME_COACH_HREF = "/onboarding";
-const LOGIN_HREF = "/login";
-const REGISTER_HREF = "/register";
+const LEARNER_LINKS: PillNavItem[] = [
+  { label: "Huấn luyện viên", href: "/coaches" },
+  { label: "Lịch học", href: "/learner/bookings" },
+];
 
-/** Guests and signed-in learners see the "Trở thành HLV" CTA; coaches/admins do not. */
-function canShowBecomeCoach(role: Role, isAuthenticated: boolean): boolean {
-  if (!isAuthenticated) return true;
-  return role === "learner";
+const COACH_LINKS: PillNavItem[] = [
+  { label: "Dashboard", href: "/coach/dashboard" },
+  { label: "Học viên", href: "/coach/learners" },
+  { label: "Lịch dạy", href: "/coach/schedule" },
+];
+
+const ADMIN_LINKS: PillNavItem[] = [
+  { label: "Dashboard", href: "/admin/dashboard" },
+  { label: "Người dùng", href: "/admin/users" },
+  { label: "Báo cáo", href: "/admin/reviews" },
+];
+
+function menuFor(isAuthenticated: boolean, role: Role): PillNavItem[] {
+  if (!isAuthenticated) return GUEST_LINKS;
+  if (role === "admin") return ADMIN_LINKS;
+  if (role === "coach") return COACH_LINKS;
+  return LEARNER_LINKS;
 }
 
 function dashboardHref(role: Role): string {
@@ -54,6 +62,7 @@ function settingsHref(role: Role): string {
 
 export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -68,7 +77,7 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
 
   const displayName = authUser?.fullName ?? "Người dùng";
   const avatarSrc = authUser?.avatarUrl ?? avatarFor(authUser?.id ?? "guest");
-  const showBecomeCoach = canShowBecomeCoach(role, isAuthenticated);
+  const items = menuFor(isAuthenticated, role);
 
   // Logout handler: clear tokens + auth store + go to login
   const handleLogout = () => {
@@ -100,105 +109,69 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
 
   const transparent = variant === "transparent" && !scrolled;
 
+  // Ghost pills (text only) when inactive; filled when active/hovered. Colors
+  // flip with the header state so contrast holds on both the white solid bar
+  // and the dark hero. baseColor = the fill of the hover circle + active pill.
+  const pillColors = transparent
+    ? { base: "#ffffff", pill: "transparent", text: "#ffffff", hover: "#3525cd" }
+    : { base: "#3525cd", pill: "transparent", text: "#3525cd", hover: "#ffffff" };
+
+  const rightContent = isAuthenticated ? (
+    <UserMenu
+      displayName={displayName}
+      avatarSrc={avatarSrc}
+      role={role}
+      transparent={transparent}
+      open={menuOpen}
+      onToggle={() => setMenuOpen((v) => !v)}
+      onClose={() => setMenuOpen(false)}
+      onLogout={handleLogout}
+      menuRef={menuRef}
+    />
+  ) : (
+    <>
+      <Link
+        href="/login"
+        className={cn(
+          "rounded-full border px-5 py-3 text-body-base font-semibold transition-colors",
+          transparent
+            ? "border-white/40 text-white hover:bg-white/10"
+            : "border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface hover:bg-surface-container-low",
+        )}
+      >
+        Đăng nhập
+      </Link>
+      <Link
+        href="/register"
+        className="hidden rounded-full bg-primary px-5 py-3 text-body-base font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] sm:inline-flex"
+      >
+        Bắt đầu
+      </Link>
+    </>
+  );
+
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 h-16 transition-colors duration-200",
+        "sticky top-0 z-50 h-20 transition-colors duration-200",
         transparent
           ? "bg-transparent"
           : "border-b border-[var(--color-border-soft)] bg-surface-container-lowest",
       )}
     >
-      <div className="relative mx-auto flex h-full max-w-7xl items-center justify-between px-6">
-        {/* Logo */}
-        <Link
-          href="/"
-          aria-label="Sportico — trang chủ"
-          className="flex shrink-0 items-center"
-        >
-          <img
-            src="/logo.png"
-            alt="Sportico"
-            className={cn(
-              "h-9 w-auto rounded-[6px] transition-all",
-              transparent
-                ? "shadow-[0_4px_14px_-2px_rgba(53,37,205,0.55)] ring-1 ring-white/15"
-                : "",
-            )}
-          />
-        </Link>
-
-        {/* Center links — truly centered via absolute position */}
-        <nav className="absolute left-1/2 -translate-x-1/2 hidden items-center gap-1 md:flex">
-          {BASE_LINKS.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className={cn(
-                "rounded-[6px] px-3 py-1.5 text-body-base font-medium transition-colors",
-                transparent
-                  ? "text-white/85 hover:text-white"
-                  : "text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right actions — desktop */}
-        <div className="hidden shrink-0 items-center gap-2 md:flex">
-          {showBecomeCoach && (
-            <Link
-              href={BECOME_COACH_HREF}
-              className={cn(
-                "rounded-[6px] border px-3.5 py-2 text-body-sm font-semibold transition-colors",
-                transparent
-                  ? "border-white/40 text-white hover:bg-white/10"
-                  : "border-primary/30 bg-primary/[0.06] text-primary hover:bg-primary/10",
-              )}
-            >
-              Trở thành HLV
-            </Link>
-          )}
-
-          {isAuthenticated ? (
-            <UserMenu
-              displayName={displayName}
-              avatarSrc={avatarSrc}
-              role={role}
-              transparent={transparent}
-              open={menuOpen}
-              onToggle={() => setMenuOpen((v) => !v)}
-              onClose={() => setMenuOpen(false)}
-              onLogout={handleLogout}
-              menuRef={menuRef}
-            />
-          ) : (
-            <>
-              <Link
-                href={LOGIN_HREF}
-                className={cn(
-                  "rounded-[6px] border px-3.5 py-2 text-body-sm font-semibold transition-colors",
-                  transparent
-                    ? "border-white/40 text-white hover:bg-white/10"
-                    : "border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface hover:bg-surface-container-low",
-                )}
-              >
-                Đăng nhập
-              </Link>
-              <Link
-                href={REGISTER_HREF}
-                className="rounded-[6px] bg-primary px-3.5 py-2 text-body-sm font-semibold text-on-primary transition-colors hover:bg-[#2d20b8]"
-              >
-                Bắt đầu
-              </Link>
-            </>
-          )}
-        </div>
-
-        {/* Hamburger / StaggeredMenu — mobile only */}
-        <StaggeredMenuButton transparent={transparent} className="md:hidden" />
+      <div className="mx-auto flex h-full max-w-7xl items-center px-6">
+        <PillNav
+          logo="/logo.png"
+          logoAlt="Sportico"
+          items={items}
+          activeHref={pathname}
+          baseColor={pillColors.base}
+          pillColor={pillColors.pill}
+          pillTextColor={pillColors.text}
+          hoveredPillTextColor={pillColors.hover}
+          initialLoadAnimation={variant === "transparent"}
+          rightContent={rightContent}
+        />
       </div>
     </header>
   );
@@ -244,11 +217,11 @@ function UserMenu({
         <img
           src={avatarSrc}
           alt={displayName}
-          className="h-8 w-8 rounded-full object-cover"
+          className="h-10 w-10 rounded-full object-cover"
         />
         <span
           className={cn(
-            "max-w-[140px] truncate text-body-sm font-semibold",
+            "hidden max-w-[140px] truncate text-body-sm font-semibold sm:inline",
             transparent ? "text-white" : "text-on-surface",
           )}
         >

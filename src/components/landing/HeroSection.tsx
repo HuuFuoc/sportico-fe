@@ -82,7 +82,7 @@ export function HeroSection({ coach }: { coach: Coach }) {
     <section
       ref={sectionRef}
       onMouseMove={onMove}
-      className="relative -mt-16 h-[min(100vh,860px)] min-h-[640px] overflow-hidden bg-[#0a0a0e] text-white"
+      className="relative -mt-20 h-[min(100vh,860px)] min-h-[640px] overflow-hidden bg-[#0a0a0e] text-white"
     >
       {/* ============ BACKGROUND (parallax — video on desktop, image on mobile) ============ */}
       <motion.div
