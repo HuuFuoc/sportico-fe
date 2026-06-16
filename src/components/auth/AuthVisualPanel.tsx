@@ -22,20 +22,17 @@ const EASE = [0.16, 1, 0.3, 1] as const;
  * mobile by the parent layout.
  */
 
-// ─── Prototype/reference athlete imagery ─────────────────────────────────────
-// These are loaded as native <img> backgrounds (no Next/Image), so no
-// next.config.ts remote-pattern change is needed. They are PROTOTYPE imagery
-// — replace with production-licensed assets before launch.
+// ─── Local athlete imagery (public/) ─────────────────────────────────────────
+// Loaded as native <img> backgrounds (no Next/Image), served from /public so
+// no next.config.ts remote-pattern change is needed and no external hotlinking.
 const HERO_IMAGES = {
   login: {
-    src: "https://www.yonex.com/media/wysiwyg/Athletes/Badminton/Sukamuljo_Short_202003.jpg",
+    src: "/login.png",
     objectPosition: "center 18%",
-    credit: "Yonex / Kevin Sanjaya Sukamuljo",
   },
   register: {
-    src: "https://cdn.tatlerasia.com/asiatatler/i/my/2021/03/23091422-lee-zii-jia-all-england-20211_cover_1920x1200.jpg",
+    src: "/register.png",
     objectPosition: "center 28%",
-    credit: "Tatler Asia / Lee Zii Jia — All England 2021",
   },
 } as const;
 
@@ -71,7 +68,6 @@ export function AuthVisualPanel({ variant }: { variant?: Variant }) {
           src={hero.src}
           alt=""
           aria-hidden
-          referrerPolicy="no-referrer"
           className="h-full w-full object-cover"
           style={{ objectPosition: hero.objectPosition }}
         />

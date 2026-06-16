@@ -195,6 +195,11 @@ export const backendEndpoints = {
   // ---- Payments (reconcile all) ----------------------------------------
   reconcileAllPayos: "/api/payments/payos/reconcile",
 
+  // ---- Advisory (AI coach-matching assistant) --------------------------
+  // NOTE: the only versioned (/api/v1/...) path on this backend so far. Keep
+  // the version segment verbatim — the same-origin proxy forwards any path.
+  advisoryMessages: "/api/v1/advisory/messages",
+
   // ---- Admin user management --------------------------------------------
   adminUsers: "/api/admin/users",
   adminUserById: (id: string) => `/api/admin/users/${encodeURIComponent(id)}`,

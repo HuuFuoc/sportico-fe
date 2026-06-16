@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAdvisoryVisible } from "@/lib/hooks/useAdvisoryVisible";
+import { useAdvisoryUi } from "@/lib/store/useAdvisoryUi";
 
 /**
  * Floating "scroll to top" button — bottom-right.
@@ -18,6 +21,11 @@ export function ScrollToTopButton({
 }) {
   const reduce = useReducedMotion();
   const [visible, setVisible] = useState(false);
+  // The advisory FAB stacks ABOVE this button (authenticated learner), so when
+  // it's present we align this one to the FAB's corner column. While the chat
+  // panel is open we hide this button entirely to avoid clutter behind it.
+  const advisoryVisible = useAdvisoryVisible();
+  const advisoryOpen = useAdvisoryUi((s) => s.open);
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > threshold);
@@ -36,7 +44,7 @@ export function ScrollToTopButton({
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible && !advisoryOpen && (
         <motion.button
           key="scroll-top"
           type="button"
@@ -51,7 +59,13 @@ export function ScrollToTopButton({
           }}
           whileHover={reduce ? {} : { y: -2 }}
           whileTap={reduce ? {} : { scale: 0.94 }}
-          className="group fixed bottom-6 right-6 z-50 inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] border border-slate-200 bg-white/95 text-slate-700 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18),0_2px_6px_-2px_rgba(15,23,42,0.08)] backdrop-blur transition-colors hover:border-violet-300 hover:text-violet-700 sm:bottom-8 sm:right-8"
+          className={cn(
+            "group fixed z-50 inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] border border-slate-200 bg-white/95 text-slate-700 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18),0_2px_6px_-2px_rgba(15,23,42,0.08)] backdrop-blur transition-colors hover:border-violet-300 hover:text-violet-700",
+            advisoryVisible
+              ? // Corner, aligned to the FAB column; the FAB raises above this.
+                "bottom-4 right-4 sm:bottom-6 sm:right-6"
+              : "bottom-6 right-6 sm:bottom-8 sm:right-8",
+          )}
         >
           {/* Hover gradient sweep */}
           <span

@@ -37,11 +37,15 @@ interface MessagesViewProps {
   /** Optional thread id to pre-select when present (e.g. from a `?thread=`
    *  query param after navigating from a coach profile). */
   initialThreadId?: string;
+  /** Which filter tabs to render. Defaults to all three. Pass a subset (e.g.
+   *  ["all"]) to hide the others; the tab bar is hidden entirely when only one
+   *  tab remains, since a lone "Tất cả" pill offers no real choice. */
+  filterTabs?: FilterTab[];
 }
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-type FilterTab = "all" | "unread" | "ai";
+export type FilterTab = "all" | "unread" | "ai";
 
 const TAB_LABELS: Record<FilterTab, string> = {
   all: "Tất cả",
@@ -77,7 +81,11 @@ function participantAvatar(thread: MessageThread | undefined): string | null {
  *  return one — never fabricated. */
 type PreviewEntry = { text: string; fromMe: boolean };
 
-export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
+export function MessagesView({
+  userId,
+  initialThreadId,
+  filterTabs = ["all", "unread", "ai"],
+}: MessagesViewProps) {
   const {
     data: threadsData,
     loading: threadsLoading,
@@ -384,9 +392,11 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
             />
           </div>
 
-          {/* Filter tabs */}
+          {/* Filter tabs — hidden when a single tab remains (e.g. learner page
+              passes ["all"], so the lone "Tất cả" pill is dropped). */}
+          {filterTabs.length > 1 && (
           <div className="flex items-center gap-1 mt-3 p-1 bg-surface-container-low rounded-[10px]">
-            {(["all", "unread", "ai"] as FilterTab[]).map((tab) => (
+            {filterTabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -414,6 +424,7 @@ export function MessagesView({ userId, initialThreadId }: MessagesViewProps) {
               </button>
             ))}
           </div>
+          )}
         </div>
 
         {/* Threads list */}

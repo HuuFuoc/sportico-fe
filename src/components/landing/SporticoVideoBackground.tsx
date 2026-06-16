@@ -29,7 +29,7 @@ interface SporticoVideoBackgroundProps {
 }
 
 export function SporticoVideoBackground({
-  poster = "/hero.webp",
+  poster = "/bg-hero.png",
   src = "/videos/sportico-training-bg.mp4",
 }: SporticoVideoBackgroundProps) {
   const [videoFailed, setVideoFailed] = useState(false);
@@ -40,7 +40,7 @@ export function SporticoVideoBackground({
         src={poster}
         alt=""
         aria-hidden
-        className="h-full w-full object-cover object-[center_20%]"
+        className="h-full w-full object-cover object-center"
       />
     );
   }
@@ -53,13 +53,13 @@ export function SporticoVideoBackground({
         src={poster}
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
+        className="absolute inset-0 h-full w-full object-cover object-center"
       />
 
       {/* Video layer — sits on top of the image; hidden on mobile via CSS.
           The `hidden sm:block` keeps mobile on the lighter image asset. */}
       <video
-        className="absolute inset-0 hidden h-full w-full object-cover object-[center_20%] sm:block"
+        className="absolute inset-0 hidden h-full w-full object-cover object-center sm:block"
         src={src}
         poster={poster}
         autoPlay

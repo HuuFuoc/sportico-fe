@@ -37,6 +37,26 @@ export interface PageQuery {
   pageSize?: number;
 }
 
+// ---- Advisory (AI coach-matching assistant) --------------------------------
+
+/** POST /api/v1/advisory/messages request body.
+ *  `conversationId` is OMITTED on the first turn (new conversation) and echoed
+ *  back from the response on every subsequent turn. See
+ *  `backend.sendAdvisoryMessage` for the single place that builds this body. */
+export interface AdvisoryMessageRequest {
+  conversationId?: string | null;
+  message: string;
+}
+
+/** `data` payload of the advisory message response (inside `Result<T>`).
+ *  `recommendedCoachIds` may be null/absent when the assistant has no
+ *  suggestions yet — the `api.*` facade normalizes it to `[]`. */
+export interface AdvisoryMessageResponse {
+  conversationId: string;
+  reply: string;
+  recommendedCoachIds?: string[] | null;
+}
+
 // ---- Public coach directory ------------------------------------------------
 
 export interface PublicCoachSportResponse {

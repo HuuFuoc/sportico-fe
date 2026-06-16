@@ -5,6 +5,7 @@ import { ScrollRestoration } from "@/components/common/ScrollRestoration";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegister } from "@/components/common/ServiceWorkerRegister";
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
+import { AdvisoryWidgetGate } from "@/components/advisory/AdvisoryWidgetGate";
 import "./globals.css";
 
 const inter = Inter({
@@ -53,6 +54,7 @@ export default function RootLayout({
         <AuthBootstrap />
         <ScrollRestoration />
         {children}
+        <AdvisoryWidgetGate />
         <ScrollToTopButton />
         <Toaster
           position="top-right"

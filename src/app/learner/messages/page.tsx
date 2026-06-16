@@ -26,5 +26,12 @@ function LearnerMessages() {
   // Prefer the real authenticated user id when signed in; otherwise fall back to
   // the dev store value so the mock chat fixtures still render.
   const userId = getCurrentUserId() ?? storeUserId ?? "learner-1";
-  return <MessagesView userId={userId} initialThreadId={threadParam} />;
+  // Learner messages: only the "Tất cả" view — no "Chưa đọc"/"Hỏi AI" tabs.
+  return (
+    <MessagesView
+      userId={userId}
+      initialThreadId={threadParam}
+      filterTabs={["all"]}
+    />
+  );
 }

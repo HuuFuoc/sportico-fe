@@ -12,6 +12,8 @@ import { apiFetch, ApiError, type ApiFetchOptions } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
   AdminDashboardResponse,
+  AdvisoryMessageRequest,
+  AdvisoryMessageResponse,
   AvailabilitySlotResponse,
   BookingResponse,
   ChangePasswordRequest,
@@ -887,6 +889,25 @@ export const backend = {
   /** POST /api/payments/payos/reconcile — reconcile all pending PayOS payments (admin). */
   async reconcileAllPayos() {
     return unwrap(await POST<ReconcilePayOsResponse>(ep.reconcileAllPayos));
+  },
+
+  // ---- Advisory (AI coach-matching assistant) ----------------------------
+
+  /** POST /api/v1/advisory/messages — send a turn to the AI advisor.
+   *
+   *  SINGLE SOURCE OF TRUTH for the request payload. On the FIRST turn
+   *  (`conversationId` null/undefined) we OMIT the field entirely, because some
+   *  .NET model validators reject an explicit `null` for a Guid. If the backend
+   *  later REQUIRES an explicit null on the first turn, change the one line
+   *  below to: `const body = { conversationId: conversationId ?? null, message }`.
+   */
+  async sendAdvisoryMessage(message: string, conversationId?: string | null) {
+    const body: AdvisoryMessageRequest = conversationId
+      ? { conversationId, message }
+      : { message };
+    return unwrap(
+      await POST<AdvisoryMessageResponse>(ep.advisoryMessages, body),
+    );
   },
 };
 

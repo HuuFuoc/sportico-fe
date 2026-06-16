@@ -72,6 +72,7 @@ import type {
 export type { ReconcilePayOsResponse };
 export type { WithdrawalReceiptResponse };
 import { AVAILABLE_SPORTS, SPORT_LABEL_VI } from "@/lib/constants";
+import type { AdvisoryReply } from "@/types/advisory";
 
 // --- module-level cache: sport name (lowercase) → backend sport ID ----------
 // Populated during live fetchCoaches so that subsequent sport-filtered fetches
@@ -1201,6 +1202,30 @@ export const api = {
     liveAuthed<ReviewReport>(
       async () => map.reviewReportToUi(await backend.resolveReviewReport(id, body)),
       () => Promise.reject(new Error("Cần đăng nhập và kết nối backend.")),
+    ),
+
+  // ---- Advisory (AI coach-matching assistant) ----------------------------
+  /** Send one turn to the AI advisor. Live-only: there is no mock conversation
+   *  engine, so mock mode rejects with a clear message (never returns fake data).
+   *  Pass the `conversationId` from the previous reply to continue the thread;
+   *  omit/pass null on the first turn. `recommendedCoachIds` is normalized to []. */
+  sendAdvisoryMessage: (
+    message: string,
+    conversationId?: string | null,
+  ): Promise<AdvisoryReply> =>
+    liveAuthed<AdvisoryReply>(
+      async () => {
+        const data = await backend.sendAdvisoryMessage(message, conversationId);
+        return {
+          conversationId: data.conversationId,
+          reply: data.reply,
+          recommendedCoachIds: data.recommendedCoachIds ?? [],
+        };
+      },
+      () =>
+        Promise.reject(
+          new Error("Trợ lý tư vấn cần backend live (chưa có dữ liệu mock)."),
+        ),
     ),
 };
 
