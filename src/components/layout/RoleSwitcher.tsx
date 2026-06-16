@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore, type AppRole } from "@/lib/store/useAppStore";
 
 const DEFAULT_ROUTE: Record<AppRole, string> = {
-  learner: "/learner/dashboard",
+  learner: "/learner/schedule",
   coach: "/coach/dashboard",
   admin: "/admin/dashboard",
 };

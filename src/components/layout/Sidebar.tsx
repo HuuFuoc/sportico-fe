@@ -23,12 +23,6 @@ interface NavGroup {
 
 const LEARNER_NAV: NavGroup[] = [
   {
-    label: "Tổng quan",
-    items: [
-      { href: "/learner/dashboard", label: "Bảng điều khiển", icon: "space_dashboard" },
-    ],
-  },
-  {
     label: "Tập luyện",
     items: [
       { href: "/learner/schedule", label: "Lịch tập", icon: "calendar_today" },

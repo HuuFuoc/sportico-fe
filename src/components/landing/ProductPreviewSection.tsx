@@ -204,10 +204,10 @@ export function ProductPreviewSection() {
                   ))}
                 </ul>
                 <Link
-                  href="/learner/dashboard"
+                  href="/learner/schedule"
                   className="group mt-7 inline-flex items-center gap-1.5 text-[14px] font-semibold text-violet-700"
                 >
-                  Khám phá bảng điều khiển
+                  Khám phá ứng dụng
                   <ArrowRight
                     size={14}
                     className="transition-transform group-hover:translate-x-0.5"

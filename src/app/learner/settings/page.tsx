@@ -153,7 +153,7 @@ function LearnerSettingsInner() {
                 <div className="p-6">
                   <PersonalProfileForm
                     fromLogin={fromLogin}
-                    skipHref="/learner/dashboard"
+                    skipHref="/learner/schedule"
                   />
                 </div>
 

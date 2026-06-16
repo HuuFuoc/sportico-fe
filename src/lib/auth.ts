@@ -32,12 +32,13 @@ export function devUserIdForRole(role: Role): string {
 }
 
 /**
- * Post-login landing route for a role. Used by the auth pages to redirect after
- * a successful sign-in. Every role currently lands on its own dashboard.
+ * Post-login landing route for a role. The learner dashboard was removed, so
+ * learners land on their training schedule; coach/admin keep their dashboards.
  */
 export function dashboardPathForRole(role: Role): string {
+  if (role === "learner") return "/learner/schedule";
   return `/${role}/dashboard`;
 }
 
 /** Safe default landing route when a role cannot be determined. */
-export const DEFAULT_AUTHED_ROUTE = "/learner/dashboard";
+export const DEFAULT_AUTHED_ROUTE = "/learner/schedule";
