@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -20,9 +20,7 @@ import {
   MapPin,
   MessageCircle,
   MessageSquare,
-  Move,
   Pencil,
-  RotateCcw,
   ShieldCheck,
   Sparkles,
   Star,
@@ -45,6 +43,7 @@ import { getAccessToken } from "@/lib/auth-token";
 import { getCurrentRole } from "@/lib/auth-session";
 import { messageForApiError } from "@/lib/errors-vi";
 import { showSuccess, showError } from "@/lib/toast";
+import { parseFocal, stripFocal, focalToCss } from "@/lib/image-focal";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import type { CurrentUserResponse, PublicCoachDetailResponse } from "@/lib/backend/dto";
@@ -131,125 +130,11 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
   const [messaging, setMessaging] = useState(false);
   const [messageNote, setMessageNote] = useState<string | null>(null);
   const authUser = useAuthStore((s) => s.user);
-  const isOwner = !!authUser && authUser.id === id;
 
-  const [coverPosXY, setCoverPosXY] = useState({ x: 50, y: 50 });
-  const [isRepositioning, setIsRepositioning] = useState(false);
-  const [hasDragged, setHasDragged] = useState(false);
-  const coverRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const coverPos = `${coverPosXY.x}% ${coverPosXY.y}%`;
-
-  const [avatarPosXY, setAvatarPosXY] = useState({ x: 50, y: 50 });
-  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
-  const avatarPos = `${avatarPosXY.x}% ${avatarPosXY.y}%`;
-
-  // Load saved focal-points from localStorage.
-  useEffect(() => {
-    try {
-      const coverRaw = localStorage.getItem(`sportico_cover_pos_${id}`);
-      if (coverRaw) {
-        const p = JSON.parse(coverRaw) as { x: number; y: number };
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          setCoverPosXY(p);
-        }
-      }
-      const avatarRaw = localStorage.getItem(`sportico_avatar_pos_${id}`);
-      if (avatarRaw) {
-        const p = JSON.parse(avatarRaw) as { x: number; y: number };
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          setAvatarPosXY(p);
-        }
-      }
-    } catch {}
-  }, [id]);
-
-  const savePosToStorage = useCallback((pos: { x: number; y: number }) => {
-    try {
-      localStorage.setItem(`sportico_cover_pos_${id}`, JSON.stringify(pos));
-    } catch {}
-  }, [id]);
-
-  const toPct = useCallback((clientX: number, clientY: number) => {
-    if (!coverRef.current) return coverPosXY;
-    const rect = coverRef.current.getBoundingClientRect();
-    return {
-      x: Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))),
-      y: Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))),
-    };
-  }, [coverPosXY]);
-
-  const applyPos = useCallback((clientX: number, clientY: number) => {
-    const pos = toPct(clientX, clientY);
-    setCoverPosXY(pos);
-    savePosToStorage(pos);
-    setHasDragged(true);
-  }, [toPct, savePosToStorage]);
-
-  const onCoverMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    applyPos(e.clientX, e.clientY);
-  };
-
-  const onCoverTouchStart = (e: React.TouchEvent) => {
-    isDragging.current = true;
-    const t = e.touches[0];
-    applyPos(t.clientX, t.clientY);
-  };
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!isDragging.current || !isRepositioning) return;
-      applyPos(e.clientX, e.clientY);
-    };
-    const onUp = () => { isDragging.current = false; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [isRepositioning, applyPos]);
-
-  useEffect(() => {
-    const onMove = (e: TouchEvent) => {
-      if (!isDragging.current || !isRepositioning) return;
-      e.preventDefault();
-      const t = e.touches[0];
-      applyPos(t.clientX, t.clientY);
-    };
-    const onEnd = () => { isDragging.current = false; };
-    window.addEventListener("touchmove", onMove, { passive: false });
-    window.addEventListener("touchend", onEnd);
-    return () => {
-      window.removeEventListener("touchmove", onMove);
-      window.removeEventListener("touchend", onEnd);
-    };
-  }, [isRepositioning, applyPos]);
-
-  const handleResetCoverPos = () => {
-    const pos = { x: 50, y: 50 };
-    setCoverPosXY(pos);
-    savePosToStorage(pos);
-  };
-
-  const saveAvatarPosToStorage = useCallback((pos: { x: number; y: number }) => {
-    try {
-      localStorage.setItem(`sportico_avatar_pos_${id}`, JSON.stringify(pos));
-    } catch {}
-  }, [id]);
-
-  const handleAvatarPosChange = useCallback((pos: { x: number; y: number }) => {
-    setAvatarPosXY(pos);
-    saveAvatarPosToStorage(pos);
-  }, [saveAvatarPosToStorage]);
-
-  const handleResetAvatarPos = () => {
-    const pos = { x: 50, y: 50 };
-    setAvatarPosXY(pos);
-    saveAvatarPosToStorage(pos);
-  };
+  // The cover's focal point is encoded in the coverImage URL as a `#pos=x,y`
+  // fragment (see lib/image-focal.ts), so the crop the coach chose is rendered
+  // identically here for every learner on every device. The avatar has no
+  // server-side position (no user-update endpoint), so it stays centered.
 
   const {
     data: coach,
@@ -467,210 +352,91 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
             transition={{ duration: 0.55, ease: EASE }}
             className="relative mb-8"
           >
-            {/* Cover — own overflow-hidden; avatar protrudes via absolute positioning */}
-            <div
-              ref={coverRef}
-              className={cn(
-                "relative h-[349px] sm:h-[413px] overflow-hidden rounded-[20px] shadow-[0_4px_24px_-8px_rgba(15,15,30,0.12)] group",
-                isRepositioning && "cursor-grabbing ring-2 ring-primary/50 ring-inset",
-                !isRepositioning && "cursor-default",
-              )}
-              onMouseDown={isRepositioning ? onCoverMouseDown : undefined}
-              onTouchStart={isRepositioning ? onCoverTouchStart : undefined}
-            >
+            {/* Cover — avatar + identity are overlaid inside via absolute positioning */}
+            <div className="relative h-[349px] sm:h-[413px] overflow-hidden rounded-[20px] shadow-[0_8px_32px_-8px_rgba(15,15,30,0.18)]">
               {coach.coverImage ? (
                 <img
-                  src={coach.coverImage}
+                  src={stripFocal(coach.coverImage)}
                   alt="Ảnh bìa"
                   draggable={false}
-                  className="h-full w-full object-cover pointer-events-none transition-[object-position] duration-75"
-                  style={{ objectPosition: coverPos }}
+                  className="h-full w-full object-cover pointer-events-none"
+                  style={{ objectPosition: focalToCss(parseFocal(coach.coverImage)) }}
                 />
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-primary via-[#7d6dff] to-[#c084fc]" />
               )}
 
-              <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/15 to-transparent pointer-events-none" />
+              {/* Dark gradient overlay for text legibility */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
 
-              {/* Crosshair focal point — shown while repositioning */}
-              {isRepositioning && coach.coverImage && (
+              {/* Avatar + identity — overlaid at the bottom of the cover */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end gap-4 px-5 pb-5 sm:px-7 sm:pb-6">
+                {/* Avatar */}
                 <div
-                  className="absolute w-8 h-8 pointer-events-none transition-[left,top] duration-75"
-                  style={{
-                    left: `${coverPosXY.x}%`,
-                    top: `${coverPosXY.y}%`,
-                    transform: "translate(-50%, -50%)",
-                  }}
+                  className="shrink-0 overflow-hidden rounded-full border-4 border-white/25 bg-surface
+                              h-[88px] w-[88px] sm:h-[108px] sm:w-[108px]
+                              shadow-[0_4px_20px_rgba(0,0,0,0.35)] ring-2 ring-white/10"
                 >
-                  <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
-                  <div className="absolute top-1/2 left-0 right-0 h-px bg-white/80 -translate-y-1/2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
-                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/80 -translate-x-1/2 shadow-[1px_0_2px_rgba(0,0,0,0.5)]" />
-                </div>
-              )}
-
-              {/* Drag hint — fades after first drag */}
-              <AnimatePresence>
-                {isRepositioning && !hasDragged && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                  >
-                    <div className="flex items-center gap-2 bg-black/50 text-white text-[12px] font-medium px-4 py-2 rounded-full backdrop-blur-sm shadow-lg">
-                      <Move size={13} />
-                      Nhấn và kéo để căn chỉnh ảnh
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Owner controls */}
-              {isOwner && coach.coverImage && (
-                <>
-                  {/* "Căn chỉnh ảnh bìa" button — hover to show when not repositioning */}
-                  <AnimatePresence>
-                    {!isRepositioning && (
-                      <motion.button
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 0, y: 0 }}
-                        whileHover={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => { setIsRepositioning(true); setHasDragged(false); }}
-                        className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/55 hover:bg-black/70 text-white text-[12px] font-medium px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <Move size={12} />
-                        Căn chỉnh ảnh bìa
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Reposition mode controls — reset + done */}
-                  <AnimatePresence>
-                    {isRepositioning && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className="absolute top-3 right-3 flex items-center gap-2"
-                      >
-                        <button
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); handleResetCoverPos(); }}
-                          className="flex items-center gap-1.5 bg-black/55 hover:bg-black/70 text-white text-[12px] px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
-                        >
-                          <RotateCcw size={11} />
-                          Đặt lại
-                        </button>
-                        <button
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); setIsRepositioning(false); }}
-                          className="flex items-center gap-1.5 bg-primary hover:bg-[#2d20b8] text-white text-[12px] font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
-                        >
-                          <Check size={12} />
-                          Xong
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Position indicator while repositioning */}
-                  <AnimatePresence>
-                    {isRepositioning && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/50 text-white/80 text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none"
-                      >
-                        <Move size={10} />
-                        {coverPosXY.x}% · {coverPosXY.y}%
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </>
-              )}
-            </div>
-
-            {/* Avatar + identity row — avatar is absolute so text height doesn't affect it */}
-            <div className="relative px-5 sm:px-7">
-              {/* Avatar — bleeds upward into cover */}
-              <div
-                className="absolute left-0 z-10 overflow-hidden rounded-full border-4 border-white bg-surface group/avatar
-                            h-[88px] w-[88px] sm:h-[108px] sm:w-[108px]
-                            -top-[44px] sm:-top-[54px]
-                            shadow-[0_4px_20px_rgba(0,0,0,0.18)] ring-1 ring-black/5"
-              >
-                {coach.avatarUrl ? (
-                  <img
-                    src={coach.avatarUrl}
-                    alt={displayName}
-                    className="h-full w-full object-cover transition-[object-position] duration-75"
-                    style={{ objectPosition: avatarPos }}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-[#7d6dff] text-white">
-                    <span className="text-3xl sm:text-[34px] font-bold leading-none">
-                      {displayName.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                {/* Owner — hover to reposition avatar */}
-                {isOwner && coach.avatarUrl && (
-                  <button
-                    onClick={() => setIsAvatarDialogOpen(true)}
-                    className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 group-hover/avatar:bg-black/45 group-hover/avatar:opacity-100 transition-all duration-200 rounded-full"
-                    title="Căn chỉnh ảnh đại diện"
-                  >
-                    <Move size={18} className="text-white drop-shadow" />
-                  </button>
-                )}
-              </div>
-
-              {/* Identity — always on page background, left-indented past avatar */}
-              <div className="pl-[104px] sm:pl-[128px] pt-2 sm:pt-3 pb-3 space-y-0.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <h1 className="text-[20px] sm:text-[22px] font-bold text-on-surface leading-tight">
-                    {displayName}
-                  </h1>
-                  {coach.verified && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                      <Sparkles size={10} />
-                      Đã xác minh
-                    </span>
-                  )}
-                </div>
-                {coach.headline && (
-                  <p className="text-[13px] text-on-surface-variant">
-                    {coach.headline}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-on-surface-variant">
-                  {hasRating && (
-                    <span className="flex items-center gap-1">
-                      <Star size={12} className="fill-amber-400 text-amber-400" />
-                      <span className="font-semibold text-on-surface tabular-nums">
-                        {coach.rating.toFixed(1)}
+                  {coach.avatarUrl ? (
+                    <img
+                      src={coach.avatarUrl}
+                      alt={displayName}
+                      className="h-full w-full object-cover object-center"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-[#7d6dff] text-white">
+                      <span className="text-3xl sm:text-[34px] font-bold leading-none">
+                        {displayName.charAt(0).toUpperCase()}
                       </span>
-                      <span className="tabular-nums">({coach.reviewCount})</span>
-                    </span>
-                  )}
-                  {coach.yearsExperience > 0 && (
-                    <span>{coach.yearsExperience} năm kinh nghiệm</span>
-                  )}
-                  {(richData?.isOnlineAvailable || richData?.isOfflineAvailable) && (
-                    <span className="flex items-center gap-1">
-                      {richData.isOnlineAvailable && <Wifi size={11} />}
-                      {richData.isOfflineAvailable && <MapPin size={11} />}
-                      {richData.isOnlineAvailable && richData.isOfflineAvailable
-                        ? "Online & Offline"
-                        : richData.isOnlineAvailable
-                          ? "Online"
-                          : "Offline"}
-                    </span>
+                    </div>
                   )}
                 </div>
-              </div>
+
+                {/* Identity */}
+                <div className="min-w-0 flex-1 pb-1 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <h1 className="text-[20px] sm:text-[24px] font-bold text-white leading-tight drop-shadow-sm">
+                        {displayName}
+                      </h1>
+                      {coach.verified && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/80 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+                          <Sparkles size={10} />
+                          Đã xác minh
+                        </span>
+                      )}
+                    </div>
+                    {coach.headline && (
+                      <p className="text-[13px] text-white/80 truncate">
+                        {coach.headline}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/70">
+                      {hasRating && (
+                        <span className="flex items-center gap-1">
+                          <Star size={12} className="fill-amber-400 text-amber-400" />
+                          <span className="font-semibold text-white/90 tabular-nums">
+                            {coach.rating.toFixed(1)}
+                          </span>
+                          <span className="tabular-nums">({coach.reviewCount})</span>
+                        </span>
+                      )}
+                      {coach.yearsExperience > 0 && (
+                        <span>{coach.yearsExperience} năm kinh nghiệm</span>
+                      )}
+                      {(richData?.isOnlineAvailable || richData?.isOfflineAvailable) && (
+                        <span className="flex items-center gap-1">
+                          {richData.isOnlineAvailable && <Wifi size={11} />}
+                          {richData.isOfflineAvailable && <MapPin size={11} />}
+                          {richData.isOnlineAvailable && richData.isOfflineAvailable
+                            ? "Online & Offline"
+                            : richData.isOnlineAvailable
+                              ? "Online"
+                              : "Offline"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
             </div>
           </motion.div>
 
@@ -1075,19 +841,6 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
 
       <Footer />
 
-      {/* ── Avatar Repositioner Dialog ──────────────────────────────────────── */}
-      <AnimatePresence>
-        {isAvatarDialogOpen && coach?.avatarUrl && (
-          <AvatarRepositionerDialog
-            src={coach.avatarUrl}
-            position={avatarPosXY}
-            onPositionChange={handleAvatarPosChange}
-            onReset={handleResetAvatarPos}
-            onClose={() => setIsAvatarDialogOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
       {/* ── Book Session Modal (for learners with active booking for the selected package) ─────────── */}
       <AnimatePresence>
         {bookSessionOpen && selectedPackageBooking && selectedPackageBooking.status?.toLowerCase() === "active" && (
@@ -1112,6 +865,17 @@ const REVIEW_SORT_OPTIONS = [
   { key: "latest" as const, label: "Mới nhất" },
   { key: "highest" as const, label: "Cao nhất" },
   { key: "lowest" as const, label: "Thấp nhất" },
+];
+
+// Preset report reasons. Each is ≥10 chars so the backend's minimum-length
+// rule always passes — picking from a list avoids "reason too short" errors.
+const REPORT_REASONS = [
+  "Nội dung xúc phạm, phản cảm",
+  "Thông tin sai sự thật",
+  "Spam hoặc nội dung quảng cáo",
+  "Đánh giá giả mạo, không trung thực",
+  "Ngôn từ thù ghét, quấy rối",
+  "Lý do khác (mô tả bên dưới)",
 ];
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -1748,23 +1512,26 @@ function ReviewsSection({
                 <label className="text-[12px] font-semibold text-on-surface-variant">
                   Lý do báo cáo *
                 </label>
-                <input
-                  className="w-full rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[13px] outline-none focus:border-primary"
-                  placeholder="Nội dung vi phạm, thông tin sai…"
-                  value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                />
-                <p
-                  className={cn(
-                    "text-[11px]",
-                    reportReason.trim().length > 0 && !reportReasonValid
-                      ? "text-red-600"
-                      : "text-on-surface-variant",
-                  )}
-                >
-                  Tối thiểu {REPORT_REASON_MIN} ký tự ({reportReason.trim().length}/
-                  {REPORT_REASON_MIN})
-                </p>
+                <div className="relative">
+                  <select
+                    className="w-full cursor-pointer appearance-none rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 pr-9 text-[13px] outline-none focus:border-primary"
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Chọn lý do báo cáo…
+                    </option>
+                    {REPORT_REASONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={15}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-[12px] font-semibold text-on-surface-variant">
@@ -1799,197 +1566,6 @@ function ReviewsSection({
         )}
       </AnimatePresence>
     </motion.section>
-  );
-}
-
-// ── AvatarRepositionerDialog ──────────────────────────────────────────────────
-
-function AvatarRepositionerDialog({
-  src,
-  position,
-  onPositionChange,
-  onReset,
-  onClose,
-}: {
-  src: string;
-  position: { x: number; y: number };
-  onPositionChange: (pos: { x: number; y: number }) => void;
-  onReset: () => void;
-  onClose: () => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isDraggingAvatar = useRef(false);
-  const [active, setActive] = useState(false);
-  const [hinted, setHinted] = useState(false);
-
-  const toPercent = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!containerRef.current) return position;
-      const rect = containerRef.current.getBoundingClientRect();
-      return {
-        x: Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))),
-        y: Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))),
-      };
-    },
-    [position],
-  );
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isDraggingAvatar.current = true;
-    setActive(true);
-    setHinted(true);
-    onPositionChange(toPercent(e.clientX, e.clientY));
-  };
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!isDraggingAvatar.current) return;
-      onPositionChange(toPercent(e.clientX, e.clientY));
-    };
-    const onUp = () => { isDraggingAvatar.current = false; setActive(false); };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [onPositionChange, toPercent]);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    isDraggingAvatar.current = true;
-    setActive(true);
-    setHinted(true);
-    const t = e.touches[0];
-    onPositionChange(toPercent(t.clientX, t.clientY));
-  };
-
-  useEffect(() => {
-    const onMove = (e: TouchEvent) => {
-      if (!isDraggingAvatar.current) return;
-      e.preventDefault();
-      const t = e.touches[0];
-      onPositionChange(toPercent(t.clientX, t.clientY));
-    };
-    const onEnd = () => { isDraggingAvatar.current = false; setActive(false); };
-    window.addEventListener("touchmove", onMove, { passive: false });
-    window.addEventListener("touchend", onEnd);
-    return () => {
-      window.removeEventListener("touchmove", onMove);
-      window.removeEventListener("touchend", onEnd);
-    };
-  }, [onPositionChange, toPercent]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.92, opacity: 0, y: 8 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.92, opacity: 0, y: 4 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="w-[300px] overflow-hidden rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-4 py-3">
-          <span className="text-[14px] font-semibold text-on-surface">
-            Căn chỉnh ảnh đại diện
-          </span>
-          <span className="text-[11px] text-on-surface-variant/60">
-            Kéo để đặt điểm lấy nét
-          </span>
-        </div>
-
-        {/* Drag area */}
-        <div className="flex justify-center py-6 bg-surface-container-low/40">
-          <div
-            ref={containerRef}
-            className={cn(
-              "relative w-52 h-52 select-none overflow-hidden rounded-full group",
-              active ? "cursor-grabbing" : "cursor-grab",
-            )}
-            onMouseDown={onMouseDown}
-            onTouchStart={onTouchStart}
-          >
-            <img
-              src={src}
-              alt="Ảnh đại diện"
-              draggable={false}
-              className="w-full h-full object-cover pointer-events-none transition-[object-position] duration-75"
-              style={{ objectPosition: `${position.x}% ${position.y}%` }}
-            />
-            {/* Focal crosshair */}
-            <div
-              className="absolute w-7 h-7 pointer-events-none transition-[left,top] duration-75"
-              style={{
-                left: `${position.x}%`,
-                top: `${position.y}%`,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)] scale-75 group-hover:scale-100 transition-transform duration-200" />
-              <div className="absolute top-1/2 left-0 right-0 h-px bg-white/80 -translate-y-1/2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/80 -translate-x-1/2 shadow-[1px_0_2px_rgba(0,0,0,0.5)]" />
-            </div>
-            {/* Hint */}
-            <AnimatePresence>
-              {!hinted && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                >
-                  <div className="flex items-center gap-1.5 bg-black/55 text-white text-[11px] font-medium px-3 py-1.5 rounded-full backdrop-blur-sm">
-                    <Move size={12} />
-                    Kéo để căn chỉnh
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {/* Active ring */}
-            <AnimatePresence>
-              {active && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 ring-2 ring-primary/70 ring-inset pointer-events-none rounded-full"
-                />
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-[var(--color-border-soft)] px-4 py-3">
-          <button
-            onClick={onReset}
-            className="flex items-center gap-1.5 text-[12px] text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            <RotateCcw size={12} />
-            Đặt lại
-          </button>
-          <span className="text-[11px] text-on-surface-variant/50 tabular-nums">
-            {Math.round(position.x)}% · {Math.round(position.y)}%
-          </span>
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-semibold text-on-primary hover:bg-[#2d20b8] transition-colors"
-          >
-            <Check size={12} />
-            Xong
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 

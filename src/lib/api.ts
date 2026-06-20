@@ -526,15 +526,25 @@ export const api = {
     }, () => []),
   fetchBooking: (id: string): Promise<Booking | null> =>
     liveAuthed<Booking | null>(
-      () => {
+      async () => {
         // GET /api/bookings/{id} requires Learner role.
         // GET /api/bookings/coach/{id} requires Coach role.
-        // Use the correct endpoint based on the authenticated role.
-        const role = getCurrentRole();
-        const fetch = role === "coach"
-          ? backend.bookingByIdCoach(id)
-          : backend.booking(id);
-        return fetch.then(map.bookingToUi).catch(() => null);
+        // Pick the endpoint by role, but fall back to the other one if it fails:
+        // an elevated coach carries both roles, and a role misread would 403 on
+        // the wrong endpoint and surface as a spurious 404. Trying both makes the
+        // call resilient regardless of which role won.
+        const coachFirst = getCurrentRole() === "coach";
+        const primary = coachFirst ? backend.bookingByIdCoach(id) : backend.booking(id);
+        try {
+          return map.bookingToUi(await primary);
+        } catch {
+          try {
+            const fallback = coachFirst ? backend.booking(id) : backend.bookingByIdCoach(id);
+            return map.bookingToUi(await fallback);
+          } catch {
+            return null;
+          }
+        }
       },
       () => null,
     ),

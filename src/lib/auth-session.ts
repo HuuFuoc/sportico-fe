@@ -83,6 +83,39 @@ export function normalizeRole(raw: string | null | undefined): Role {
   return "learner"; // default + explicit "learner"
 }
 
+/**
+ * Every role value carried by the token. The role claim may be a JSON array
+ * (`["coach","learner"]`), a single string, or a delimited string — handle all.
+ */
+function allRoles(payload: Record<string, unknown>): Role[] {
+  const out: Role[] = [];
+  for (const k of ROLE_CLAIMS) {
+    const v = payload[k];
+    if (Array.isArray(v)) {
+      for (const item of v) if (typeof item === "string") out.push(normalizeRole(item));
+    } else if (typeof v === "string") {
+      for (const part of v.split(/[\s,]+/)) if (part) out.push(normalizeRole(part));
+    }
+  }
+  return out;
+}
+
+/**
+ * Highest-privilege role present in the token: admin > coach > learner.
+ *
+ * An elevated coach keeps BOTH "coach" and "learner" (verified via
+ * GET /api/auth/me → roles: ["coach","learner"]). We must NOT take the first
+ * claim value — if the token lists "learner" first, a coach would be treated as
+ * a learner and learner-only endpoints (e.g. GET /api/bookings/{id}) would 403,
+ * surfacing as a spurious 404 on coach pages. Mirror `primaryRole()` precedence.
+ */
+function primaryRoleFromClaims(payload: Record<string, unknown>): Role {
+  const roles = allRoles(payload);
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("coach")) return "coach";
+  return "learner";
+}
+
 /** Identity of the logged-in user, read from the stored JWT. SSR-safe. */
 export function getCurrentUser(): CurrentUser | null {
   const token = getAccessToken();
@@ -95,7 +128,7 @@ export function getCurrentUser(): CurrentUser | null {
   return {
     userId: firstClaim(payload, ID_CLAIMS),
     email: firstClaim(payload, EMAIL_CLAIMS) ?? getAuthEmail(),
-    role: normalizeRole(firstClaim(payload, ROLE_CLAIMS)),
+    role: primaryRoleFromClaims(payload),
   };
 }
 

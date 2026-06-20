@@ -37,6 +37,11 @@ interface ImageUploadProps {
   allowRemove?: boolean;
   /** Mirrors upload/validation errors to a parent (e.g. a toast). */
   onError?: (message: string) => void;
+  /**
+   * CSS `object-position` for the preview image (e.g. "51% 37%"). Lets the
+   * preview match a focal point chosen elsewhere so both stay in sync.
+   */
+  objectPosition?: string;
 }
 
 export function ImageUpload({
@@ -49,6 +54,7 @@ export function ImageUpload({
   placeholder = "Kéo thả ảnh vào đây hoặc bấm để chọn",
   allowRemove = false,
   onError,
+  objectPosition,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -162,7 +168,12 @@ export function ImageUpload({
             aspect,
           )}
         >
-          <img src={value} alt="Ảnh đã tải lên" className="h-full w-full object-cover" />
+          <img
+            src={value}
+            alt="Ảnh đã tải lên"
+            className="h-full w-full object-cover"
+            style={objectPosition ? { objectPosition } : undefined}
+          />
           {/* Action overlay */}
           <div
             className={cn(

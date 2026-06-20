@@ -889,6 +889,26 @@ function PendingConfirmations({
   const learnerById = useContext(LearnerLookupContext);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [declining, setDeclining] = useState<string | null>(null);
+  const [confirmingAll, setConfirmingAll] = useState(false);
+
+  const handleConfirmAll = useCallback(async () => {
+    if (isMockMode() || confirmingAll || pending.length === 0) return;
+    setConfirmingAll(true);
+    try {
+      const results = await Promise.allSettled(
+        pending.map((s) => api.confirmSession(s.id)),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      const ok = pending.length - failed;
+      if (ok > 0) showSuccess(`Đã xác nhận ${ok} buổi học.`);
+      if (failed > 0) showInfo(`${failed} buổi không xác nhận được, vui lòng thử lại.`);
+      onRefetch();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setConfirmingAll(false);
+    }
+  }, [confirmingAll, pending, onRefetch]);
 
   const handleConfirm = useCallback(async (id: string) => {
     if (isMockMode() || confirming) return;
@@ -943,6 +963,17 @@ function PendingConfirmations({
               </p>
             </div>
           </div>
+
+          {pending.length > 1 && (
+            <button
+              disabled={confirmingAll}
+              onClick={handleConfirmAll}
+              className="h-9 px-4 rounded-lg bg-gradient-to-br from-[#10b981] to-[#34d399] text-white text-[12.5px] font-semibold shadow-[0_3px_10px_-2px_rgba(16,185,129,0.4)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.55)] hover:scale-[1.02] active:scale-95 transition-all inline-flex items-center gap-1.5 disabled:opacity-60 disabled:scale-100"
+            >
+              {confirmingAll ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              Xác nhận tất cả
+            </button>
+          )}
         </div>
 
         <ul className="space-y-2">
@@ -1018,7 +1049,6 @@ function chipAccent(type: Session["type"]) {
 
 
 function SessionChip({ session, onClick }: { session: Session; onClick: () => void }) {
-  const learner = useLearner(session.learnerId);
   const a = chipAccent(session.type);
   const start = new Date(session.start);
   // 24h short format saves horizontal space in narrow 7-col grid
@@ -1047,10 +1077,6 @@ function SessionChip({ session, onClick }: { session: Session; onClick: () => vo
             <span className="w-[5px] h-[5px] rounded-full bg-[#f59e0b] shrink-0" />
           )}
         </div>
-        {/* Second line — clipped naturally if chip height is too small */}
-        <span className="text-[9.5px] leading-none mt-[3px] block truncate opacity-70 whitespace-nowrap overflow-hidden">
-          {learner?.name ?? "—"}
-        </span>
       </div>
     </div>
   );
@@ -1059,9 +1085,6 @@ function SessionChip({ session, onClick }: { session: Session; onClick: () => vo
 function SlotChip({ slot, onClick }: { slot: AvailabilitySlot; onClick: () => void }) {
   const start = new Date(slot.startTime);
   const time = start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-  const isGroup = (slot.maxParticipants ?? 1) > 1;
-  const booked = slot.bookedParticipants ?? 0;
-  const max = slot.maxParticipants ?? 1;
 
   return (
     <div
@@ -1069,12 +1092,9 @@ function SlotChip({ slot, onClick }: { slot: AvailabilitySlot; onClick: () => vo
       className="relative h-full w-full rounded-[7px] border border-dashed border-[#8b5cf6]/40 bg-[#8b5cf6]/[0.08] cursor-pointer select-none overflow-hidden hover:bg-[#8b5cf6]/15 transition-all"
     >
       <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-[#8b5cf6]" />
-      <div className="h-full pl-[9px] pr-1 py-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="h-full pl-[9px] pr-1 py-1 flex min-w-0 overflow-hidden">
         <span className="text-[10.5px] font-bold tabular-nums leading-none whitespace-nowrap text-[#7c3aed] shrink-0 block">
           {time}
-        </span>
-        <span className="text-[9.5px] leading-none mt-[3px] truncate text-[#7c3aed] opacity-70 block whitespace-nowrap overflow-hidden">
-          {isGroup ? `${booked}/${max} chỗ` : "Khả dụng"}
         </span>
       </div>
     </div>

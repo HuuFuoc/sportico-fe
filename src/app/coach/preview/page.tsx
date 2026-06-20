@@ -17,7 +17,6 @@
 // the backend adds it.
 // ============================================================================
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
@@ -48,6 +47,7 @@ import {
 } from "@/lib/training-package-api";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { messageForApiError } from "@/lib/errors-vi";
+import { parseFocal, stripFocal, focalToCss } from "@/lib/image-focal";
 import { cn } from "@/lib/utils";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import type { CoachProfileMediaResponse } from "@/lib/types/coach";
@@ -115,27 +115,9 @@ export default function CoachPreviewPage() {
   const packages = packagesResult?.items ?? [];
   const media: CoachProfileMediaResponse[] = profile?.media ?? [];
 
-  const [coverPos, setCoverPos] = useState("50% 50%");
-  const [avatarPos, setAvatarPos] = useState("50% 50%");
-  useEffect(() => {
-    if (!profile?.userId) return;
-    try {
-      const coverRaw = localStorage.getItem(`sportico_cover_pos_${profile.userId}`);
-      if (coverRaw) {
-        const p = JSON.parse(coverRaw) as { x: number; y: number };
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          setCoverPos(`${p.x}% ${p.y}%`);
-        }
-      }
-      const avatarRaw = localStorage.getItem(`sportico_avatar_pos_${profile.userId}`);
-      if (avatarRaw) {
-        const p = JSON.parse(avatarRaw) as { x: number; y: number };
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          setAvatarPos(`${p.x}% ${p.y}%`);
-        }
-      }
-    } catch {}
-  }, [profile?.userId]);
+  // The cover focal point travels with the coverImageUrl (#pos=x,y fragment),
+  // so this preview shows the exact same crop learners see on the public page.
+  const coverPos = focalToCss(parseFocal(profile?.coverImageUrl));
 
   const loading = profileLoading;
   const error = profileError;
@@ -181,7 +163,7 @@ export default function CoachPreviewPage() {
           <div className="relative h-48 sm:h-60">
             {profile?.coverImageUrl ? (
               <img
-                src={profile.coverImageUrl}
+                src={stripFocal(profile.coverImageUrl)}
                 alt="Ảnh bìa"
                 className="h-full w-full object-cover"
                 style={{ objectPosition: coverPos }}
@@ -200,8 +182,7 @@ export default function CoachPreviewPage() {
                 <img
                   src={displayAvatar}
                   alt={displayName}
-                  className="h-[96px] w-[96px] rounded-full border-4 border-white/20 object-cover shadow-lg ring-2 ring-white/10"
-                  style={{ objectPosition: avatarPos }}
+                  className="h-[96px] w-[96px] rounded-full border-4 border-white/20 object-cover object-center shadow-lg ring-2 ring-white/10"
                 />
               ) : (
                 <div className="flex h-[96px] w-[96px] items-center justify-center rounded-full border-4 border-white/20 bg-white/10 text-white/70 shadow-lg backdrop-blur-sm ring-2 ring-white/10">

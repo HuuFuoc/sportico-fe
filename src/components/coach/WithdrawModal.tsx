@@ -5,7 +5,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowDownToLine,
   Building2,
-  CheckCircle2,
   Clock,
   Loader2,
   ShieldCheck,
@@ -35,7 +34,7 @@ interface WithdrawModalProps {
   onSuccess?: () => void;
 }
 
-type View = "loading" | "account" | "form" | "success";
+type View = "loading" | "account" | "form";
 
 export function WithdrawModal({
   open,
@@ -141,8 +140,8 @@ export function WithdrawModal({
     try {
       await api.createWithdrawal(amountNum);
       showSuccess("Gửi yêu cầu rút tiền thành công.");
-      setView("success");
       onSuccess?.();
+      onClose();
     } catch (e) {
       showApiError(e);
     } finally {
@@ -353,25 +352,6 @@ export function WithdrawModal({
                       Rút {amount ? formatCurrencyVnd(amountNum) : "tiền"}
                     </>
                   )}
-                </button>
-              </div>
-            )}
-
-            {view === "success" && (
-              <div className="py-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-[#10b981] to-[#34d399] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.4)]">
-                  <CheckCircle2 size={26} className="text-white" />
-                </div>
-                <h4 className="text-[16px] font-bold">Đã gửi yêu cầu rút tiền</h4>
-                <p className="text-[12.5px] text-on-surface-variant mt-1 max-w-xs mx-auto">
-                  {formatCurrencyVnd(amountNum)} đã được chuyển sang số dư chờ xử lý.
-                  Tiền sẽ được chuyển tới {account?.bankName ?? "tài khoản ngân hàng"} sau khi admin duyệt và PayOS xác nhận chuyển khoản thành công.
-                </p>
-                <button
-                  onClick={onClose}
-                  className="mt-5 h-10 px-5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13px] font-medium transition-colors"
-                >
-                  Đóng
                 </button>
               </div>
             )}
