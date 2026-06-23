@@ -10,7 +10,9 @@ import {
   BadgeCheck,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  ExternalLink,
   FileText,
   Flag,
   Home,
@@ -175,6 +177,9 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
     })[0] ?? null;
 
   const [bookSessionOpen, setBookSessionOpen] = useState(false);
+
+  // Media lightbox — index into `media`, or null when closed.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // ── Booking ─────────────────────────────────────────────────────────────────
 
@@ -569,7 +574,7 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                         transition={{ delay: 0.29 + i * 0.04, ease: EASE }}
                       >
                         <TiltedCard maxTilt={8} scaleOnHover={1.03}>
-                          <MediaMiniCard item={m} />
+                          <MediaMiniCard item={m} onOpen={() => setLightboxIndex(i)} />
                         </TiltedCard>
                       </motion.div>
                     ))}
@@ -852,6 +857,18 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
               // The modal already refetched coach slots internally.
               refetchMyBookings();
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Media lightbox ─────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {lightboxIndex !== null && media[lightboxIndex] && (
+          <MediaLightbox
+            items={media}
+            index={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onNavigate={setLightboxIndex}
           />
         )}
       </AnimatePresence>
@@ -1812,19 +1829,17 @@ function KpiTile({ label, value }: { label: string; value: string }) {
 
 type MediaItem = NonNullable<PublicCoachDetailResponse["media"]>[number];
 
-function MediaMiniCard({ item }: { item: MediaItem }) {
+function MediaMiniCard({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
   const url = item.mediaUrl ?? "";
   const isImage = url ? looksLikeImage(url) : false;
   const cfg = mediaTypeCfg(item.mediaType);
   const Icon = cfg.icon;
 
   return (
-    <a
-      href={url || "#"}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative block aspect-square overflow-hidden rounded-[12px] border border-[var(--color-border-soft)]"
-      onClick={!url ? (e) => e.preventDefault() : undefined}
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group relative block aspect-square w-full cursor-pointer overflow-hidden rounded-[12px] border border-[var(--color-border-soft)]"
     >
       {isImage ? (
         <img
@@ -1851,6 +1866,154 @@ function MediaMiniCard({ item }: { item: MediaItem }) {
           {item.title}
         </p>
       )}
-    </a>
+    </button>
+  );
+}
+
+// ── MediaLightbox ───────────────────────────────────────────────────────────
+// Full-screen popup viewer for a coach's media. Browse with ←/→ or the on-screen
+// arrows; close with Esc, the ✕, or a backdrop click. Non-image media (e.g. PDF)
+// falls back to an "open link" button.
+
+function MediaLightbox({
+  items,
+  index,
+  onClose,
+  onNavigate,
+}: {
+  items: MediaItem[];
+  index: number;
+  onClose: () => void;
+  onNavigate: (next: number) => void;
+}) {
+  const item = items[index];
+  const url = item?.mediaUrl ?? "";
+  const isImage = url ? looksLikeImage(url) : false;
+  const cfg = mediaTypeCfg(item?.mediaType);
+  const Icon = cfg.icon;
+  const hasMultiple = items.length > 1;
+
+  const goPrev = useCallback(
+    () => onNavigate((index - 1 + items.length) % items.length),
+    [index, items.length, onNavigate],
+  );
+  const goNext = useCallback(
+    () => onNavigate((index + 1) % items.length),
+    [index, items.length, onNavigate],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowLeft" && hasMultiple) goPrev();
+      else if (e.key === "ArrowRight" && hasMultiple) goNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, goPrev, goNext, hasMultiple]);
+
+  if (!item) return null;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Close */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Đóng"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+      >
+        <X size={20} />
+      </button>
+
+      {/* Prev */}
+      {hasMultiple && (
+        <button
+          type="button"
+          onClick={goPrev}
+          aria-label="Trước"
+          className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-6"
+        >
+          <ChevronLeft size={22} />
+        </button>
+      )}
+
+      {/* Content */}
+      <motion.div
+        key={index}
+        className="relative z-[1] flex max-h-full max-w-full flex-col items-center"
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.2, ease: EASE }}
+      >
+        {isImage ? (
+          <img
+            src={url}
+            alt={item.title ?? cfg.label}
+            className="max-h-[82vh] max-w-[90vw] rounded-[12px] object-contain shadow-2xl"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-4 rounded-[16px] bg-surface-container-lowest p-10">
+            <div
+              className={cn(
+                "flex h-20 w-20 items-center justify-center rounded-[16px] bg-gradient-to-br",
+                cfg.gradient,
+              )}
+            >
+              <Icon size={36} className="text-white/90" />
+            </div>
+            <p className="text-[14px] font-medium text-on-surface">
+              {item.title ?? cfg.label}
+            </p>
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-4 py-2 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8]"
+              >
+                <ExternalLink size={14} />
+                Mở liên kết
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Caption */}
+        {(item.title || hasMultiple) && (
+          <div className="mt-3 flex items-center gap-2 text-white/90">
+            <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium">
+              {cfg.label}
+            </span>
+            {item.title && <span className="text-[13px]">{item.title}</span>}
+            {hasMultiple && (
+              <span className="text-[12px] tabular-nums text-white/60">
+                {index + 1}/{items.length}
+              </span>
+            )}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Next */}
+      {hasMultiple && (
+        <button
+          type="button"
+          onClick={goNext}
+          aria-label="Sau"
+          className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-6"
+        >
+          <ChevronRight size={22} />
+        </button>
+      )}
+    </motion.div>
   );
 }
