@@ -682,19 +682,12 @@ function FloatingTag({
       className={cn("absolute z-10", cls)}
     >
       <motion.div
-        animate={
+        animate={{ y: [0, -5, 0] }}
+        transition={
           reduce
-            ? {}
-            : {
-                y: [0, -5, 0],
-              }
+            ? { duration: 0 }
+            : { duration: 4, repeat: Infinity, ease: "easeInOut", delay: delay * 0.5 }
         }
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: delay * 0.5,
-        }}
         className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11.5px] font-semibold text-slate-700 shadow-[0_10px_28px_-10px_rgba(15,23,42,0.18)]"
       >
         <Icon

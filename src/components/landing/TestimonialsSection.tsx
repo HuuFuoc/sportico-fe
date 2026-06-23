@@ -192,15 +192,15 @@ function FeaturedQuote({
       {/* Glow corners */}
       <motion.div
         aria-hidden
-        animate={
+        animate={{
+          opacity: [0.4, 0.7, 0.4],
+          scale: [1, 1.08, 1],
+        }}
+        transition={
           reduce
-            ? {}
-            : {
-                opacity: [0.4, 0.7, 0.4],
-                scale: [1, 1.08, 1],
-              }
+            ? { duration: 0 }
+            : { duration: 6, repeat: Infinity, ease: "easeInOut" }
         }
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-gradient-to-br from-violet-400/30 to-fuchsia-400/15 blur-3xl"
       />
 
@@ -382,14 +382,12 @@ function MarqueeStrip({
       }}
     >
       <motion.div
-        animate={
+        animate={reduce ? { x: "0%" } : { x: ["0%", "-50%"] }}
+        transition={
           reduce
-            ? {}
-            : {
-                x: ["0%", "-50%"],
-              }
+            ? { duration: 0 }
+            : { duration: 35, repeat: Infinity, ease: "linear" }
         }
-        transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
         className="flex w-max items-center gap-3"
       >
         {items.map((q, i) => (

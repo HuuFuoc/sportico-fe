@@ -96,14 +96,18 @@ export default function CoachOnboardingPage() {
     }
   };
 
-  const fadeUp = (delay = 0) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 12 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const, delay },
-        };
+  // Keep initial/animate constant across server + client so the SSR-ed inline
+  // styles always match on hydration. `useReducedMotion()` only resolves on the
+  // client, so branching the rendered props on it (e.g. returning {}) caused a
+  // hydration mismatch for users with "prefers-reduced-motion" enabled. Instead
+  // we only shorten the transition to instant — that never touches the HTML.
+  const fadeUp = (delay = 0) => ({
+    initial: { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    transition: reduce
+      ? { duration: 0 }
+      : { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const, delay },
+  });
 
   return (
     <div className="relative min-h-screen bg-slate-50">

@@ -50,19 +50,15 @@ export function HeroPreview({ coach }: { coach: Coach }) {
       {/* soft brand glow — animated */}
       <motion.div
         aria-hidden
-        animate={
-          reduce
-            ? {}
-            : {
-                opacity: [0.7, 1, 0.7],
-                scale: [1, 1.04, 1],
-              }
-        }
-        transition={{
-          duration: 5,
-          repeat: Infinity,
-          ease: "easeInOut",
+        animate={{
+          opacity: [0.7, 1, 0.7],
+          scale: [1, 1.04, 1],
         }}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : { duration: 5, repeat: Infinity, ease: "easeInOut" }
+        }
         className="absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-tr from-indigo-300/40 via-violet-300/30 to-fuchsia-300/15 blur-2xl"
       />
 
@@ -147,20 +143,15 @@ export function HeroPreview({ coach }: { coach: Coach }) {
             {/* sparkle */}
             <motion.span
               aria-hidden
-              animate={
-                reduce
-                  ? {}
-                  : {
-                      opacity: [0, 1, 0],
-                      x: [-20, 80],
-                    }
-              }
-              transition={{
-                duration: 3.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1.5,
+              animate={{
+                opacity: [0, 1, 0],
+                x: [-20, 80],
               }}
+              transition={
+                reduce
+                  ? { duration: 0 }
+                  : { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }
+              }
               className="pointer-events-none absolute right-3 top-2 inline-flex"
             >
               <MaterialIcon
@@ -174,19 +165,15 @@ export function HeroPreview({ coach }: { coach: Coach }) {
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary">
                 <motion.span
-                  animate={
-                    reduce
-                      ? {}
-                      : {
-                          rotate: [0, 12, -8, 0],
-                          scale: [1, 1.15, 1],
-                        }
-                  }
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
+                  animate={{
+                    rotate: [0, 12, -8, 0],
+                    scale: [1, 1.15, 1],
                   }}
+                  transition={
+                    reduce
+                      ? { duration: 0 }
+                      : { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+                  }
                   className="inline-flex"
                 >
                   <MaterialIcon name="auto_awesome" filled size={14} />

@@ -74,45 +74,38 @@ export function FinalCTASection() {
 
           {/* Mesh blobs */}
           <motion.div
-            animate={
+            animate={{
+              x: [0, 32, -16, 0],
+              y: [0, -16, 24, 0],
+              scale: [1, 1.1, 0.95, 1],
+            }}
+            transition={
               reduce
-                ? {}
-                : {
-                    x: [0, 32, -16, 0],
-                    y: [0, -16, 24, 0],
-                    scale: [1, 1.1, 0.95, 1],
-                  }
+                ? { duration: 0 }
+                : { duration: 18, repeat: Infinity, ease: "easeInOut" }
             }
-            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
             className="absolute -left-10 -top-10 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl"
           />
           <motion.div
-            animate={
-              reduce
-                ? {}
-                : {
-                    x: [0, -28, 12, 0],
-                    y: [0, 20, -12, 0],
-                    scale: [1, 0.95, 1.08, 1],
-                  }
-            }
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 1.5,
+            animate={{
+              x: [0, -28, 12, 0],
+              y: [0, 20, -12, 0],
+              scale: [1, 0.95, 1.08, 1],
             }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { duration: 20, repeat: Infinity, ease: "easeInOut", delay: 1.5 }
+            }
             className="absolute -right-12 bottom-0 h-72 w-72 rounded-full bg-fuchsia-300/25 blur-3xl"
           />
           <motion.div
-            animate={
+            animate={{ opacity: [0.3, 0.55, 0.3] }}
+            transition={
               reduce
-                ? {}
-                : {
-                    opacity: [0.3, 0.55, 0.3],
-                  }
+                ? { duration: 0 }
+                : { duration: 8, repeat: Infinity, ease: "easeInOut" }
             }
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-400/20 blur-[120px]"
           />
 
@@ -148,8 +141,12 @@ export function FinalCTASection() {
 
           {/* Conic accent ring */}
           <motion.div
-            animate={reduce ? {} : { rotate: 360 }}
-            transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+            animate={{ rotate: 360 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { duration: 60, repeat: Infinity, ease: "linear" }
+            }
             className="absolute left-1/2 top-1/2 h-[640px] w-[640px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 [background:conic-gradient(from_0deg,transparent_55%,rgba(255,255,255,0.4)_70%,transparent_85%,rgba(255,255,255,0.25)_95%,transparent)] [mask-image:radial-gradient(circle,transparent_55%,#000_58%,#000_60%,transparent_62%)]"
           />
         </div>

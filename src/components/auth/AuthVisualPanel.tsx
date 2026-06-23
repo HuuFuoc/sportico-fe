@@ -115,27 +115,22 @@ export function AuthVisualPanel({ variant }: { variant?: Variant }) {
 
         {/* Indigo glow blob — bottom-left, breathing */}
         <motion.div
-          animate={
+          animate={{ opacity: [0.35, 0.55, 0.35], scale: [1, 1.08, 1] }}
+          transition={
             reduce
-              ? {}
-              : { opacity: [0.35, 0.55, 0.35], scale: [1, 1.08, 1] }
+              ? { duration: 0 }
+              : { duration: 9, repeat: Infinity, ease: "easeInOut" }
           }
-          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -bottom-24 -left-24 h-[420px] w-[420px] rounded-full bg-indigo-600/30 blur-[140px]"
         />
         {/* Violet glow blob — mid-right, softer */}
         <motion.div
-          animate={
+          animate={{ opacity: [0.18, 0.4, 0.18], scale: [1, 1.05, 1] }}
+          transition={
             reduce
-              ? {}
-              : { opacity: [0.18, 0.4, 0.18], scale: [1, 1.05, 1] }
+              ? { duration: 0 }
+              : { duration: 11, repeat: Infinity, delay: 1.2, ease: "easeInOut" }
           }
-          transition={{
-            duration: 11,
-            repeat: Infinity,
-            delay: 1.2,
-            ease: "easeInOut",
-          }}
           className="absolute -right-24 top-1/3 h-[340px] w-[340px] rounded-full bg-violet-600/25 blur-[130px]"
         />
       </div>

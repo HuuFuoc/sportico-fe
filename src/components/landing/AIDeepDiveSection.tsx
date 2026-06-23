@@ -141,48 +141,41 @@ export function AIDeepDiveSection() {
         {/* Indigo blob — left */}
         <motion.div
           style={{ x: blobX, y: blobY }}
-          animate={
+          animate={{
+            scale: [1, 1.08, 0.95, 1],
+            opacity: [0.35, 0.55, 0.35],
+          }}
+          transition={
             reduce
-              ? {}
-              : {
-                  scale: [1, 1.08, 0.95, 1],
-                  opacity: [0.35, 0.55, 0.35],
-                }
+              ? { duration: 0 }
+              : { duration: 14, repeat: Infinity, ease: "easeInOut" }
           }
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -left-32 top-[20%] h-[480px] w-[480px] rounded-full bg-indigo-600/35 blur-[150px]"
         />
 
         {/* Violet blob — right */}
         <motion.div
           style={{ x: blobX2, y: blobY2 }}
-          animate={
-            reduce
-              ? {}
-              : {
-                  scale: [1, 0.92, 1.06, 1],
-                  opacity: [0.3, 0.5, 0.3],
-                }
-          }
-          transition={{
-            duration: 16,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1.2,
+          animate={{
+            scale: [1, 0.92, 1.06, 1],
+            opacity: [0.3, 0.5, 0.3],
           }}
+          transition={
+            reduce
+              ? { duration: 0 }
+              : { duration: 16, repeat: Infinity, ease: "easeInOut", delay: 1.2 }
+          }
           className="absolute -right-20 top-[10%] h-[420px] w-[420px] rounded-full bg-violet-600/30 blur-[140px]"
         />
 
         {/* Cyan accent */}
         <motion.div
-          animate={
+          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          transition={
             reduce
-              ? {}
-              : {
-                  opacity: [0.2, 0.4, 0.2],
-                }
+              ? { duration: 0 }
+              : { duration: 12, repeat: Infinity, ease: "easeInOut" }
           }
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
           className="absolute bottom-[10%] left-1/2 h-[360px] w-[360px] -translate-x-1/2 rounded-full bg-cyan-500/15 blur-[140px]"
         />
 
@@ -227,15 +220,15 @@ export function AIDeepDiveSection() {
             className="inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-200 backdrop-blur"
           >
             <motion.span
-              animate={
+              animate={{
+                scale: [1, 1.4, 1],
+                opacity: [1, 0.5, 1],
+              }}
+              transition={
                 reduce
-                  ? {}
-                  : {
-                      scale: [1, 1.4, 1],
-                      opacity: [1, 0.5, 1],
-                    }
+                  ? { duration: 0 }
+                  : { duration: 2, repeat: Infinity, ease: "easeInOut" }
               }
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               className="inline-block h-1.5 w-1.5 rounded-full bg-violet-300"
             />
             Bộ máy ghép nối
@@ -700,18 +693,12 @@ function FloatingChip({
       className={cn("absolute z-10", cls)}
     >
       <motion.div
-        animate={
+        animate={{ y: [0, -4, 0] }}
+        transition={
           reduce
-            ? {}
-            : {
-                y: [0, -4, 0],
-              }
+            ? { duration: 0 }
+            : { duration: 4, repeat: Infinity, ease: "easeInOut" }
         }
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
         className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[rgba(15,15,30,0.85)] px-2.5 py-1 text-[10.5px] font-semibold text-white/85 backdrop-blur shadow-[0_8px_24px_-8px_rgba(0,0,0,0.5)]"
       >
         <span

@@ -136,36 +136,27 @@ export function HeroSection({ coach }: { coach: Coach }) {
 
         {/* Indigo / violet glow blobs */}
         <motion.div
-          animate={
-            reduce
-              ? {}
-              : {
-                  opacity: [0.35, 0.55, 0.35],
-                  scale: [1, 1.1, 1],
-                }
-          }
-          transition={{
-            duration: 9,
-            repeat: Infinity,
-            ease: "easeInOut",
+          animate={{
+            opacity: [0.35, 0.55, 0.35],
+            scale: [1, 1.1, 1],
           }}
+          transition={
+            reduce
+              ? { duration: 0 }
+              : { duration: 9, repeat: Infinity, ease: "easeInOut" }
+          }
           className="absolute -left-32 bottom-0 h-[420px] w-[420px] rounded-full bg-indigo-600/30 blur-[140px]"
         />
         <motion.div
-          animate={
-            reduce
-              ? {}
-              : {
-                  opacity: [0.25, 0.5, 0.25],
-                  scale: [1, 1.05, 1],
-                }
-          }
-          transition={{
-            duration: 11,
-            repeat: Infinity,
-            delay: 1.2,
-            ease: "easeInOut",
+          animate={{
+            opacity: [0.25, 0.5, 0.25],
+            scale: [1, 1.05, 1],
           }}
+          transition={
+            reduce
+              ? { duration: 0 }
+              : { duration: 11, repeat: Infinity, delay: 1.2, ease: "easeInOut" }
+          }
           className="absolute -right-24 top-1/3 h-[360px] w-[360px] rounded-full bg-violet-600/25 blur-[130px]"
         />
       </div>
@@ -310,18 +301,12 @@ function ScrollCue({ reduce }: { reduce: boolean }) {
     >
       <span>Cuộn</span>
       <motion.span
-        animate={
+        animate={{ y: [0, 6, 0] }}
+        transition={
           reduce
-            ? {}
-            : {
-                y: [0, 6, 0],
-              }
+            ? { duration: 0 }
+            : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
         }
-        transition={{
-          duration: 1.6,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
         className="inline-flex"
       >
         <ChevronDown size={16} className="text-white/50" />

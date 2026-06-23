@@ -22,34 +22,29 @@ export function AuthBackground() {
 
       {/* Soft indigo orb — top-right */}
       <motion.div
-        animate={
+        animate={{
+          x: [0, -18, 12, 0],
+          y: [0, -14, 10, 0],
+        }}
+        transition={
           reduce
-            ? {}
-            : {
-                x: [0, -18, 12, 0],
-                y: [0, -14, 10, 0],
-              }
+            ? { duration: 0 }
+            : { duration: 24, repeat: Infinity, ease: "easeInOut" }
         }
-        transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
         className="absolute -right-40 top-[6%] h-[440px] w-[440px] rounded-full bg-indigo-200/45 blur-[160px]"
       />
 
       {/* Soft violet orb — bottom-right */}
       <motion.div
-        animate={
-          reduce
-            ? {}
-            : {
-                x: [0, 18, -10, 0],
-                y: [0, 14, -8, 0],
-              }
-        }
-        transition={{
-          duration: 28,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 1.5,
+        animate={{
+          x: [0, 18, -10, 0],
+          y: [0, 14, -8, 0],
         }}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : { duration: 28, repeat: Infinity, ease: "easeInOut", delay: 1.5 }
+        }
         className="absolute -right-32 bottom-[6%] h-[420px] w-[420px] rounded-full bg-violet-200/40 blur-[160px]"
       />
     </div>
