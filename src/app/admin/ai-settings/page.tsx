@@ -161,7 +161,7 @@ const GUARDS = [
   },
   {
     id: "g5",
-    label: "Hallucination guard cho chat",
+    label: "Chống ảo giác cho chat",
     desc: "Chặn phản hồi của trợ lý có độ tin cậy thấp.",
     enabled: true,
     severity: "high" as const,
@@ -170,7 +170,7 @@ const GUARDS = [
   },
   {
     id: "g6",
-    label: "Bias drift detection",
+    label: "Phát hiện lệch thiên kiến",
     desc: "Tự động cảnh báo khi ranking thiên lệch theo demographic.",
     enabled: true,
     severity: "high" as const,
@@ -201,7 +201,7 @@ const RISK_ALERTS = [
   {
     id: "r3",
     severity: "med" as const,
-    title: "Inference latency spike",
+    title: "Độ trễ suy luận tăng vọt",
     body: "p99 vượt 380ms tại us-east-1 trong 14 phút.",
     metric: "p99 380ms",
     age: "14 phút",
@@ -433,7 +433,7 @@ export default function AISettingsPage() {
               </span>
             </div>
             <h1 className="text-[28px] sm:text-[30px] leading-[1.15] font-semibold tracking-tight text-on-surface">
-              AI Model Control Center
+              Trung tâm điều khiển mô hình AI
             </h1>
             <p className="text-[14px] text-on-surface-variant mt-1.5 max-w-2xl leading-relaxed">
               Quản lý cấu hình mô hình, triển khai an toàn theo môi trường, thí
@@ -1351,12 +1351,12 @@ function SignalWeightsCard({
                         </p>
                         <ul className="space-y-1.5 text-[13px]">
                           <ImpactLine
-                            label="Match quality"
+                            label="Chất lượng ghép đôi"
                             value={s.impact.match}
                             beneficial
                           />
                           <ImpactLine
-                            label="Repeat bookings"
+                            label="Đặt lại nhiều lần"
                             value={s.impact.repeat}
                             beneficial
                           />
@@ -1541,7 +1541,7 @@ function SimulationCard({
           </div>
           <label className="inline-flex items-center gap-2 px-3 h-9 rounded-lg border border-[var(--color-border-soft)] bg-surface-container-lowest text-[13px] cursor-pointer">
             <Switch checked={shadow} onChange={() => setShadow(!shadow)} />
-            <span className="font-medium">Shadow test</span>
+            <span className="font-medium">Kiểm thử ngầm</span>
           </label>
           <button className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg bg-primary text-on-primary text-[13px] font-semibold hover:bg-[#2c1eaa] transition-colors">
             <Play size={12} />
@@ -1574,7 +1574,7 @@ function SimulationCard({
             </p>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary">
               <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              Simulated
+              Mô phỏng
             </span>
           </div>
           <ol className="space-y-1">
@@ -2076,7 +2076,7 @@ function ActivityFeedCard({ className }: { className?: string }) {
           </h3>
         </div>
         <button className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-0.5">
-          Audit log
+          Nhật ký kiểm toán
           <ChevronRight size={12} />
         </button>
       </div>
@@ -2141,7 +2141,7 @@ function DeployHistoryCard({ className }: { className?: string }) {
             <tr>
               <th className="px-5 py-3 font-semibold">Phiên bản</th>
               <th className="px-4 py-3 font-semibold">Thời gian</th>
-              <th className="px-4 py-3 font-semibold text-right">Accuracy</th>
+              <th className="px-4 py-3 font-semibold text-right">Độ chính xác</th>
               <th className="px-4 py-3 font-semibold">Người triển khai</th>
               <th className="px-4 py-3 font-semibold">Trạng thái</th>
               <th className="px-5 py-3 font-semibold text-right">Hành động</th>
@@ -2179,10 +2179,10 @@ function DeployHistoryCard({ className }: { className?: string }) {
                     <div className="inline-flex items-center gap-1">
                       <button
                         className="h-7 px-2 inline-flex items-center gap-1 rounded text-[12px] font-medium hover:bg-surface-container-low text-on-surface-variant transition-colors"
-                        title="Xem diff"
+                        title="So sánh phiên bản"
                       >
                         <FileText size={11} />
-                        Diff
+                        So sánh
                       </button>
                       {d.status !== "rolled-back" && (
                         <button
@@ -2324,17 +2324,17 @@ function DeployModal({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <Estimate icon={Clock} label="Train time" value="~6m" />
-              <Estimate icon={Cpu} label="GPU usage" value="8 × A100" />
+              <Estimate icon={Clock} label="Thời gian huấn luyện" value="~6m" />
+              <Estimate icon={Cpu} label="Mức dùng GPU" value="8 × A100" />
               <Estimate icon={Database} label="Chi phí ước tính" value="~$42" />
               <Estimate icon={Zap} label="Dịch vụ ảnh hưởng" value="3" />
             </div>
 
             <div className="rounded-xl border border-[var(--color-border-soft)] divide-y divide-[var(--color-border-soft)]">
-              <SafetyCheck label="Pre-deployment tests" status="passed" />
-              <SafetyCheck label="Bias audit" status="passed" />
+              <SafetyCheck label="Kiểm thử trước triển khai" status="passed" />
+              <SafetyCheck label="Kiểm toán thiên kiến" status="passed" />
               <SafetyCheck
-                label="Diversity threshold"
+                label="Ngưỡng đa dạng"
                 status="warn"
                 note="Dự kiến −4% diversity"
               />
@@ -2451,10 +2451,10 @@ function SafetyCheck({
 }) {
   const meta =
     status === "passed"
-      ? { icon: Check, tone: "text-[#0c6b3c]", label: "Passed" }
+      ? { icon: Check, tone: "text-[#0c6b3c]", label: "Đạt" }
       : status === "warn"
-        ? { icon: AlertTriangle, tone: "text-[#a3530a]", label: "Warning" }
-        : { icon: X, tone: "text-[#9d1414]", label: "Failed" };
+        ? { icon: AlertTriangle, tone: "text-[#a3530a]", label: "Cảnh báo" }
+        : { icon: X, tone: "text-[#9d1414]", label: "Lỗi" };
   return (
     <div className="px-4 py-3 flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 min-w-0">

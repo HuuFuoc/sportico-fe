@@ -29,9 +29,9 @@ export function AskAIPanel({ className }: { className?: string }) {
           <MaterialIcon name="psychology" filled size={20} weight={500} />
         </div>
         <div className="min-w-0">
-          <h4 className="text-h3 text-on-surface">Ask AI</h4>
+          <h4 className="text-h3 text-on-surface">Hỏi AI</h4>
           <p className="text-body-sm text-on-surface-variant">
-            Coach Assistant
+            Trợ lý huấn luyện
           </p>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function AskAIPanel({ className }: { className?: string }) {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <p className="text-body-sm text-on-surface-variant text-center pt-8">
-            Ask me anything about your training plan.
+            Hỏi tôi bất cứ điều gì về kế hoạch tập luyện của bạn.
           </p>
         )}
         {messages.map((m) => {

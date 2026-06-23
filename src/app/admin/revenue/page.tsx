@@ -124,8 +124,8 @@ const RESERVE_EXPOSURE = 87_200;
 const RAILS = [
   { id: "ach", label: "ACH", volume: 412_000, success: 97.2, latencyHr: 36 },
   { id: "wire", label: "Wire", volume: 198_000, success: 99.4, latencyHr: 4 },
-  { id: "card", label: "Card payout", volume: 84_000, success: 95.1, latencyHr: 1 },
-  { id: "intl", label: "Intl SEPA", volume: 62_000, success: 91.8, latencyHr: 48 },
+  { id: "card", label: "Chi trả thẻ", volume: 84_000, success: 95.1, latencyHr: 1 },
+  { id: "intl", label: "SEPA quốc tế", volume: 62_000, success: 91.8, latencyHr: 48 },
 ];
 
 type PayoutRail = "ACH" | "Wire" | "Card" | "SEPA";
@@ -648,7 +648,7 @@ function Kpi({
       {anomaly && (
         <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-[#ffdad6] text-[#ba1a1a] text-[9px] font-bold uppercase tracking-wider">
           <AlertTriangle size={8} />
-          Anomaly
+          Bất thường
         </span>
       )}
       <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">
@@ -1373,7 +1373,7 @@ function PayoutTable({
 
           <button className="h-7 px-2.5 inline-flex items-center gap-1 rounded-md border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[11px] font-semibold transition-colors">
             <Filter size={11} />
-            More
+            Thêm
           </button>
         </div>
       </div>
@@ -1390,15 +1390,15 @@ function PayoutTable({
                   aria-label="Chọn tất cả"
                 />
               </th>
-              <th className="px-2 py-2 font-bold">Coach</th>
-              <th className="px-2 py-2 font-bold">Reference</th>
-              <th className="px-2 py-2 font-bold">Rail</th>
-              <th className="px-2 py-2 font-bold">Country</th>
-              <th className="px-2 py-2 font-bold text-right">Amount</th>
-              <th className="px-2 py-2 font-bold">Risk</th>
-              <th className="px-2 py-2 font-bold">Age</th>
-              <th className="px-2 py-2 font-bold">Status</th>
-              <th className="pr-4 pl-2 py-2 font-bold text-right">Actions</th>
+              <th className="px-2 py-2 font-bold">HLV</th>
+              <th className="px-2 py-2 font-bold">Mã tham chiếu</th>
+              <th className="px-2 py-2 font-bold">Kênh</th>
+              <th className="px-2 py-2 font-bold">Quốc gia</th>
+              <th className="px-2 py-2 font-bold text-right">Số tiền</th>
+              <th className="px-2 py-2 font-bold">Rủi ro</th>
+              <th className="px-2 py-2 font-bold">Thời gian</th>
+              <th className="px-2 py-2 font-bold">Trạng thái</th>
+              <th className="pr-4 pl-2 py-2 font-bold text-right">Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -1406,7 +1406,7 @@ function PayoutTable({
               <tr>
                 <td colSpan={10} className="px-4 py-10 text-center">
                   <p className="text-[12px] text-on-surface-variant">
-                    No payouts match the current filter.
+                    Không có khoản nào khớp bộ lọc hiện tại.
                   </p>
                 </td>
               </tr>
@@ -1459,7 +1459,7 @@ function PayoutTable({
                             {p.aiFlag && (
                               <span
                                 className="text-primary"
-                                title="AI flagged"
+                                title="AI gắn cờ"
                               >
                                 <Sparkles size={10} />
                               </span>
@@ -1894,7 +1894,7 @@ function AIAlerts({ reduce }: { reduce: boolean }) {
                   iconBg: "bg-[#ef4444]",
                   text: "text-[#ba1a1a]",
                   pill: "bg-[#ef4444]/15 text-[#ba1a1a]",
-                  label: "HIGH",
+                  label: "CAO",
                 }
               : a.severity === "med"
                 ? {
@@ -1902,14 +1902,14 @@ function AIAlerts({ reduce }: { reduce: boolean }) {
                     iconBg: "bg-[#f59e0b]",
                     text: "text-[#b95000]",
                     pill: "bg-[#f59e0b]/15 text-[#b95000]",
-                    label: "MED",
+                    label: "VỪA",
                   }
                 : {
                     bg: "bg-primary/[0.04]",
                     iconBg: "bg-primary",
                     text: "text-primary",
                     pill: "bg-primary/10 text-primary",
-                    label: "INFO",
+                    label: "TIN",
                   };
           return (
             <motion.li

@@ -303,7 +303,7 @@ export default function CoachSchedulePage() {
               </span>
             </div>
             <h1 className="text-[30px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
-              Schedule
+              Lịch tập
             </h1>
             <p className="text-[14px] text-on-surface-variant mt-1.5">
               {sessionsThisWeek} sessions ·{" "}
@@ -350,7 +350,7 @@ export default function CoachSchedulePage() {
               className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[12.5px] font-medium transition-colors"
             >
               <Filter size={13} />
-              Filter
+              Lọc
             </button>
 
             <div className="flex items-center gap-1">
@@ -365,7 +365,7 @@ export default function CoachSchedulePage() {
                 onClick={() => setWeekOffset(0)}
                 className="h-10 px-4 rounded-xl border border-[var(--color-border-soft)] hover:bg-surface-container-low text-[13px] font-medium transition-colors"
               >
-                Today
+                Hôm nay
               </button>
               <button
                 onClick={() => setWeekOffset((w) => w + 1)}
@@ -381,7 +381,7 @@ export default function CoachSchedulePage() {
               className="ml-1 inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[14px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <Plus size={16} strokeWidth={2.5} />
-              New Slot
+              Tạo lịch trống
             </button>
           </div>
         </motion.header>
@@ -677,7 +677,7 @@ export default function CoachSchedulePage() {
                     <div className="p-2 space-y-2">
                       {items.length === 0 ? (
                         <p className="text-[12px] text-on-surface-variant text-center py-3">
-                          Open day
+                          Ngày trống
                         </p>
                       ) : (
                         items.map((s) => (
@@ -955,11 +955,10 @@ function PendingConfirmations({
             </div>
             <div>
               <p className="text-[15px] font-semibold tracking-tight">
-                {pending.length} session{pending.length > 1 ? "s" : ""} awaiting
-                confirmation
+                {pending.length} buổi tập đang chờ xác nhận
               </p>
               <p className="text-[12px] text-on-surface-variant">
-                Review to lock these into your week
+                Xem lại để chốt vào lịch tuần của bạn
               </p>
             </div>
           </div>
@@ -1428,7 +1427,7 @@ function MobileSessionCard({ session, onOpen }: { session: Session; onOpen: () =
           </p>
         </div>
         <button className="h-7 px-2.5 rounded-md bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[11px] font-semibold">
-          Join
+          Tham gia
         </button>
       </div>
     </div>
@@ -1681,7 +1680,7 @@ function TodayRow({
         </p>
       </div>
       <button className="opacity-0 group-hover:opacity-100 h-7 px-2.5 rounded-md bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[11px] font-semibold shadow-[0_3px_8px_-2px_rgba(53,37,205,0.4)] transition-opacity">
-        Join
+        Tham gia
       </button>
     </motion.div>
   );
@@ -1756,19 +1755,19 @@ function UpcomingSessions({
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
       <div className="px-5 pt-5 pb-2 flex items-center justify-between">
-        <h3 className="text-[16px] font-semibold tracking-tight">Upcoming</h3>
+        <h3 className="text-[16px] font-semibold tracking-tight">Sắp tới</h3>
         <Link
           href="#"
           className="text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-0.5"
         >
-          View all
+          Xem tất cả
           <ChevronRight size={12} />
         </Link>
       </div>
       <div className="px-3 pb-3 space-y-1.5">
         {sessions.length === 0 ? (
           <p className="text-center text-[12px] text-on-surface-variant py-6">
-            Nothing on the horizon.
+            Chưa có lịch nào sắp tới.
           </p>
         ) : (
           sessions.map((s, i) => (
@@ -1905,7 +1904,7 @@ function QuickActions({ reduce, onNewSlot }: { reduce: boolean; onNewSlot: () =>
       className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
     >
       <h3 className="text-[16px] font-semibold tracking-tight mb-3">
-        Quick Actions
+        Thao tác nhanh
       </h3>
       <div className="grid grid-cols-2 gap-2.5">
         {QUICK_ACTIONS.map((q, i) => {

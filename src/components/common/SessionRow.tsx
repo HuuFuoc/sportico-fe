@@ -72,7 +72,7 @@ export function SessionRow({
       <div className="flex items-center gap-2 shrink-0">
         {actions ?? (
           <button className="px-3 py-1.5 border border-[var(--color-border-soft)] rounded-[6px] text-body-sm hover:bg-surface-container-low transition-colors">
-            Reschedule
+            Đổi lịch
           </button>
         )}
       </div>

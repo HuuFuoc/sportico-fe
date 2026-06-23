@@ -10,7 +10,9 @@ import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin"],
+  // "vietnamese" subset ensures diacritics (ầ, ạ, ữ…) render in Inter instead
+  // of falling back to the OS font — which was making text look inconsistent.
+  subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
@@ -42,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="vi" className={`${inter.variable} h-full antialiased`}>
       <head>
         <link
           rel="stylesheet"

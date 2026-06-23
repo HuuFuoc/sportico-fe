@@ -315,14 +315,14 @@ export default function LearnerProgressPage() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-[18px] font-semibold tracking-tight">
-                    Fitness Score
+                    Điểm thể lực
                   </h3>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-medium text-[#1f7a4d]">
-                    <TrendingUp size={10} />+{scoreDelta} pts
+                    <TrendingUp size={10} />+{scoreDelta} điểm
                   </span>
                 </div>
                 <p className="text-[13px] text-on-surface-variant">
-                  Composite of mobility, strength &amp; conditioning
+                  Tổng hợp độ linh hoạt, sức mạnh &amp; thể lực
                 </p>
                 <div className="flex items-baseline gap-2 mt-3">
                   <span className="text-[36px] leading-none font-semibold tracking-tight">
@@ -331,7 +331,7 @@ export default function LearnerProgressPage() {
                       : currentScore}
                   </span>
                   <span className="text-[14px] text-on-surface-variant">
-                    {hoveredWeek ?? "current"}
+                    {hoveredWeek ?? "hiện tại"}
                   </span>
                 </div>
               </div>
@@ -467,10 +467,10 @@ export default function LearnerProgressPage() {
             <div className="px-6 pt-6 pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-[18px] font-semibold tracking-tight">
-                  Weekly Goals
+                  Mục tiêu tuần
                 </h3>
                 <p className="text-[12px] text-on-surface-variant mt-0.5">
-                  AI-tuned for your recovery
+                  AI điều chỉnh theo khả năng hồi phục của bạn
                 </p>
               </div>
               <Target size={18} className="text-on-surface-variant" />
@@ -553,14 +553,14 @@ export default function LearnerProgressPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12.5px] font-medium leading-snug">
-                  Your sleep is trending below target.
+                  Giấc ngủ của bạn đang dưới mức mục tiêu.
                 </p>
                 <p className="text-[12px] text-on-surface-variant leading-relaxed mt-0.5">
-                  Try winding down 30 min earlier tonight. Need a guided
-                  breathwork?
+                  Thử thư giãn sớm hơn 30 phút tối nay. Cần hướng dẫn
+                  bài tập hít thở không?
                 </p>
                 <button className="mt-2 text-[12px] font-medium text-primary hover:underline inline-flex items-center gap-1">
-                  Start session <ArrowRight size={11} />
+                  Bắt đầu buổi tập <ArrowRight size={11} />
                 </button>
               </div>
             </div>
@@ -578,20 +578,20 @@ export default function LearnerProgressPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-[18px] font-semibold tracking-tight">
-                  Achievements
+                  Thành tích
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-surface-container-low text-[11px] font-medium text-on-surface-variant">
-                  {earned} / {ACHIEVEMENTS.length} unlocked
+                  {earned} / {ACHIEVEMENTS.length} đã mở
                 </span>
               </div>
               <p className="text-[13px] text-on-surface-variant">
-                Earn XP, unlock badges, climb the ranks.
+                Tích điểm, mở huy hiệu, leo hạng.
               </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-[11px] uppercase tracking-wider font-medium text-on-surface-variant">
-                  Total XP
+                  Tổng điểm
                 </p>
                 <p className="text-[20px] font-semibold leading-tight tabular-nums bg-gradient-to-r from-primary to-[#7d6dff] bg-clip-text text-transparent">
                   {totalXP.toLocaleString()}
@@ -601,7 +601,7 @@ export default function LearnerProgressPage() {
                 href="#"
                 className="text-[12.5px] font-medium text-primary hover:underline inline-flex items-center gap-1"
               >
-                View all <ChevronRight size={13} />
+                Xem tất cả <ChevronRight size={13} />
               </Link>
             </div>
           </div>

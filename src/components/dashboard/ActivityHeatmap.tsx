@@ -33,13 +33,13 @@ export function ActivityHeatmap({ weeks }: { weeks: number[][] }) {
         ))}
       </div>
       <div className="mt-3 flex items-center justify-between text-[11px] text-on-surface-variant">
-        <span>12 weeks ago</span>
+        <span>12 tuần trước</span>
         <div className="flex items-center gap-1.5">
-          <span>Less</span>
+          <span>Ít</span>
           {LEVELS.map((c, i) => (
             <span key={i} className={cn("h-[10px] w-[10px] rounded-[2px]", c)} />
           ))}
-          <span>More</span>
+          <span>Nhiều</span>
         </div>
       </div>
     </div>

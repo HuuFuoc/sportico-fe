@@ -64,10 +64,8 @@ const COACH_NAV: NavGroup[] = [
     label: "Kinh doanh",
     items: [
       { href: "/coach/training-packages", label: "Gói tập", icon: "inventory_2" },
-      { href: "/coach/media", label: "Media", icon: "collections" },
       { href: "/coach/earnings", label: "Thu nhập", icon: "payments" },
       { href: "/coach/profile", label: "Hồ sơ", icon: "account_circle" },
-      { href: "/coach/preview", label: "Xem hồ sơ", icon: "visibility" },
       { href: "/coach/settings", label: "Cài đặt", icon: "settings" },
     ],
   },

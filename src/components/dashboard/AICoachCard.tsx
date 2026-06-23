@@ -37,7 +37,7 @@ export function AICoachCard({
           <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0c0a20] bg-emerald-400" />
         </div>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-white">AI Coach</p>
+          <p className="text-[15px] font-semibold text-white">Trợ lý AI</p>
           <p className="flex items-center gap-1.5 text-[12px] text-white/55">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />

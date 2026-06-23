@@ -131,7 +131,7 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
         {role === "coach" && (
           <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary text-[11px] font-medium uppercase tracking-wider rounded">
             <MaterialIcon name="bolt" size={14} filled />
-            Coach Mode
+            Chế độ HLV
           </span>
         )}
 

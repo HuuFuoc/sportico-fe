@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  CheckCircle2,
   ChevronDown,
-  Globe2,
+  Circle,
+  Eye,
   Image as ImageIcon,
   Loader2,
   MapPin,
   Move,
+  Pencil,
   RotateCcw,
   Save,
   Share2,
@@ -17,13 +21,20 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useApiResource } from "@/lib/hooks/useApiResource";
-import { getMyCoachProfile, updateMyCoachProfile } from "@/lib/coach-api";
+import { getMyCoachProfile, getMyCoachMedia, updateMyCoachProfile } from "@/lib/coach-api";
+import { getMyTrainingPackages } from "@/lib/training-package-api";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 import { messageForApiError } from "@/lib/errors-vi";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { parseFocal, stripFocal, withFocal, focalToCss } from "@/lib/image-focal";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { ImageUpload } from "@/components/common/ImageUpload";
+import { CoachMediaManager } from "@/components/coach/CoachMediaManager";
+import {
+  CoachPublicProfilePreview,
+  type CoachPreviewData,
+} from "@/components/coach/CoachPublicProfilePreview";
 import type { UpdateCoachProfileRequest } from "@/lib/types/coach";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -105,10 +116,58 @@ const EMPTY: FormState = {
 };
 
 export default function CoachProfilePage() {
+  // useSearchParams() needs a Suspense boundary in the App Router.
+  return (
+    <Suspense
+      fallback={
+        <AppShell role="coach" title="Hồ sơ huấn luyện viên">
+          <LoadingState label="Đang tải hồ sơ…" />
+        </AppShell>
+      }
+    >
+      <CoachProfilePageInner />
+    </Suspense>
+  );
+}
+
+function CoachProfilePageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // URL is the source of truth for the active tab (so reload + back/forward work);
+  // any value other than "preview" falls back to the edit tab.
+  const tab = searchParams.get("tab") === "preview" ? "preview" : "edit";
+  const goTab = useCallback(
+    (next: "edit" | "preview") => {
+      router.replace(
+        next === "preview" ? "/coach/profile?tab=preview" : "/coach/profile",
+        { scroll: false },
+      );
+    },
+    [router],
+  );
+
+  const authUser = useAuthStore((s) => s.user);
+
   const { data: profile, loading, error, refetch } = useApiResource(
     () => getMyCoachProfile(),
     [],
   );
+
+  // Training packages — shown in the public preview tab (read-only).
+  const { data: pkgResult, loading: pkgLoading } = useApiResource(
+    () => getMyTrainingPackages({ pageSize: 12 }),
+    [],
+  );
+  const packages = pkgResult?.items ?? [];
+
+  // Media list is fetched here too (read-only) purely to drive the completion
+  // checklist; CoachMediaManager keeps its own copy and calls onChanged so this
+  // stays in sync after add/delete.
+  const { data: mediaList, refetch: refetchMedia } = useApiResource(
+    () => getMyCoachMedia(),
+    [],
+  );
+  const hasMedia = (mediaList?.length ?? 0) > 0;
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [dirty, setDirty] = useState(false);
@@ -220,6 +279,75 @@ export default function CoachProfilePage() {
     return null;
   }, [form]);
 
+  // Profile completion — frontend-only estimate for UX (no backend call).
+  const completion = useMemo(() => {
+    const checks = [
+      {
+        key: "main",
+        label: "Thông tin chính",
+        hint: "Tiêu đề & giới thiệu",
+        done: !!form.headline.trim() && !!form.bio.trim(),
+        weight: 35,
+      },
+      {
+        key: "location",
+        label: "Địa điểm dạy",
+        hint: "Tỉnh/thành & địa chỉ",
+        done: !!(form.teachingCity.trim() || form.teachingAddress.trim()),
+        weight: 25,
+      },
+      {
+        key: "expertise",
+        label: "Chuyên môn & thành tích",
+        hint: "Chuyên môn, chứng chỉ, thành tích",
+        done: !!(
+          form.specialties.trim() ||
+          form.certificationsSummary.trim() ||
+          form.achievementsSummary.trim()
+        ),
+        weight: 25,
+      },
+      {
+        key: "media",
+        label: "Bộ sưu tập media",
+        hint: "Chứng chỉ, giải thưởng, hình ảnh",
+        done: hasMedia,
+        weight: 15,
+      },
+    ];
+    const percent = checks.reduce((s, c) => s + (c.done ? c.weight : 0), 0);
+    return { percent, checks };
+  }, [form, hasMedia]);
+
+  // Live preview data — built from the current form so the public-view tab shows
+  // unsaved changes too. Rating/reviews are read-only server values.
+  const previewProfile: CoachPreviewData = useMemo(
+    () => ({
+      coverImageUrl: form.coverImageUrl.trim()
+        ? withFocal(form.coverImageUrl.trim(), coverPos)
+        : null,
+      headline: form.headline.trim() || null,
+      bio: form.bio.trim() || null,
+      experienceYears:
+        form.experienceYears === "" ? null : Number(form.experienceYears),
+      rating: profile?.rating ?? 0,
+      totalReviews: profile?.totalReviews ?? 0,
+      // Teaching mode is fixed to in-person (offline).
+      isOnlineAvailable: false,
+      isOfflineAvailable: true,
+      teachingCity: form.teachingCity.trim() || null,
+      teachingDistrict: form.teachingDistrict.trim() || null,
+      teachingAddress: form.teachingAddress.trim() || null,
+      specialties: form.specialties.trim() || null,
+      certificationsSummary: form.certificationsSummary.trim() || null,
+      achievementsSummary: form.achievementsSummary.trim() || null,
+      facebookUrl: form.facebookUrl.trim() || null,
+      instagramUrl: form.instagramUrl.trim() || null,
+      websiteUrl: form.websiteUrl.trim() || null,
+    }),
+    [form, coverPos, profile],
+  );
+
   const buildPayload = (): UpdateCoachProfileRequest => ({
     headline: form.headline.trim() || undefined,
     bio: form.bio.trim() || undefined,
@@ -235,8 +363,9 @@ export default function CoachProfilePage() {
       form.teachingLatitude === "" ? undefined : Number(form.teachingLatitude),
     teachingLongitude:
       form.teachingLongitude === "" ? undefined : Number(form.teachingLongitude),
-    isOnlineAvailable: form.isOnlineAvailable,
-    isOfflineAvailable: form.isOfflineAvailable,
+    // Teaching mode is fixed to in-person (offline) — no online option.
+    isOnlineAvailable: false,
+    isOfflineAvailable: true,
     specialties: form.specialties.trim() || undefined,
     certificationsSummary: form.certificationsSummary.trim() || undefined,
     achievementsSummary: form.achievementsSummary.trim() || undefined,
@@ -286,25 +415,99 @@ export default function CoachProfilePage() {
 
   return (
     <AppShell role="coach" title="Hồ sơ huấn luyện viên">
-      <div className="max-w-[860px] mx-auto pb-28">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-on-primary shrink-0">
-            <UserRound size={20} />
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28 xl:pb-8">
+        {/* Page header */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-on-primary shrink-0 shadow-[0_6px_18px_-6px_rgba(53,37,205,0.5)]">
+              <UserRound size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-[24px] sm:text-[26px] font-bold tracking-tight leading-tight">
+                  Hồ sơ huấn luyện viên
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full bg-success-container/60 px-2.5 py-0.5 text-[11px] font-semibold text-[#1f7a4d]">
+                  <Eye size={11} />
+                  Hiển thị với học viên
+                </span>
+              </div>
+              <p className="mt-1 max-w-xl text-[13.5px] leading-relaxed text-on-surface-variant">
+                Cập nhật thông tin để học viên hiểu rõ chuyên môn, địa điểm dạy
+                và thành tích của bạn.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-[22px] font-bold tracking-tight">
-              Hồ sơ huấn luyện viên
-            </h1>
-            <p className="text-body-sm text-on-surface-variant">
-              Thông tin này hiển thị cho học viên đang tìm huấn luyện viên.
-            </p>
+
+          {/* Header actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {tab === "edit" ? (
+              <button
+                type="button"
+                onClick={() => goTab("preview")}
+                className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3.5 text-[13px] font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
+              >
+                <Eye size={15} />
+                <span className="hidden sm:inline">Xem trước công khai</span>
+                <span className="sm:hidden">Xem trước</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => goTab("edit")}
+                className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3.5 text-[13px] font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
+              >
+                <Pencil size={15} />
+                <span className="hidden sm:inline">Tiếp tục chỉnh sửa</span>
+                <span className="sm:hidden">Chỉnh sửa</span>
+              </button>
+            )}
+            <button
+              onClick={() => void onSave()}
+              disabled={saving || !dirty}
+              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-primary px-5 text-[13px] font-semibold text-on-primary shadow-[0_6px_18px_-6px_rgba(53,37,205,0.5)] transition-colors hover:bg-[#2d20b8] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  Đang lưu…
+                </>
+              ) : (
+                <>
+                  <Save size={15} />
+                  Lưu thay đổi
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="space-y-5">
+        {/* Tab switcher */}
+        <div className="mb-6 inline-flex rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-low p-1">
+          <TabButton active={tab === "edit"} icon={Pencil} onClick={() => goTab("edit")}>
+            Chỉnh sửa hồ sơ
+          </TabButton>
+          <TabButton
+            active={tab === "preview"}
+            icon={Eye}
+            onClick={() => goTab("preview")}
+          >
+            Xem trước công khai
+          </TabButton>
+        </div>
+
+        {/* ── Edit tab: 2-column form + sticky helper panel ───────────── */}
+        {tab === "edit" && (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          {/* ── Left: form ─────────────────────────────────────────────── */}
+          <div className="min-w-0 space-y-6">
           {/* Thông tin chính */}
-          <Section icon={UserRound} title="Thông tin chính" delay={0.04}>
+          <Section
+            icon={UserRound}
+            title="Thông tin chính"
+            description="Tiêu đề, kinh nghiệm và ảnh bìa hiển thị nổi bật trên hồ sơ."
+            delay={0.04}
+          >
             <Field label="Tiêu đề hồ sơ" hint="Một câu mô tả chuyên môn của bạn.">
               <Input
                 value={form.headline}
@@ -323,14 +526,14 @@ export default function CoachProfilePage() {
                 placeholder="VD: 8"
               />
             </Field>
-            <Field label="Ảnh bìa" hint="Tải ảnh từ máy của bạn.">
+            <Field label="Ảnh bìa" hint="Hiển thị ở đầu trang hồ sơ công khai.">
               <ImageUpload
                 variant="cover"
                 value={form.coverImageUrl}
                 folder="coaches/covers"
                 allowRemove
                 objectPosition={focalToCss(coverPos)}
-                placeholder="Kéo thả ảnh bìa hoặc bấm để chọn"
+                placeholder="Kéo thả hoặc bấm để tải ảnh bìa"
                 onChange={(url) => {
                   // A freshly uploaded image starts centered; the coach can then
                   // drag below to set a new focal point.
@@ -338,6 +541,34 @@ export default function CoachProfilePage() {
                   setCoverPos(DEFAULT_COVER_POS);
                 }}
               />
+              {form.coverImageUrl.trim() && isHttpUrl(form.coverImageUrl.trim()) && (
+                <div className="mt-3 overflow-hidden rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
+                  <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-3.5 py-2">
+                    <span className="flex items-center gap-1.5 text-[12px] text-on-surface-variant">
+                      <Move size={12} />
+                      Căn chỉnh vị trí hiển thị
+                    </span>
+                    <button
+                      type="button"
+                      onClick={resetCoverPos}
+                      title="Đặt lại về giữa"
+                      className="flex items-center gap-1 text-[11px] text-on-surface-variant/70 transition-colors hover:text-on-surface"
+                    >
+                      <RotateCcw size={11} />
+                      Đặt lại
+                    </button>
+                  </div>
+                  <CoverImageRepositioner
+                    src={form.coverImageUrl.trim()}
+                    position={coverPos}
+                    onPositionChange={handleCoverPosChange}
+                  />
+                  <div className="border-t border-[var(--color-border-soft)] px-3.5 py-2 text-[11px] text-on-surface-variant/70">
+                    Vị trí: {Math.round(coverPos.x)}% ngang · {Math.round(coverPos.y)}% dọc
+                    <span className="ml-1 text-on-surface-variant/50">· áp dụng sau khi lưu</span>
+                  </div>
+                </div>
+              )}
             </Field>
             <Field label="Giới thiệu">
               <Textarea
@@ -350,7 +581,12 @@ export default function CoachProfilePage() {
           </Section>
 
           {/* Địa điểm dạy */}
-          <Section icon={MapPin} title="Địa điểm dạy" delay={0.08}>
+          <Section
+            icon={MapPin}
+            title="Địa điểm dạy"
+            description="Nơi bạn nhận dạy trực tiếp, giúp học viên gần bạn dễ tìm hơn."
+            delay={0.08}
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Tỉnh / Thành phố">
                 <SearchableSelect
@@ -386,24 +622,13 @@ export default function CoachProfilePage() {
             </Field>
           </Section>
 
-          {/* Hình thức dạy */}
-          <Section icon={Globe2} title="Hình thức dạy" delay={0.12}>
-            <Toggle
-              label="Có dạy online"
-              description="Học viên có thể đặt buổi học trực tuyến."
-              checked={form.isOnlineAvailable}
-              onChange={(v) => set("isOnlineAvailable", v)}
-            />
-            <Toggle
-              label="Có dạy trực tiếp"
-              description="Học viên có thể đặt buổi học tại địa điểm."
-              checked={form.isOfflineAvailable}
-              onChange={(v) => set("isOfflineAvailable", v)}
-            />
-          </Section>
-
           {/* Chuyên môn / chứng chỉ / thành tích */}
-          <Section icon={Sparkles} title="Chuyên môn · Chứng chỉ · Thành tích" delay={0.16}>
+          <Section
+            icon={Sparkles}
+            title="Chuyên môn · Chứng chỉ · Thành tích"
+            description="Những thông tin tạo niềm tin và giúp bạn nổi bật với học viên."
+            delay={0.16}
+          >
             <Field label="Chuyên môn" hint="Ví dụ: kỹ thuật smash, thể lực, chiến thuật.">
               <Textarea
                 rows={3}
@@ -435,21 +660,28 @@ export default function CoachProfilePage() {
           </Section>
 
           {/* Liên kết mạng xã hội */}
-          <Section icon={Share2} title="Liên kết mạng xã hội" delay={0.2}>
-            <Field label="Facebook">
-              <Input
-                value={form.facebookUrl}
-                onChange={(e) => set("facebookUrl", e.target.value)}
-                placeholder="https://facebook.com/…"
-              />
-            </Field>
-            <Field label="Instagram">
-              <Input
-                value={form.instagramUrl}
-                onChange={(e) => set("instagramUrl", e.target.value)}
-                placeholder="https://instagram.com/…"
-              />
-            </Field>
+          <Section
+            icon={Share2}
+            title="Liên kết mạng xã hội"
+            description="Tùy chọn — giúp học viên tìm hiểu thêm về bạn."
+            delay={0.2}
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Facebook">
+                <Input
+                  value={form.facebookUrl}
+                  onChange={(e) => set("facebookUrl", e.target.value)}
+                  placeholder="https://facebook.com/…"
+                />
+              </Field>
+              <Field label="Instagram">
+                <Input
+                  value={form.instagramUrl}
+                  onChange={(e) => set("instagramUrl", e.target.value)}
+                  placeholder="https://instagram.com/…"
+                />
+              </Field>
+            </div>
             <Field label="Website">
               <Input
                 value={form.websiteUrl}
@@ -459,65 +691,109 @@ export default function CoachProfilePage() {
             </Field>
           </Section>
 
-          {/* Cover preview with drag-to-reposition */}
-          {form.coverImageUrl.trim() && isHttpUrl(form.coverImageUrl.trim()) && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: EASE }}
-              className="rounded-[16px] border border-[var(--color-border-soft)] overflow-hidden bg-surface-container-lowest"
-            >
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--color-border-soft)]">
-                <div className="flex items-center gap-2 text-[12px] text-on-surface-variant">
-                  <ImageIcon size={13} />
-                  <span>Xem trước ảnh bìa</span>
-                  <span className="text-[11px] text-on-surface-variant/60">
-                    · Kéo để căn chỉnh vị trí hiển thị
-                  </span>
-                </div>
+          {/* Bộ sưu tập media — gộp từ trang /coach/media cũ */}
+          <CoachMediaManager delay={0.05} onChanged={refetchMedia} />
+          </div>
+
+          {/* ── Right: sticky completion panel ─────────────────────────── */}
+          <aside className="hidden xl:block">
+            <div className="sticky top-24 space-y-4">
+              <ProfileCompletionPanel
+                percent={completion.percent}
+                checks={completion.checks}
+                coverUrl={
+                  form.coverImageUrl.trim() && isHttpUrl(form.coverImageUrl.trim())
+                    ? form.coverImageUrl.trim()
+                    : null
+                }
+                coverPos={coverPos}
+                dirty={dirty}
+                saving={saving}
+                formError={formError}
+                onSave={onSave}
+                onPreview={() => goTab("preview")}
+              />
+            </div>
+          </aside>
+        </div>
+        )}
+
+        {/* ── Preview tab: public-facing view (reflects unsaved changes) ── */}
+        {tab === "preview" && (
+          <div>
+            <div className="mb-5 flex flex-col gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-on-primary">
+                  <Eye size={11} />
+                  Bản xem trước
+                </span>
+                <p className="text-[12.5px] leading-relaxed text-on-surface-variant">
+                  Bản xem trước này có thể bao gồm các thay đổi chưa lưu.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
-                  onClick={resetCoverPos}
-                  title="Đặt lại về giữa"
-                  className="flex items-center gap-1 text-[11px] text-on-surface-variant/70 hover:text-on-surface transition-colors"
+                  onClick={() => goTab("edit")}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3.5 text-[13px] font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
                 >
-                  <RotateCcw size={11} />
-                  Đặt lại
+                  <Pencil size={14} />
+                  Tiếp tục chỉnh sửa
                 </button>
+                {dirty && (
+                  <button
+                    type="button"
+                    onClick={() => void onSave()}
+                    disabled={saving}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-primary px-4 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Đang lưu…
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} />
+                        Lưu thay đổi
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
-              <CoverImageRepositioner
-                src={form.coverImageUrl.trim()}
-                position={coverPos}
-                onPositionChange={handleCoverPosChange}
-              />
-              <div className="px-4 py-2 flex items-center gap-1.5 text-[11px] text-on-surface-variant/60 border-t border-[var(--color-border-soft)]">
-                <Move size={10} />
-                Vị trí: {Math.round(coverPos.x)}% ngang · {Math.round(coverPos.y)}% dọc
-                <span className="ml-auto text-[10px]">Hiển thị cho học viên sau khi bấm Lưu</span>
-              </div>
-            </motion.div>
-          )}
-        </div>
+            </div>
+
+            <CoachPublicProfilePreview
+              profile={previewProfile}
+              media={mediaList ?? []}
+              packages={packages}
+              packagesLoading={pkgLoading}
+              displayName={authUser?.fullName?.trim() || "Huấn luyện viên"}
+              avatarUrl={authUser?.avatarUrl ?? null}
+              email={authUser?.email ?? null}
+              isPreview
+            />
+          </div>
+        )}
       </div>
 
-      {/* Sticky save bar */}
-      <div className="fixed bottom-4 left-4 right-4 lg:left-[calc(16rem+1rem)] lg:right-6 z-30">
-        <div className="max-w-[860px] mx-auto rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest/95 backdrop-blur-md p-3 pl-4 flex items-center justify-between gap-3 shadow-[0_8px_24px_-6px_rgba(15,15,30,0.15)]">
-          <div className="min-w-0 flex items-center gap-2">
-            {formError ? (
-              <p className="text-[12.5px] font-medium text-rose-600 truncate" role="alert">
-                {formError}
-              </p>
-            ) : (
-              <p className="text-[12.5px] text-on-surface-variant truncate">
-                {dirty ? "Có thay đổi chưa lưu." : "Cập nhật hồ sơ của bạn."}
-              </p>
+      {/* Mobile / tablet sticky save bar — only on the edit tab */}
+      {tab === "edit" && (
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border-soft)] bg-surface-container-lowest/95 px-4 py-3 backdrop-blur-md lg:left-64 xl:hidden">
+        <div className="mx-auto flex max-w-[900px] items-center justify-between gap-3">
+          <p
+            className={cn(
+              "min-w-0 truncate text-[12.5px]",
+              formError ? "font-medium text-rose-600" : "text-on-surface-variant",
             )}
-          </div>
+            role={formError ? "alert" : undefined}
+          >
+            {formError ?? (dirty ? "Có thay đổi chưa lưu." : "Hồ sơ đã được lưu.")}
+          </p>
           <button
             onClick={() => void onSave()}
             disabled={saving || !dirty}
-            className="inline-flex items-center gap-1.5 h-10 px-5 rounded-[10px] bg-primary text-on-primary text-[13px] font-semibold transition-colors hover:bg-[#2d20b8] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[10px] bg-primary px-5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -527,26 +803,58 @@ export default function CoachProfilePage() {
             ) : (
               <>
                 <Save size={15} />
-                Lưu hồ sơ
+                Lưu thay đổi
               </>
             )}
           </button>
         </div>
       </div>
+      )}
     </AppShell>
   );
 }
 
 // ---- primitives ------------------------------------------------------------
 
+function TabButton({
+  active,
+  icon: Icon,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  icon: typeof Eye;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex h-9 items-center gap-1.5 rounded-[9px] px-3.5 text-[13px] font-semibold transition-colors",
+        active
+          ? "bg-surface-container-lowest text-primary shadow-[0_1px_2px_rgba(15,15,30,0.08)]"
+          : "text-on-surface-variant hover:text-on-surface",
+      )}
+    >
+      <Icon size={15} />
+      {children}
+    </button>
+  );
+}
+
 function Section({
   icon: Icon,
   title,
+  description,
   children,
   delay,
 }: {
   icon: typeof UserRound;
   title: string;
+  description?: string;
   children: React.ReactNode;
   delay: number;
 }) {
@@ -555,15 +863,24 @@ function Section({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay, ease: EASE }}
-      className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 sm:p-6 space-y-4"
+      className="rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)] sm:p-6"
     >
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-primary/10 to-primary/[0.04] border border-primary/15 flex items-center justify-center text-primary">
-          <Icon size={16} />
+      <div className="mb-5 flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-primary/15 bg-gradient-to-br from-primary/10 to-primary/[0.04] text-primary">
+          <Icon size={18} />
         </div>
-        <h2 className="text-[16px] font-semibold tracking-tight">{title}</h2>
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-semibold leading-tight tracking-tight">
+            {title}
+          </h2>
+          {description && (
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-on-surface-variant">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
-      {children}
+      <div className="space-y-4">{children}</div>
     </motion.section>
   );
 }
@@ -579,12 +896,12 @@ function Field({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1.5">
-        <label className="text-[13px] font-semibold text-on-surface">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <label className="text-[13.5px] font-semibold text-on-surface">
           {label}
         </label>
         {hint && (
-          <span className="text-[11px] text-on-surface-variant">{hint}</span>
+          <span className="text-[11.5px] text-on-surface-variant">{hint}</span>
         )}
       </div>
       {children}
@@ -593,7 +910,7 @@ function Field({
 }
 
 const fieldCls =
-  "w-full px-3.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px] transition-colors";
+  "w-full px-3.5 bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 text-[14px] transition-[border-color,box-shadow] placeholder:text-on-surface-variant/50";
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(fieldCls, "h-11", props.className)} />;
@@ -696,7 +1013,7 @@ function CoverImageRepositioner({
     <div
       ref={containerRef}
       className={cn(
-        "relative w-full h-64 sm:h-80 select-none overflow-hidden group",
+        "relative w-full aspect-[16/9] max-h-56 select-none overflow-hidden group",
         active ? "cursor-grabbing" : "cursor-grab",
       )}
       onMouseDown={onMouseDown}
@@ -879,46 +1196,142 @@ function SearchableSelect({
   );
 }
 
-function Toggle({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
+// ---- ProfileCompletionPanel (right sticky) ---------------------------------
+
+interface CompletionCheck {
+  key: string;
   label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+  hint: string;
+  done: boolean;
+  weight: number;
+}
+
+function ProfileCompletionPanel({
+  percent,
+  checks,
+  coverUrl,
+  coverPos,
+  dirty,
+  saving,
+  formError,
+  onSave,
+  onPreview,
+}: {
+  percent: number;
+  checks: CompletionCheck[];
+  coverUrl: string | null;
+  coverPos: CoverPosition;
+  dirty: boolean;
+  saving: boolean;
+  formError: string | null;
+  onSave: () => void;
+  onPreview: () => void;
 }) {
+  const complete = percent >= 100;
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between gap-3 rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low/50 px-4 py-3 text-left transition-colors hover:border-primary/30"
-    >
-      <span className="min-w-0">
-        <span className="block text-[13.5px] font-medium text-on-surface">
-          {label}
-        </span>
-        {description && (
-          <span className="block text-[11.5px] text-on-surface-variant mt-0.5">
-            {description}
-          </span>
-        )}
-      </span>
-      <span
-        className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-primary" : "bg-surface-container-high",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-            checked ? "translate-x-[22px]" : "translate-x-0.5",
+    <>
+      <div className="rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)]">
+        {/* Mini cover preview */}
+        <div className="mb-4 aspect-[16/9] overflow-hidden rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-low">
+          {coverUrl ? (
+            <img
+              src={stripFocal(coverUrl)}
+              alt="Ảnh bìa hồ sơ"
+              className="h-full w-full object-cover"
+              style={{ objectPosition: focalToCss(coverPos) }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-on-surface-variant/40">
+              <ImageIcon size={22} />
+            </div>
           )}
-        />
-      </span>
-    </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-on-surface">
+            Mức độ hoàn thiện
+          </h3>
+          <span className="text-[18px] font-bold tabular-nums text-primary">
+            {percent}%
+          </span>
+        </div>
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary to-[#7d6dff] transition-all duration-500"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-[12px] leading-relaxed text-on-surface-variant">
+          {complete
+            ? "Hồ sơ đã hoàn thiện. Tuyệt vời!"
+            : "Bổ sung các mục dưới đây để hồ sơ hấp dẫn học viên hơn."}
+        </p>
+
+        <ul className="mt-4 space-y-2.5">
+          {checks.map((c) => (
+            <li key={c.key} className="flex items-start gap-2.5">
+              {c.done ? (
+                <CheckCircle2 size={17} className="mt-px shrink-0 text-[#1f7a4d]" />
+              ) : (
+                <Circle size={17} className="mt-px shrink-0 text-on-surface-variant/35" />
+              )}
+              <span className="min-w-0">
+                <span
+                  className={cn(
+                    "block text-[13px] font-medium",
+                    c.done ? "text-on-surface" : "text-on-surface-variant",
+                  )}
+                >
+                  {c.label}
+                </span>
+                <span className="block text-[11.5px] text-on-surface-variant/70">
+                  {c.done ? "Đã hoàn thiện" : "Cần bổ sung"}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Save / preview actions */}
+      <div className="space-y-2 rounded-[18px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4 shadow-[0_1px_2px_rgba(15,15,30,0.04)]">
+        {formError && (
+          <p
+            className="rounded-[8px] bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-600"
+            role="alert"
+          >
+            {formError}
+          </p>
+        )}
+        <button
+          onClick={() => void onSave()}
+          disabled={saving || !dirty}
+          className="flex w-full items-center justify-center gap-1.5 rounded-[10px] bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-colors hover:bg-[#2d20b8] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? (
+            <>
+              <Loader2 size={15} className="animate-spin" />
+              Đang lưu…
+            </>
+          ) : (
+            <>
+              <Save size={15} />
+              Lưu thay đổi
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onPreview}
+          className="flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-[var(--color-border-soft)] px-4 py-2.5 text-[13px] font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
+        >
+          <Eye size={15} />
+          Xem trước công khai
+        </button>
+        <p className="pt-1 text-center text-[11px] text-on-surface-variant/70">
+          {dirty ? "Có thay đổi chưa lưu" : "Tất cả đã được lưu"}
+        </p>
+      </div>
+    </>
   );
 }

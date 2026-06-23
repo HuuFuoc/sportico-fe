@@ -124,6 +124,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Form controls don't inherit font-family by default in every browser — pin
+   them to the same Inter stack so buttons, inputs, selects, textareas, tables
+   and modals all render identically across the app. */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
 /* Material Symbols defaults */
 .material-symbols-outlined {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;

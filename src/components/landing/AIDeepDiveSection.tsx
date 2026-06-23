@@ -413,7 +413,7 @@ function EnginePanel({
               <Brain size={13} className="text-white" />
             </span>
             <p className="text-[11.5px] font-semibold text-white">
-              Sportico Engine
+              Bộ máy Sportico
             </p>
             <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9.5px] text-white/50">
               v3.2.1
@@ -425,7 +425,7 @@ function EnginePanel({
               <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
             </span>
-            Live
+            Trực tiếp
           </span>
         </div>
 

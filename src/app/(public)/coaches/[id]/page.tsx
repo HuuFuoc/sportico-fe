@@ -22,13 +22,13 @@ import {
   MapPin,
   MessageCircle,
   MessageSquare,
+  Package,
   Pencil,
   ShieldCheck,
   Sparkles,
   Star,
   Trash2,
   Trophy,
-  Video,
   Wifi,
   X,
 } from "lucide-react";
@@ -63,6 +63,34 @@ interface PageProps {
 function fmtVND(value?: number | null): string {
   if (value == null || Number.isNaN(value)) return "Liên hệ";
   return new Intl.NumberFormat("vi-VN").format(value) + "đ";
+}
+
+// ── Vietnamese label helpers ────────────────────────────────────────────────────
+// Only the *display label* is localized. The sport id / isOnline flag sent to the
+// backend is never touched — these helpers run at render time only.
+
+const SPORT_VI: Record<string, string> = {
+  badminton: "Cầu lông",
+  tennis: "Quần vợt",
+  "table tennis": "Bóng bàn",
+  pickleball: "Pickleball",
+  football: "Bóng đá",
+  soccer: "Bóng đá",
+  basketball: "Bóng rổ",
+  swimming: "Bơi lội",
+  volleyball: "Bóng chuyền",
+  yoga: "Yoga",
+  gym: "Gym",
+};
+
+function viSport(name?: string | null): string {
+  if (!name) return "—";
+  return SPORT_VI[name.trim().toLowerCase()] ?? name;
+}
+
+/** "Trực tuyến" (online) vs "Trực tiếp" (in-person). */
+function viMode(isOnline?: boolean | null): string {
+  return isOnline ? "Trực tuyến" : "Trực tiếp";
 }
 
 // ── Media helpers ─────────────────────────────────────────────────────────────
@@ -285,6 +313,17 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
   const hasRating = coach.rating > 0 && coach.reviewCount > 0;
   const media = richData?.media ?? [];
 
+  // Adaptive media grid: a 2-image gallery should show two larger tiles rather
+  // than two tiny squares lost in a 4-column grid.
+  const mediaCols =
+    media.length <= 1
+      ? "grid-cols-1 sm:grid-cols-2"
+      : media.length === 2
+        ? "grid-cols-2"
+        : media.length === 3
+          ? "grid-cols-2 sm:grid-cols-3"
+          : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4";
+
   const publicPackages: PublicPackage[] = (
     richData?.trainingPackages ?? []
   ).filter((p) => {
@@ -321,7 +360,7 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       <PublicNavbar variant="solid" />
 
       <main className="flex-1 bg-surface px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1120px] pb-20">
+        <div className="mx-auto max-w-[1200px] pb-20">
           {/* Breadcrumb nav */}
           <motion.nav
             initial={{ opacity: 0, y: -6 }}
@@ -398,45 +437,47 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                 </div>
 
                 {/* Identity */}
-                <div className="min-w-0 flex-1 pb-1 space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <h1 className="text-[20px] sm:text-[24px] font-bold text-white leading-tight drop-shadow-sm">
+                <div className="min-w-0 flex-1 pb-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-[22px] sm:text-[30px] font-bold text-white leading-tight drop-shadow-sm">
                         {displayName}
                       </h1>
                       {coach.verified && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/80 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-                          <Sparkles size={10} />
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-0.5 text-[11.5px] font-semibold text-primary shadow-sm">
+                          <BadgeCheck size={12} />
                           Đã xác minh
                         </span>
                       )}
                     </div>
                     {coach.headline && (
-                      <p className="text-[13px] text-white/80 truncate">
+                      <p className="text-[13px] sm:text-[14px] text-white/85 line-clamp-1">
                         {coach.headline}
                       </p>
                     )}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/70">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] sm:text-[12.5px] text-white/75">
                       {hasRating && (
                         <span className="flex items-center gap-1">
-                          <Star size={12} className="fill-amber-400 text-amber-400" />
-                          <span className="font-semibold text-white/90 tabular-nums">
+                          <Star size={13} className="fill-amber-400 text-amber-400" />
+                          <span className="font-semibold text-white/95 tabular-nums">
                             {coach.rating.toFixed(1)}
                           </span>
                           <span className="tabular-nums">({coach.reviewCount})</span>
                         </span>
                       )}
                       {coach.yearsExperience > 0 && (
-                        <span>{coach.yearsExperience} năm kinh nghiệm</span>
+                        <span className="flex items-center gap-1">
+                          <Trophy size={12} />
+                          {coach.yearsExperience} năm kinh nghiệm
+                        </span>
                       )}
                       {(richData?.isOnlineAvailable || richData?.isOfflineAvailable) && (
                         <span className="flex items-center gap-1">
-                          {richData.isOnlineAvailable && <Wifi size={11} />}
-                          {richData.isOfflineAvailable && <MapPin size={11} />}
+                          {richData.isOnlineAvailable ? <Wifi size={12} /> : <MapPin size={12} />}
                           {richData.isOnlineAvailable && richData.isOfflineAvailable
-                            ? "Online & Offline"
+                            ? "Trực tuyến & trực tiếp"
                             : richData.isOnlineAvailable
-                              ? "Online"
-                              : "Offline"}
+                              ? "Dạy trực tuyến"
+                              : "Dạy trực tiếp"}
                         </span>
                       )}
                     </div>
@@ -446,37 +487,35 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
           </motion.div>
 
           {/* ── 2-column layout ───────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-7">
             {/* ── Left column ─────────────────────────────────────────────── */}
-            <div className="space-y-5 lg:col-span-8">
+            <div className="min-w-0 space-y-6">
 
               {/* Tổng quan */}
-              <Section title="Tổng quan" delay={0.08}>
+              <Section title="Tổng quan" icon={<Info size={17} />} delay={0.08}>
                 {coach.bio ? (
                   <p className="text-[14px] leading-relaxed text-on-surface-variant whitespace-pre-line">
                     {coach.bio}
                   </p>
                 ) : (
-                  <Placeholder>Chưa có tiểu sử.</Placeholder>
+                  <Placeholder>Huấn luyện viên chưa cập nhật phần giới thiệu.</Placeholder>
                 )}
 
                 {(hasLocation || richData?.isOnlineAvailable || richData?.isOfflineAvailable) && (
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {hasLocation && (
-                      <InfoChip icon={<MapPin size={13} />}>
-                        {[richData?.teachingDistrict, richData?.teachingCity]
-                          .filter(Boolean)
-                          .join(", ") ||
-                          richData?.teachingAddress ||
-                          coach.location ||
-                          "Chưa cập nhật"}
-                      </InfoChip>
-                    )}
+                    <InfoChip icon={<MapPin size={14} />}>
+                      {[richData?.teachingDistrict, richData?.teachingCity]
+                        .filter(Boolean)
+                        .join(", ") ||
+                        richData?.teachingAddress ||
+                        coach.location ||
+                        "Chưa cập nhật địa điểm dạy"}
+                    </InfoChip>
                     {richData?.isOnlineAvailable && (
-                      <InfoChip icon={<Wifi size={13} />}>Dạy Online</InfoChip>
+                      <InfoChip icon={<Wifi size={14} />}>Dạy trực tuyến</InfoChip>
                     )}
                     {richData?.isOfflineAvailable && (
-                      <InfoChip icon={<Video size={13} />}>Dạy Offline</InfoChip>
+                      <InfoChip icon={<MapPin size={14} />}>Dạy trực tiếp</InfoChip>
                     )}
                   </div>
                 )}
@@ -505,22 +544,6 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                 )}
               </Section>
 
-              {/* Chuyên môn */}
-              {coach.specialties.length > 0 && (
-                <Section title="Chuyên môn" delay={0.12}>
-                  <div className="flex flex-wrap gap-2">
-                    {coach.specialties.map((tag, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1 text-[12.5px] font-medium text-primary"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </Section>
-              )}
-
               {/* Gói tập — selectable cards */}
               <PackageSection
                 packages={publicPackages}
@@ -532,9 +555,30 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                 delay={0.16}
               />
 
+              {/* Chuyên môn & phong cách huấn luyện */}
+              {coach.specialties.length > 0 && (
+                <Section
+                  title="Chuyên môn & phong cách huấn luyện"
+                  subtitle="Thế mạnh và lĩnh vực huấn luyện viên tập trung đào tạo"
+                  icon={<Sparkles size={16} />}
+                  delay={0.2}
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {coach.specialties.map((tag, i) => (
+                      <span
+                        key={i}
+                        className="rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1.5 text-[13px] font-medium text-primary"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </Section>
+              )}
+
               {/* Chứng chỉ & Thành tích */}
               {(richData?.certificationsSummary || richData?.achievementsSummary) && (
-                <Section title="Chứng chỉ & Thành tích" delay={0.22}>
+                <Section title="Chứng chỉ & thành tích" icon={<BadgeCheck size={17} />} delay={0.24}>
                   <div className="grid gap-4 sm:grid-cols-2">
                     {richData.certificationsSummary && (
                       <div className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-4">
@@ -564,8 +608,8 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
 
               {/* Media nổi bật */}
               {media.length > 0 && (
-                <Section title="Media nổi bật" delay={0.27}>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <Section title="Media nổi bật" icon={<ImageIcon size={17} />} delay={0.28}>
+                  <div className={cn("grid gap-3", mediaCols)}>
                     {media.slice(0, 8).map((m, i) => (
                       <motion.div
                         key={m.id}
@@ -595,8 +639,8 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
             </div>
 
             {/* ── Right sidebar — Booking Summary ───────────────────────── */}
-            <aside className="lg:col-span-4">
-              <div className="lg:sticky lg:top-[80px] space-y-4">
+            <aside className="min-w-0">
+              <div className="lg:sticky lg:top-[92px] space-y-4">
 
                 {/* AI match */}
                 {typeof coach.matchPercent === "number" && coach.matchPercent > 0 && (
@@ -692,11 +736,11 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                           <div className="px-3 py-2.5 space-y-1.5 text-[12px]">
                             <SummaryRow
                               label="Môn thể thao"
-                              value={selectedPackage.sportName ?? "—"}
+                              value={viSport(selectedPackage.sportName)}
                             />
                             <SummaryRow
                               label="Hình thức"
-                              value={selectedPackage.isOnline ? "Online" : "Offline"}
+                              value={viMode(selectedPackage.isOnline)}
                             />
                             <SummaryRow
                               label="Số buổi"
@@ -831,11 +875,18 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                   </div>
 
                   {/* Trust footer */}
-                  <div className="flex items-center justify-center gap-1.5 border-t border-[var(--color-border-soft)] bg-surface-container-low px-5 py-3">
-                    <ShieldCheck size={13} className="text-emerald-600" />
-                    <span className="text-[11px] text-on-surface-variant">
+                  <div className="space-y-1.5 border-t border-[var(--color-border-soft)] bg-surface-container-low px-5 py-3.5">
+                    <TrustRow icon={<ShieldCheck size={13} className="text-emerald-600" />}>
                       Thanh toán an toàn qua PayOS
-                    </span>
+                    </TrustRow>
+                    {coach.verified && (
+                      <TrustRow icon={<BadgeCheck size={13} className="text-emerald-600" />}>
+                        Huấn luyện viên đã xác minh
+                      </TrustRow>
+                    )}
+                    <TrustRow icon={<MessageCircle size={13} className="text-emerald-600" />}>
+                      Có thể trao đổi trước khi mua
+                    </TrustRow>
                   </div>
                 </motion.div>
               </div>
@@ -1077,6 +1128,9 @@ function ReviewsSection({
 
   const reviews = reviewsData?.items ?? [];
   const hasNext = reviewsData?.hasNext ?? false;
+  // Only surface the sort/filter controls once the coach actually has reviews —
+  // an empty profile shouldn't be cluttered with rating filters that do nothing.
+  const hasAnyReviews = (summary?.totalReviews ?? 0) > 0;
 
   // Enrich reviews where the backend omitted reviewer info
   const [profileMap, setProfileMap] = useState<Map<string, { name: string; avatarUrl?: string }>>(new Map());
@@ -1246,12 +1300,16 @@ function ReviewsSection({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.32, ease: EASE_LOCAL }}
-      className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 space-y-5"
+      className="rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 space-y-5 sm:p-6"
     >
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-on-surface">
-        <Star size={16} className="text-amber-400" />
-        Đánh giá từ học viên
-      </h2>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-amber-50 text-amber-500">
+          <Star size={16} />
+        </span>
+        <h2 className="text-[15px] font-semibold text-on-surface leading-tight">
+          Đánh giá từ học viên
+        </h2>
+      </div>
 
       {/* Summary */}
       {!summaryLoading && summary && summary.totalReviews > 0 && (
@@ -1402,7 +1460,8 @@ function ReviewsSection({
         </div>
       )}
 
-      {/* Sort + filter controls */}
+      {/* Sort + filter controls — only when the coach has reviews to sort */}
+      {hasAnyReviews && (
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[12px] text-on-surface-variant">Sắp xếp:</span>
         <div className="flex gap-1">
@@ -1439,6 +1498,7 @@ function ReviewsSection({
           ))}
         </div>
       </div>
+      )}
 
       {/* Review list */}
       {listLoading && (
@@ -1448,9 +1508,12 @@ function ReviewsSection({
         </div>
       )}
       {!listLoading && reviews.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[var(--color-border-soft)] py-10 text-center">
-          <MessageSquare size={24} className="mb-2 text-on-surface-variant/30" />
-          <p className="text-[13px] text-on-surface-variant">Chưa có đánh giá nào.</p>
+        <div className="flex flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-[var(--color-border-soft)] px-4 py-7 text-center">
+          <MessageSquare size={22} className="mb-1 text-on-surface-variant/30" />
+          <p className="text-[13px] font-medium text-on-surface">Chưa có đánh giá nào.</p>
+          <p className="max-w-[320px] text-[12px] text-on-surface-variant">
+            Các đánh giá sẽ xuất hiện sau khi học viên hoàn thành buổi học với huấn luyện viên.
+          </p>
         </div>
       )}
       {!listLoading && reviews.length > 0 && (
@@ -1612,11 +1675,21 @@ function PackageSection({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay, ease: EASE }}
-      className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)]"
+      className="rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)] sm:p-6"
     >
-      <h2 className="mb-4 text-[15px] font-semibold text-on-surface">
-        Gói tập của {firstName}
-      </h2>
+      <div className="mb-4 flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/[0.08] text-primary">
+          <Package size={17} />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold text-on-surface leading-tight">
+            Gói tập của {firstName}
+          </h2>
+          <p className="text-[12px] text-on-surface-variant">
+            Chọn gói phù hợp với mục tiêu luyện tập của bạn
+          </p>
+        </div>
+      </div>
 
       {isMock || (!loading && packages.length === 0) ? (
         /* Empty state */
@@ -1687,7 +1760,7 @@ function PackageSection({
                     </div>
                     <p className="text-[12px] text-on-surface-variant mb-2">
                       {[
-                        pkg.sportName,
+                        viSport(pkg.sportName),
                         pkg.sessionCount > 0 && `${pkg.sessionCount} buổi`,
                         pkg.durationDays > 0 && `${pkg.durationDays} ngày`,
                       ]
@@ -1716,7 +1789,7 @@ function PackageSection({
                         ) : (
                           <MapPin size={10} />
                         )}
-                        {pkg.isOnline ? "Online" : "Offline"}
+                        {viMode(pkg.isOnline)}
                       </span>
                     </div>
                   </div>
@@ -1758,10 +1831,14 @@ function PackageSection({
 
 function Section({
   title,
+  subtitle,
+  icon,
   children,
   delay = 0,
 }: {
   title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   delay?: number;
 }) {
@@ -1770,11 +1847,23 @@ function Section({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay, ease: EASE }}
-      className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)]"
+      className="rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04)] sm:p-6"
     >
-      <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-on-surface-variant">
-        {title}
-      </h2>
+      <div className="mb-4 flex items-center gap-2.5">
+        {icon && (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/[0.08] text-primary">
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold text-on-surface leading-tight">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="text-[12px] text-on-surface-variant">{subtitle}</p>
+          )}
+        </div>
+      </div>
       {children}
     </motion.section>
   );
@@ -1787,6 +1876,15 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-2">
       <span className="text-on-surface-variant">{label}</span>
       <span className="font-medium text-on-surface text-right">{value}</span>
+    </div>
+  );
+}
+
+function TrustRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="shrink-0">{icon}</span>
+      <span className="text-[11.5px] text-on-surface-variant">{children}</span>
     </div>
   );
 }

@@ -1119,11 +1119,11 @@ function AICoachCard({
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10.5px] uppercase tracking-wider font-bold text-primary">
-            Sportico AI · Phân tích Coaching
+            Sportico AI · Phân tích huấn luyện
           </span>
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-success-container text-[10px] font-semibold text-[#1f7a4d]">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            Live
+            Trực tiếp
           </span>
         </div>
 

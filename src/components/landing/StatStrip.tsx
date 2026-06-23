@@ -191,7 +191,7 @@ function FeaturedStat({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-violet-700">
             <Sparkles size={11} />
-            AI Engine
+            Bộ máy AI
           </span>
           <span className="text-[11.5px] text-slate-400">
             Độ chính xác ghép nối · 8 tuần qua

@@ -74,7 +74,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
         <div className="relative aspect-[16/11] overflow-hidden">
           <motion.img
             src={HERO_ACTION_SHOT}
-            alt="A coach running a training session with an athlete on a tennis court"
+            alt="Huấn luyện viên đang hướng dẫn học viên trong buổi tập trên sân"
             initial={{ scale: 1.08 }}
             animate={{ scale: 1 }}
             transition={{ duration: 1.6, ease: "easeOut" }}
@@ -94,7 +94,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
               size={13}
               className="text-primary"
             />
-            Verified coach
+            HLV đã xác minh
           </motion.span>
 
           {/* Live availability pill */}
@@ -108,7 +108,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
               <span className="absolute inset-0 rounded-full bg-white animate-ping" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
             </span>
-            Available
+            Đang rảnh
           </motion.span>
 
           <motion.div
@@ -178,7 +178,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
                 >
                   <MaterialIcon name="auto_awesome" filled size={14} />
                 </motion.span>
-                AI Match
+                Khớp AI
               </span>
               <span
                 className="text-[18px] font-semibold leading-none text-primary tabular-nums"
@@ -207,7 +207,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
               </motion.div>
             </div>
             <p className="mt-2 text-[12px] text-on-surface-variant">
-              Matched to your goals, schedule &amp; training style
+              Phù hợp với mục tiêu, lịch tập &amp; phong cách của bạn
             </p>
           </div>
 
@@ -243,7 +243,7 @@ export function HeroPreview({ coach }: { coach: Coach }) {
               +18%
             </p>
             <p className="mt-1 text-[11px] text-on-surface-variant">
-              faster progress
+              tiến bộ nhanh hơn
             </p>
           </div>
         </div>
@@ -262,9 +262,9 @@ export function HeroPreview({ coach }: { coach: Coach }) {
         </span>
         <div className="text-[11px] leading-tight">
           <p className="font-semibold text-on-surface tabular-nums">
-            12 booked today
+            12 lượt đặt hôm nay
           </p>
-          <p className="text-on-surface-variant">live activity</p>
+          <p className="text-on-surface-variant">hoạt động trực tiếp</p>
         </div>
       </motion.div>
     </div>
