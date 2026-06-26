@@ -17,6 +17,7 @@ export type {
   CoachProfileSummaryResponse,
   LearnerProfileSummaryResponse,
   TrainingPackageResponse,
+  TrainingPackageSessionResponse,
   SportResponse,
   PagedResult,
 } from "@/lib/backend/dto";
@@ -64,6 +65,27 @@ export interface CoachProfileMediaRequest {
 }
 
 // ---- Training packages (POST/PUT /api/training-packages) -------------------
+// New backend model: "gói tập luyện theo lịch cố định" (fixed-schedule package).
+// The package now carries a date window (startDate/endDate) plus the full list of
+// fixed sessions. `durationDays` is DERIVED by the backend from the window and is
+// therefore NOT part of the create/update request. `sessionCount` must equal
+// `sessions.length`, and each `sessionNumber` must be unique and cover 1..N.
+
+/** One fixed lesson inside the package schedule. */
+export interface TrainingPackageSessionRequest {
+  sessionNumber: number;
+  /** ISO datetime (UTC). startTime < endTime, within [startDate, endDate]. */
+  startTime: string;
+  endTime: string;
+  level?: string;
+  /** Must be > 0. */
+  maxParticipants: number;
+  /** Required when isOnline === false. */
+  location?: string;
+  isOnline: boolean;
+  meetingUrl?: string | null;
+  note?: string;
+}
 
 export interface TrainingPackageRequest {
   sportId: number;
@@ -71,11 +93,15 @@ export interface TrainingPackageRequest {
   description?: string;
   price: number;
   sessionCount: number;
-  durationDays: number;
+  /** ISO datetime window of the package. */
+  startDate: string;
+  endDate: string;
   location?: string;
   isOnline: boolean;
   level?: string;
   goalType?: string;
+  /** Fixed schedule — sessions.length must equal sessionCount. */
+  sessions: TrainingPackageSessionRequest[];
 }
 
 export interface TrainingPackageFilter {

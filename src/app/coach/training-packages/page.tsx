@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Archive,
+  CalendarRange,
   CheckCircle2,
   Clock,
+  Eye,
   Globe,
   Info,
   Layers,
@@ -14,7 +16,6 @@ import {
   Package,
   Pencil,
   Plus,
-  X,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -22,21 +23,46 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 import { getSports } from "@/lib/sports-api";
 import {
   getMyTrainingPackages,
-  createTrainingPackage,
-  updateTrainingPackage,
   archiveTrainingPackage,
   trainingPackageStatusLabel,
   trainingPackageStatusBadge,
+  levelLabel,
+  goalTypeLabel,
 } from "@/lib/training-package-api";
 import { messageForApiError } from "@/lib/errors-vi";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { cn, formatCurrencyVnd } from "@/lib/utils";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type {
-  TrainingPackageResponse,
-  TrainingPackageRequest,
-  SportOption,
-} from "@/lib/types/coach";
+import { CoachPackageDetailModal } from "@/components/coach-packages/CoachPackageDetailModal";
+import { PackageFormModal } from "@/components/coach-packages/create-form/PackageFormModal";
+import type { TrainingPackageResponse } from "@/lib/types/coach";
+
+// ---- Date helpers (display only) -------------------------------------------
+
+/** Format an ISO datetime for compact Vietnamese display (schedule preview). */
+function formatVnDateTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Format an ISO date for compact Vietnamese display (window range). */
+function formatVnDate(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
 
 type StatusTab = "all" | "pending" | "published" | "rejected" | "archived";
 
@@ -63,6 +89,8 @@ export default function CoachTrainingPackagesPage() {
   const [tab, setTab] = useState<StatusTab>("all");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TrainingPackageResponse | null>(null);
+  const [detailTarget, setDetailTarget] =
+    useState<TrainingPackageResponse | null>(null);
   const [archiveTarget, setArchiveTarget] =
     useState<TrainingPackageResponse | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -228,6 +256,7 @@ export default function CoachTrainingPackagesPage() {
                 key={p.id}
                 pkg={p}
                 index={i}
+                onViewDetail={() => setDetailTarget(p)}
                 onEdit={() => setEditing(p)}
                 onArchive={() => setArchiveTarget(p)}
               />
@@ -252,6 +281,25 @@ export default function CoachTrainingPackagesPage() {
               showSuccess(msg);
               refetch();
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Detail modal */}
+      <AnimatePresence>
+        {detailTarget && (
+          <CoachPackageDetailModal
+            pkg={detailTarget}
+            canEdit={canEdit(detailTarget.status)}
+            onEdit={() => {
+              setEditing(detailTarget);
+              setDetailTarget(null);
+            }}
+            onArchive={() => {
+              setArchiveTarget(detailTarget);
+              setDetailTarget(null);
+            }}
+            onClose={() => setDetailTarget(null)}
           />
         )}
       </AnimatePresence>
@@ -394,17 +442,23 @@ function SummaryRow({ items }: { items: TrainingPackageResponse[] }) {
 function PackageCard({
   pkg,
   index,
+  onViewDetail,
   onEdit,
   onArchive,
 }: {
   pkg: TrainingPackageResponse;
   index: number;
+  onViewDetail: () => void;
   onEdit: () => void;
   onArchive: () => void;
 }) {
   const editable = canEdit(pkg.status);
   const archived = (pkg.status ?? "").toLowerCase() === "archived";
-  const tags = [pkg.goalType, pkg.level, pkg.location].filter(Boolean) as string[];
+  const tags = [
+    goalTypeLabel(pkg.goalType),
+    levelLabel(pkg.level),
+    pkg.location,
+  ].filter(Boolean) as string[];
   const visibleTags = tags.slice(0, 3);
   const extraTagCount = tags.length - visibleTags.length;
 
@@ -450,11 +504,13 @@ function PackageCard({
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] text-on-surface-variant uppercase tracking-wide font-medium">
-            Thời hạn
+            Thời gian
           </span>
           <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-on-surface">
-            <Clock size={12} className="text-on-surface-variant" />
-            {pkg.durationDays} ngày
+            <CalendarRange size={12} className="text-on-surface-variant shrink-0" />
+            {pkg.startDate || pkg.endDate
+              ? `${formatVnDate(pkg.startDate)} – ${formatVnDate(pkg.endDate)}`
+              : `${pkg.durationDays} ngày`}
           </span>
         </div>
         <div className="flex flex-col gap-0.5">
@@ -468,11 +524,39 @@ function PackageCard({
               <MapPin size={12} className="text-on-surface-variant shrink-0" />
             )}
             <span className="truncate">
-              {pkg.sportName || (pkg.isOnline ? "Online" : "Trực tiếp")}
+              {pkg.sportName || (pkg.isOnline ? "Trực tuyến" : "Trực tiếp")}
             </span>
           </span>
         </div>
       </div>
+
+      {/* Fixed schedule preview — first few sessions */}
+      {pkg.sessions && pkg.sessions.length > 0 && (
+        <div className="mb-3 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low/40 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide font-medium text-on-surface-variant mb-1.5 inline-flex items-center gap-1">
+            <Clock size={11} />
+            Lịch học cố định
+          </p>
+          <ul className="space-y-1">
+            {pkg.sessions.slice(0, 3).map((s) => (
+              <li
+                key={s.sessionNumber}
+                className="flex items-center justify-between gap-2 text-[11.5px] text-on-surface"
+              >
+                <span className="text-on-surface-variant">Buổi {s.sessionNumber}</span>
+                <span className="tabular-nums font-medium">
+                  {formatVnDateTime(s.startTime)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {pkg.sessions.length > 3 && (
+            <p className="text-[10.5px] text-on-surface-variant mt-1">
+              +{pkg.sessions.length - 3} buổi khác
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Tags */}
       {tags.length > 0 && (
@@ -513,6 +597,14 @@ function PackageCard({
         </div>
         <div className="flex items-center gap-1.5">
           <button
+            onClick={onViewDetail}
+            title="Xem chi tiết gói tập"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[7px] text-[12px] font-medium border border-primary/25 bg-primary/[0.06] text-primary hover:bg-primary/10 transition-colors"
+          >
+            <Eye size={13} />
+            Xem chi tiết
+          </button>
+          <button
             onClick={onEdit}
             disabled={!editable}
             title={
@@ -540,267 +632,16 @@ function PackageCard({
   );
 }
 
-// ---- Create / edit modal ---------------------------------------------------
-
-function PackageFormModal({
-  initial,
-  sports,
-  onClose,
-  onSaved,
-}: {
-  initial: TrainingPackageResponse | null;
-  sports: SportOption[];
-  onClose: () => void;
-  onSaved: (message: string) => void;
-}) {
-  const isEdit = Boolean(initial);
-  const [sportId, setSportId] = useState<string>(
-    initial ? String(initial.sportId) : sports[0] ? String(sports[0].id) : "",
-  );
-  const [title, setTitle] = useState(initial?.title ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
-  const [price, setPrice] = useState(initial ? String(initial.price) : "");
-  const [sessionCount, setSessionCount] = useState(
-    initial ? String(initial.sessionCount) : "",
-  );
-  const [durationDays, setDurationDays] = useState(
-    initial ? String(initial.durationDays) : "",
-  );
-  const [location, setLocation] = useState(initial?.location ?? "");
-  const [isOnline, setIsOnline] = useState(initial?.isOnline ?? false);
-  const [level, setLevel] = useState(initial?.level ?? "");
-  const [goalType, setGoalType] = useState(initial?.goalType ?? "");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const validate = (): string | null => {
-    const sid = Number(sportId);
-    if (!sid || sid <= 0) return "Vui lòng chọn môn thể thao.";
-    if (!title.trim()) return "Vui lòng nhập tên gói tập.";
-    if (title.length > 200) return "Tên gói tập tối đa 200 ký tự.";
-    if (description.length > 3000) return "Mô tả tối đa 3000 ký tự.";
-    const p = Number(price);
-    if (!Number.isFinite(p) || p <= 0) return "Giá phải lớn hơn 0.";
-    if (!Number.isInteger(p)) return "Giá phải là số nguyên (không có phần thập phân).";
-    const sc = Number(sessionCount);
-    if (!Number.isInteger(sc) || sc <= 0) return "Số buổi tập phải lớn hơn 0.";
-    const dd = Number(durationDays);
-    if (!Number.isInteger(dd) || dd <= 0) return "Thời hạn gói phải lớn hơn 0.";
-    if (location.length > 255) return "Địa điểm tối đa 255 ký tự.";
-    if (level.length > 50) return "Trình độ tối đa 50 ký tự.";
-    if (goalType.length > 50) return "Mục tiêu tối đa 50 ký tự.";
-    return null;
-  };
-
-  const submit = async () => {
-    const v = validate();
-    if (v) {
-      setErr(v);
-      return;
-    }
-    setSaving(true);
-    setErr(null);
-    const payload: TrainingPackageRequest = {
-      sportId: Number(sportId),
-      title: title.trim(),
-      description: description.trim() || undefined,
-      price: Number(price),
-      sessionCount: Number(sessionCount),
-      durationDays: Number(durationDays),
-      location: location.trim() || undefined,
-      isOnline,
-      level: level.trim() || undefined,
-      goalType: goalType.trim() || undefined,
-    };
-    try {
-      if (isEdit && initial) {
-        await updateTrainingPackage(initial.id, payload);
-        onSaved("Đã cập nhật gói tập.");
-      } else {
-        await createTrainingPackage(payload);
-        onSaved("Gói tập đã được tạo và đang chờ quản trị viên duyệt.");
-      }
-    } catch (e) {
-      setErr(messageForApiError(e));
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal onClose={() => !saving && onClose()}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[16px] font-semibold">
-          {isEdit ? "Cập nhật gói tập" : "Tạo gói tập"}
-        </h3>
-        <button
-          onClick={() => !saving && onClose()}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low"
-          aria-label="Đóng"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        <Label label="Môn thể thao" required>
-          <select
-            value={sportId}
-            onChange={(e) => setSportId(e.target.value)}
-            className="w-full h-11 pl-3.5 pr-9 appearance-none bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px] cursor-pointer"
-          >
-            <option value="" disabled>
-              Chọn môn thể thao…
-            </option>
-            {sports.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </Label>
-
-        <Label label="Tên gói tập" required>
-          <Inp
-            value={title}
-            onChange={(e) => setTitle(e.target.value.slice(0, 200))}
-            placeholder="VD: Gói cầu lông cơ bản 10 buổi"
-          />
-        </Label>
-
-        <Label label="Mô tả">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value.slice(0, 3000))}
-            rows={3}
-            placeholder="Nội dung, lộ trình, đối tượng phù hợp…"
-            className="w-full px-3.5 py-2.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px] resize-none leading-relaxed"
-          />
-        </Label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Label label="Giá (VND)" required hint="Số nguyên.">
-            <Inp
-              type="number"
-              min={1}
-              className="tabular-nums"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="VD: 1500000"
-            />
-          </Label>
-          <Label label="Số buổi tập" required>
-            <Inp
-              type="number"
-              min={1}
-              className="tabular-nums"
-              value={sessionCount}
-              onChange={(e) => setSessionCount(e.target.value)}
-              placeholder="VD: 10"
-            />
-          </Label>
-          <Label label="Thời hạn gói (ngày)" required>
-            <Inp
-              type="number"
-              min={1}
-              className="tabular-nums"
-              value={durationDays}
-              onChange={(e) => setDurationDays(e.target.value)}
-              placeholder="VD: 30"
-            />
-          </Label>
-          <Label label="Trình độ" hint="Tùy chọn.">
-            <Inp
-              value={level}
-              onChange={(e) => setLevel(e.target.value.slice(0, 50))}
-              placeholder="VD: Cơ bản"
-            />
-          </Label>
-        </div>
-
-        <Label label="Mục tiêu" hint="Tùy chọn.">
-          <Inp
-            value={goalType}
-            onChange={(e) => setGoalType(e.target.value.slice(0, 50))}
-            placeholder="VD: Giảm cân, thi đấu…"
-          />
-        </Label>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          <Label label="Địa điểm" hint="Tùy chọn.">
-            <Inp
-              value={location}
-              onChange={(e) => setLocation(e.target.value.slice(0, 255))}
-              placeholder="VD: Sân cầu lông ABC"
-            />
-          </Label>
-          <div className="pt-[26px]">
-            <button
-              type="button"
-              onClick={() => setIsOnline((v) => !v)}
-              className="w-full flex items-center justify-between gap-3 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-low/50 px-3.5 h-11 text-left"
-            >
-              <span className="text-[13px] font-medium">Dạy online</span>
-              <span
-                className={cn(
-                  "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                  isOnline ? "bg-primary" : "bg-surface-container-high",
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-                    isOnline ? "translate-x-[22px]" : "translate-x-0.5",
-                  )}
-                />
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {err && (
-          <p className="text-[12.5px] text-rose-600" role="alert">
-            {err}
-          </p>
-        )}
-      </div>
-
-      <div className="flex justify-end gap-2 mt-5">
-        <button
-          onClick={() => !saving && onClose()}
-          disabled={saving}
-          className="h-10 px-4 rounded-[9px] border border-[var(--color-border-soft)] text-[13px] font-medium hover:bg-surface-container-low transition-colors disabled:opacity-50"
-        >
-          Hủy
-        </button>
-        <button
-          onClick={() => void submit()}
-          disabled={saving}
-          className="inline-flex items-center gap-1.5 h-10 px-5 rounded-[9px] bg-primary text-white text-[13px] font-semibold hover:bg-[#2d20b8] transition-colors disabled:opacity-60"
-        >
-          {saving ? (
-            <>
-              <Loader2 size={15} className="animate-spin" />
-              Đang lưu…
-            </>
-          ) : isEdit ? (
-            "Cập nhật gói tập"
-          ) : (
-            "Tạo gói tập"
-          )}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 // ---- shared primitives -----------------------------------------------------
 
 function Modal({
   children,
   onClose,
+  maxWidthClass = "max-w-[520px]",
 }: {
   children: React.ReactNode;
   onClose: () => void;
+  maxWidthClass?: string;
 }) {
   return (
     <motion.div
@@ -818,7 +659,10 @@ function Modal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: 8 }}
         transition={{ duration: 0.2 }}
-        className="relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_20px_60px_-12px_rgba(15,15,30,0.3)]"
+        className={cn(
+          "relative w-full max-h-[90vh] overflow-y-auto rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_20px_60px_-12px_rgba(15,15,30,0.3)]",
+          maxWidthClass,
+        )}
       >
         {children}
       </motion.div>
@@ -826,41 +670,3 @@ function Modal({
   );
 }
 
-function Label({
-  label,
-  hint,
-  required,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between mb-1.5">
-        <label className="text-[13px] font-semibold text-on-surface">
-          {label}
-          {required && <span className="text-primary ml-0.5">*</span>}
-        </label>
-        {hint && (
-          <span className="text-[11px] text-on-surface-variant">{hint}</span>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Inp(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={cn(
-        "w-full h-11 px-3.5 bg-surface-container-low border border-[var(--color-border-soft)] rounded-[8px] outline-none focus:border-primary text-[14px]",
-        props.className,
-      )}
-    />
-  );
-}

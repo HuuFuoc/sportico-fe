@@ -110,3 +110,56 @@ export function trainingPackageStatusBadge(status: string | null | undefined): s
       return "bg-[#fff5d6] text-[#b95000] border-[#f4d68a]/60";
   }
 }
+
+// ---- Enum → Vietnamese label maps ------------------------------------------
+// Only the DISPLAY label is localized — the value sent to the backend keeps the
+// English enum (beginner/fitness/online/…) per the API contract.
+
+/** Standard level enum options for the create/edit form. */
+export const LEVEL_OPTIONS = [
+  { value: "beginner", label: "Cơ bản" },
+  { value: "intermediate", label: "Trung cấp" },
+  { value: "advanced", label: "Nâng cao" },
+] as const;
+
+/** Standard goal-type enum options for the create/edit form. */
+export const GOAL_TYPE_OPTIONS = [
+  { value: "fitness", label: "Rèn luyện thể lực" },
+  { value: "skill", label: "Kỹ thuật" },
+  { value: "competition", label: "Thi đấu" },
+] as const;
+
+const LEVEL_LABELS: Record<string, string> = Object.fromEntries(
+  LEVEL_OPTIONS.map((o) => [o.value, o.label]),
+);
+const GOAL_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  GOAL_TYPE_OPTIONS.map((o) => [o.value, o.label]),
+);
+
+/** beginner → "Cơ bản". Unknown/custom values fall through unchanged. */
+export function levelLabel(value: string | null | undefined): string {
+  const v = (value ?? "").trim();
+  if (!v) return "";
+  return LEVEL_LABELS[v.toLowerCase()] ?? v;
+}
+
+/** fitness → "Rèn luyện thể lực". Unknown/custom values fall through unchanged. */
+export function goalTypeLabel(value: string | null | undefined): string {
+  const v = (value ?? "").trim();
+  if (!v) return "";
+  return GOAL_TYPE_LABELS[v.toLowerCase()] ?? v;
+}
+
+const SESSION_STATUS_LABELS: Record<string, string> = {
+  open: "Còn chỗ",
+  full: "Hết chỗ",
+  cancelled: "Đã hủy",
+  canceled: "Đã hủy",
+  completed: "Đã hoàn thành",
+};
+
+/** Fixed-session status → Vietnamese label (open/full/cancelled/completed). */
+export function sessionStatusLabel(status: string | null | undefined): string {
+  const s = (status ?? "").toLowerCase();
+  return SESSION_STATUS_LABELS[s] ?? "";
+}

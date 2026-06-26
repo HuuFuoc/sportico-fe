@@ -26,6 +26,7 @@ import type {
   SessionStatus,
   Sport,
   TrainingPackage,
+  TrainingPackageScheduleSession,
   TrainingPlan,
   VerificationRequest,
 } from "@/types";
@@ -48,6 +49,7 @@ import type {
   ReviewReportResponse,
   ReviewResponse,
   TrainingPackageResponse,
+  TrainingPackageSessionResponse,
   TrainingPlanResponse,
   TrainingSessionResponse,
   WithdrawalRequestResponse,
@@ -361,6 +363,28 @@ export function assessmentToUi(a: LearnerAssessmentResponse): LearnerAssessment 
   };
 }
 
+/** Fixed-schedule session DTO → read-only UI shape. Sorted by sessionNumber. */
+export function packageSessionsToUi(
+  sessions?: TrainingPackageSessionResponse[] | null,
+): TrainingPackageScheduleSession[] {
+  if (!sessions?.length) return [];
+  return [...sessions]
+    .map((s) => ({
+      sessionNumber: s.sessionNumber,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      level: s.level ?? undefined,
+      maxParticipants: s.maxParticipants ?? undefined,
+      remainingParticipants: s.remainingParticipants ?? undefined,
+      location: s.location ?? undefined,
+      isOnline: s.isOnline,
+      meetingUrl: s.meetingUrl ?? undefined,
+      note: s.note ?? undefined,
+      status: s.status ?? undefined,
+    }))
+    .sort((a, b) => a.sessionNumber - b.sessionNumber);
+}
+
 // ---- Coach's own listings (packages + posts) -------------------------------
 export function packageToUi(p: TrainingPackageResponse): TrainingPackage {
   return {
@@ -370,12 +394,15 @@ export function packageToUi(p: TrainingPackageResponse): TrainingPackage {
     price: p.price,
     sessionCount: p.sessionCount,
     durationDays: p.durationDays,
+    startDate: p.startDate ?? undefined,
+    endDate: p.endDate ?? undefined,
     sport: toSport(p.sportName) ?? "Strength",
     level: p.level ?? undefined,
     goalType: p.goalType ?? undefined,
     status: p.status ?? "Pending",
     isOnline: p.isOnline,
     createdAt: p.createdAt,
+    sessions: packageSessionsToUi(p.sessions),
   };
 }
 
@@ -635,10 +662,13 @@ export function trainingPackageToVerification(
     price: p.price,
     sessionCount: p.sessionCount,
     durationDays: p.durationDays,
+    startDate: p.startDate ?? undefined,
+    endDate: p.endDate ?? undefined,
     level: p.level ?? undefined,
     goalType: p.goalType ?? undefined,
     isOnline: p.isOnline,
     location: p.location ?? undefined,
+    sessions: packageSessionsToUi(p.sessions),
   };
 }
 

@@ -8,7 +8,6 @@ import {
   AlertCircle,
   ArrowLeft,
   BadgeCheck,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -52,6 +51,8 @@ import type { CurrentUserResponse, PublicCoachDetailResponse } from "@/lib/backe
 import type { CreateReviewRequest, UpdateReviewRequest, CreateReviewReportRequest } from "@/lib/backend/dto";
 import type { Review, ReviewSummary } from "@/types";
 import { BookSessionModal } from "@/components/common/BookSessionModal";
+import { CoachPackageCard } from "@/components/coach-packages/CoachPackageCard";
+import { PackageDetailModal } from "@/components/coach-packages/PackageDetailModal";
 import { CalendarPlus } from "lucide-react";
 
 interface PageProps {
@@ -63,6 +64,48 @@ interface PageProps {
 function fmtVND(value?: number | null): string {
   if (value == null || Number.isNaN(value)) return "Liên hệ";
   return new Intl.NumberFormat("vi-VN").format(value) + "đ";
+}
+
+/** ISO date → "dd/MM/yyyy" (Vietnamese). */
+function fmtDate(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+/** ISO datetime → "dd/MM HH:mm" for the fixed-schedule list. */
+function fmtScheduleTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Conservative "sold out" check for a fixed-schedule package: only treat it as
+ * full when EVERY session reports zero remaining spots (or status "full"). The
+ * backend remains the source of truth and will reject an unfillable purchase —
+ * this only hides the buy button when the data is unambiguous.
+ */
+function packageSoldOut(pkg: PublicPackage): boolean {
+  const sessions = pkg.sessions ?? [];
+  if (sessions.length === 0) return false;
+  return sessions.every((s) => {
+    const status = (s.status ?? "").toLowerCase();
+    if (status === "full" || status === "cancelled") return true;
+    return s.remainingParticipants != null && s.remainingParticipants <= 0;
+  });
 }
 
 // ── Vietnamese label helpers ────────────────────────────────────────────────────
@@ -186,6 +229,30 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       [id],
     );
 
+  // The public coach endpoint returns only a SUMMARY of each training package
+  // (price, sessionCount, durationDays…) and omits the fixed schedule
+  // (startDate/endDate + sessions[]). Fetch the full public detail per package
+  // so the cards, the booking sidebar and the detail modal can show the real
+  // lessons, dates and remaining slots instead of "Chưa cập nhật". Any package
+  // whose detail fetch fails falls back to its summary.
+  const packageIdsKey = (richData?.trainingPackages ?? [])
+    .map((p) => p.id)
+    .join(",");
+  const { data: fullPackages } = useApiResource<PublicPackage[] | null>(
+    async () => {
+      if (isMockMode()) return null;
+      const summaries = richData?.trainingPackages ?? [];
+      if (summaries.length === 0) return [];
+      const results = await Promise.allSettled(
+        summaries.map((p) => backend.publicTrainingPackage(p.id)),
+      );
+      return results.map((r, i) =>
+        r.status === "fulfilled" ? (r.value as PublicPackage) : summaries[i],
+      );
+    },
+    [packageIdsKey],
+  );
+
   // ── Learner existing booking check (determines CTA state) ───────────────────
   // Load learner's bookings to determine if they already have a package with
   // this coach — so the CTA can show "Đặt buổi tập" instead of "Mua gói".
@@ -205,6 +272,9 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
     })[0] ?? null;
 
   const [bookSessionOpen, setBookSessionOpen] = useState(false);
+
+  // Package detail modal — opened from a card's "Xem chi tiết".
+  const [detailPackageId, setDetailPackageId] = useState<string | null>(null);
 
   // Media lightbox — index into `media`, or null when closed.
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -324,12 +394,17 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
           ? "grid-cols-2 sm:grid-cols-3"
           : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4";
 
-  const publicPackages: PublicPackage[] = (
-    richData?.trainingPackages ?? []
-  ).filter((p) => {
-    const s = (p.status ?? "").toLowerCase();
-    return !s || s === "published" || s === "approved" || s === "active";
-  });
+  // Prefer the fully-detailed package (with schedule + dates) when its detail
+  // fetch has resolved; otherwise show the summary so cards render immediately.
+  const enrichedById = new Map(
+    (fullPackages ?? []).map((p) => [p.id, p] as const),
+  );
+  const publicPackages: PublicPackage[] = (richData?.trainingPackages ?? [])
+    .filter((p) => {
+      const s = (p.status ?? "").toLowerCase();
+      return !s || s === "published" || s === "approved" || s === "active";
+    })
+    .map((p) => enrichedById.get(p.id) ?? p);
 
   // Auto-select: first package by default, or the one the user clicked
   const selectedPackage: PublicPackage | null =
@@ -346,6 +421,25 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
           b.trainingPackageId === selectedPackage.id,
       ) ?? null)
     : null;
+
+  // Fixed-schedule package can be "full" — gate the purchase button accordingly.
+  const selectedPackageSoldOut = selectedPackage
+    ? packageSoldOut(selectedPackage)
+    : false;
+
+  // Package whose detail modal is open + whether the learner already owns it.
+  const detailPackage =
+    detailPackageId != null
+      ? (publicPackages.find((p) => p.id === detailPackageId) ?? null)
+      : null;
+  const detailPackageActive =
+    detailPackage != null &&
+    (myBookingsData ?? []).some(
+      (b) =>
+        b.coachId === id &&
+        b.trainingPackageId === detailPackage.id &&
+        b.status?.toLowerCase() === "active",
+    );
 
   const hasLocation =
     richData?.teachingCity ||
@@ -552,6 +646,7 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                 coachName={displayName}
                 selectedPackageId={selectedPackage?.id ?? null}
                 onSelect={setSelectedPackageId}
+                onViewDetail={(pkgId) => setDetailPackageId(pkgId)}
                 delay={0.16}
               />
 
@@ -747,8 +842,12 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                               value={`${selectedPackage.sessionCount} buổi`}
                             />
                             <SummaryRow
-                              label="Thời hạn"
-                              value={`${selectedPackage.durationDays} ngày`}
+                              label="Thời gian"
+                              value={
+                                selectedPackage.startDate || selectedPackage.endDate
+                                  ? `${fmtDate(selectedPackage.startDate)} – ${fmtDate(selectedPackage.endDate)}`
+                                  : `${selectedPackage.durationDays} ngày`
+                              }
                             />
                           </div>
                           {/* Price summary */}
@@ -774,7 +873,67 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                           </div>
                         </div>
 
-                        {/* CTA — 4 states: active booking for this package / pending_payment / unauthenticated / no booking */}
+                        {/* Fixed schedule — learner sees the exact lessons before buying */}
+                        {selectedPackage.sessions && selectedPackage.sessions.length > 0 && (
+                          <div className="rounded-[10px] border border-[var(--color-border-soft)] bg-surface-container-low">
+                            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[var(--color-border-soft)] text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant">
+                              <CalendarPlus size={12} />
+                              Lịch học cố định
+                            </div>
+                            <ul className="max-h-[200px] overflow-y-auto divide-y divide-[var(--color-border-soft)]">
+                              {selectedPackage.sessions.map((s) => {
+                                const status = (s.status ?? "").toLowerCase();
+                                const full =
+                                  status === "full" ||
+                                  (s.remainingParticipants != null &&
+                                    s.remainingParticipants <= 0);
+                                return (
+                                  <li
+                                    key={s.sessionNumber}
+                                    className="px-3 py-2 text-[12px]"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-medium text-on-surface">
+                                        Buổi {s.sessionNumber}
+                                      </span>
+                                      <span className="tabular-nums text-on-surface-variant">
+                                        {fmtScheduleTime(s.startTime)}
+                                      </span>
+                                    </div>
+                                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-on-surface-variant">
+                                      <span className="inline-flex items-center gap-1">
+                                        {s.isOnline ? (
+                                          <Wifi size={10} />
+                                        ) : (
+                                          <MapPin size={10} />
+                                        )}
+                                        {s.isOnline
+                                          ? "Trực tuyến"
+                                          : s.location || "Trực tiếp"}
+                                      </span>
+                                      {s.remainingParticipants != null && (
+                                        <span
+                                          className={cn(
+                                            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                                            full
+                                              ? "bg-red-50 text-red-600"
+                                              : "bg-emerald-50 text-emerald-700",
+                                          )}
+                                        >
+                                          {full
+                                            ? "Hết chỗ"
+                                            : `Còn ${s.remainingParticipants} chỗ`}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* CTA — active booking / pending_payment / sold out / unauthenticated / no booking */}
                         {selectedPackageBooking?.status?.toLowerCase() === "active" ? (
                           /* Learner already has an active booking for THIS package: book a session */
                           <button
@@ -795,6 +954,15 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                           >
                             {booking && <Loader2 size={15} className="animate-spin" />}
                             {booking ? "Đang xử lý…" : "Mua gói tập"}
+                          </button>
+                        ) : selectedPackageSoldOut ? (
+                          /* Every fixed session is full — purchase disabled. */
+                          <button
+                            type="button"
+                            disabled
+                            className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-[12px] bg-on-surface/8 px-4 py-3.5 text-[14px] font-bold text-on-surface-variant/50"
+                          >
+                            Gói đã hết chỗ
                           </button>
                         ) : !isAuthed ? (
                           /* Not logged in: redirect to login with returnUrl */
@@ -920,6 +1088,23 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
             index={lightboxIndex}
             onClose={() => setLightboxIndex(null)}
             onNavigate={setLightboxIndex}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Package detail modal (full info + purchase confirmation) ────────── */}
+      <AnimatePresence>
+        {detailPackage && (
+          <PackageDetailModal
+            pkg={detailPackage}
+            coachName={displayName}
+            onClose={() => setDetailPackageId(null)}
+            isAuthed={isAuthed}
+            alreadyActive={detailPackageActive}
+            purchasing={booking}
+            purchaseError={bookingError}
+            loginHref={`/login?returnUrl=${encodeURIComponent(`/coaches/${id}`)}`}
+            onConfirmPurchase={() => void handleBook(detailPackage.id)}
           />
         )}
       </AnimatePresence>
@@ -1658,6 +1843,7 @@ function PackageSection({
   coachName,
   selectedPackageId,
   onSelect,
+  onViewDetail,
   delay,
 }: {
   packages: PublicPackage[];
@@ -1666,6 +1852,7 @@ function PackageSection({
   coachName: string;
   selectedPackageId: string | null;
   onSelect: (id: string) => void;
+  onViewDetail: (id: string) => void;
   delay: number;
 }) {
   const firstName = coachName.split(" ")[0];
@@ -1721,106 +1908,16 @@ function PackageSection({
       ) : (
         /* Package list */
         <div className="space-y-3">
-          {packages.map((pkg, index) => {
-            const isSelected = pkg.id === selectedPackageId;
-            const perSession =
-              pkg.sessionCount > 0
-                ? Math.round(pkg.price / pkg.sessionCount)
-                : null;
-            const levels = (pkg.level ?? "")
-              .split(/[,;]+/)
-              .map((l) => l.trim())
-              .filter(Boolean);
-            const isFirst = index === 0;
-
-            return (
-              <button
-                key={pkg.id}
-                type="button"
-                onClick={() => onSelect(pkg.id)}
-                className={cn(
-                  "w-full text-left rounded-[14px] border p-4 transition-all duration-200",
-                  isSelected
-                    ? "border-primary bg-primary/[0.04] shadow-[0_0_0_1.5px_var(--color-primary)]"
-                    : "border-[var(--color-border-soft)] bg-surface-container-lowest hover:border-primary/40 hover:shadow-sm",
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                      {isFirst && (
-                        <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white">
-                          Đề xuất
-                        </span>
-                      )}
-                      <p className="text-[14px] font-semibold text-on-surface leading-snug">
-                        {pkg.title ?? "Gói tập"}
-                      </p>
-                    </div>
-                    <p className="text-[12px] text-on-surface-variant mb-2">
-                      {[
-                        viSport(pkg.sportName),
-                        pkg.sessionCount > 0 && `${pkg.sessionCount} buổi`,
-                        pkg.durationDays > 0 && `${pkg.durationDays} ngày`,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {levels.map((l, i) => (
-                        <span
-                          key={i}
-                          className="rounded-full border border-[var(--color-border-soft)] bg-surface-container-low px-2.5 py-0.5 text-[11px] text-on-surface-variant"
-                        >
-                          {l}
-                        </span>
-                      ))}
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]",
-                          pkg.isOnline
-                            ? "border-sky-200 bg-sky-50 text-sky-700"
-                            : "border-amber-200 bg-amber-50 text-amber-700",
-                        )}
-                      >
-                        {pkg.isOnline ? (
-                          <Wifi size={10} />
-                        ) : (
-                          <MapPin size={10} />
-                        )}
-                        {viMode(pkg.isOnline)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Price + radio */}
-                  <div className="shrink-0 flex flex-col items-end gap-2.5">
-                    <div className="text-right">
-                      <p className="text-[17px] font-bold text-primary tabular-nums leading-none">
-                        {fmtVND(pkg.price)}
-                      </p>
-                      {perSession != null && (
-                        <p className="mt-0.5 text-[11px] text-on-surface-variant tabular-nums">
-                          {fmtVND(perSession)} / buổi
-                        </p>
-                      )}
-                    </div>
-                    <div
-                      className={cn(
-                        "flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-white"
-                          : "border-[var(--color-border-soft)]",
-                      )}
-                    >
-                      {isSelected && <Check size={11} strokeWidth={3} />}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          {packages.map((pkg, index) => (
+            <CoachPackageCard
+              key={pkg.id}
+              pkg={pkg}
+              isSelected={pkg.id === selectedPackageId}
+              isRecommended={index === 0}
+              onSelect={() => onSelect(pkg.id)}
+              onViewDetail={() => onViewDetail(pkg.id)}
+            />
+          ))}
         </div>
       )}
     </motion.section>

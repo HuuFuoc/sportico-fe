@@ -276,6 +276,21 @@ export interface Message {
 // Coach listings (training packages + posts)
 // ============================================================================
 
+/** One fixed lesson inside a training package schedule (read-only UI shape). */
+export interface TrainingPackageScheduleSession {
+  sessionNumber: number;
+  startTime: string;
+  endTime: string;
+  level?: string;
+  maxParticipants?: number;
+  remainingParticipants?: number;
+  location?: string;
+  isOnline: boolean;
+  meetingUrl?: string;
+  note?: string;
+  status?: string; // open / full / cancelled / completed
+}
+
 export interface TrainingPackage {
   id: string;
   title: string;
@@ -283,12 +298,17 @@ export interface TrainingPackage {
   price: number;
   sessionCount: number;
   durationDays: number;
+  /** Fixed-schedule window (ISO datetime). New "lịch cố định" model. */
+  startDate?: string;
+  endDate?: string;
   sport: Sport;
   level?: string;
   goalType?: string;
   status: string; // Draft / Pending / Approved / Active / Rejected
   isOnline: boolean;
   createdAt: string;
+  /** Fixed lesson schedule, when the backend returns it. */
+  sessions?: TrainingPackageScheduleSession[];
 }
 
 export interface CoachPost {
@@ -455,8 +475,13 @@ export interface VerificationRequest {
   price?: number; // VND
   sessionCount?: number;
   durationDays?: number;
+  /** Fixed-schedule window (ISO datetime) for training-package kind. */
+  startDate?: string;
+  endDate?: string;
   level?: string;
   goalType?: string;
   isOnline?: boolean;
   location?: string;
+  /** Fixed lesson schedule for training-package kind. */
+  sessions?: TrainingPackageScheduleSession[];
 }

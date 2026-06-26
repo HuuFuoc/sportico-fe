@@ -31,6 +31,11 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { cn, formatCurrency, relativeDay } from "@/lib/utils";
+import {
+  levelLabel,
+  goalTypeLabel,
+  sessionStatusLabel,
+} from "@/lib/training-package-api";
 import { api, type VerificationKind } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { showSuccess, showError } from "@/lib/toast";
@@ -82,6 +87,31 @@ function kindOf(v: VerificationRequest): Kind {
 function vndOrDash(price?: number): string {
   if (price == null) return "—";
   return formatCurrency(price, "VND");
+}
+
+/** ISO datetime → compact "dd/MM HH:mm" for the fixed-schedule list. */
+function fmtScheduleTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** ISO date → "dd/MM/yyyy". */
+function fmtDate(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -746,12 +776,18 @@ function SubmissionDetail({ v }: { v: VerificationRequest }) {
     facts.push({ icon: Tag, label: "Giá", value: vndOrDash(v.price) });
   if (v.sessionCount != null)
     facts.push({ icon: Layers, label: "Số buổi", value: `${v.sessionCount} buổi` });
-  if (v.durationDays != null)
+  if (v.startDate || v.endDate)
+    facts.push({
+      icon: CalendarClock,
+      label: "Thời gian",
+      value: `${fmtDate(v.startDate)} – ${fmtDate(v.endDate)}`,
+    });
+  else if (v.durationDays != null)
     facts.push({ icon: Timer, label: "Thời hạn", value: `${v.durationDays} ngày` });
   if (v.level)
-    facts.push({ icon: BadgeCheck, label: "Cấp độ", value: v.level });
+    facts.push({ icon: BadgeCheck, label: "Cấp độ", value: levelLabel(v.level) });
   if (v.goalType)
-    facts.push({ icon: Target, label: "Mục tiêu", value: v.goalType });
+    facts.push({ icon: Target, label: "Mục tiêu", value: goalTypeLabel(v.goalType) });
   if (v.isOnline != null)
     facts.push({
       icon: Globe,
@@ -768,29 +804,102 @@ function SubmissionDetail({ v }: { v: VerificationRequest }) {
         ? "Chi tiết tài khoản"
         : "Chi tiết gói tập";
 
+  const sessions = v.sessions ?? [];
+
   return (
-    <section>
-      <h3 className="text-[15px] font-semibold tracking-tight mb-3">{heading}</h3>
-      {facts.length === 0 ? (
-        <p className="text-[12.5px] text-on-surface-variant rounded-[12px] bg-surface-container-low/40 border border-[var(--color-border-soft)] p-4">
-          Mục này không kèm thông tin chi tiết.
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {facts.map((f) => (
-            <div
-              key={f.label}
-              className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3"
-            >
-              <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold text-on-surface-variant">
-                <f.icon size={11} />
-                {f.label}
+    <section className="space-y-5">
+      <div>
+        <h3 className="text-[15px] font-semibold tracking-tight mb-3">{heading}</h3>
+        {facts.length === 0 ? (
+          <p className="text-[12.5px] text-on-surface-variant rounded-[12px] bg-surface-container-low/40 border border-[var(--color-border-soft)] p-4">
+            Mục này không kèm thông tin chi tiết.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {facts.map((f) => (
+              <div
+                key={f.label}
+                className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3"
+              >
+                <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold text-on-surface-variant">
+                  <f.icon size={11} />
+                  {f.label}
+                </div>
+                <p className="text-[13px] font-semibold mt-1 tabular-nums break-words">
+                  {f.value}
+                </p>
               </div>
-              <p className="text-[13px] font-semibold mt-1 tabular-nums break-words">
-                {f.value}
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Fixed schedule — the heart of the new package model. Admin reviews the
+          exact lessons before approving. */}
+      {kind === "training-package" && sessions.length > 0 && (
+        <div>
+          <h3 className="text-[15px] font-semibold tracking-tight mb-3 inline-flex items-center gap-1.5">
+            <CalendarClock size={14} className="text-on-surface-variant" />
+            Lịch học cố định
+            <span className="text-[12px] font-normal text-on-surface-variant tabular-nums">
+              ({sessions.length} buổi)
+            </span>
+          </h3>
+          <ul className="space-y-2">
+            {sessions.map((s) => {
+              const statusVi = sessionStatusLabel(s.status);
+              return (
+                <li
+                  key={s.sessionNumber}
+                  className="rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-2 text-[13px] font-semibold">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center tabular-nums">
+                        {s.sessionNumber}
+                      </span>
+                      {fmtScheduleTime(s.startTime)} – {fmtScheduleTime(s.endTime)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant">
+                      {s.isOnline ? <Globe size={12} /> : <MapPin size={12} />}
+                      {s.isOnline ? "Trực tuyến" : "Trực tiếp"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-on-surface-variant">
+                    {s.maxParticipants != null && (
+                      <span className="inline-flex items-center gap-1">
+                        <Layers size={11} />
+                        Tối đa {s.maxParticipants} học viên
+                      </span>
+                    )}
+                    {s.isOnline
+                      ? s.meetingUrl && (
+                          <span className="inline-flex items-center gap-1 truncate max-w-[220px]">
+                            <Globe size={11} />
+                            {s.meetingUrl}
+                          </span>
+                        )
+                      : s.location && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={11} />
+                            {s.location}
+                          </span>
+                        )}
+                    {statusVi && (
+                      <span className="inline-flex items-center rounded-full bg-surface-container-low px-2 py-0.5 text-[10.5px] font-medium">
+                        {statusVi}
+                      </span>
+                    )}
+                  </div>
+                  {s.note && (
+                    <p className="mt-1.5 text-[11.5px] text-on-surface-variant italic">
+                      {s.note}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </section>

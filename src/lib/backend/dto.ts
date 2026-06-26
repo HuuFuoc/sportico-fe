@@ -91,6 +91,31 @@ export interface PublicCoachMediaResponse {
   orderIndex: number;
 }
 
+/**
+ * A single fixed-schedule session inside a training package ("gói tập luyện theo
+ * lịch cố định"). Returned inside `TrainingPackageResponse.sessions[]` and the
+ * public package shape. The backend derives availability fields
+ * (remainingParticipants / status) once learners start booking.
+ */
+export interface TrainingPackageSessionResponse {
+  id?: string | null;
+  sessionNumber: number;
+  startTime: string;
+  endTime: string;
+  level?: string | null;
+  maxParticipants: number;
+  /** Learners already booked into this fixed session. */
+  bookedParticipants?: number | null;
+  /** maxParticipants - bookedParticipants (backend-computed). */
+  remainingParticipants?: number | null;
+  location?: string | null;
+  isOnline: boolean;
+  meetingUrl?: string | null;
+  note?: string | null;
+  /** "open" | "full" | "cancelled" | "completed" — present once bookable. */
+  status?: string | null;
+}
+
 export interface PublicCoachTrainingPackageResponse {
   id: string;
   sportId: number;
@@ -100,11 +125,16 @@ export interface PublicCoachTrainingPackageResponse {
   price: number;
   sessionCount: number;
   durationDays: number;
+  /** Fixed-schedule window (ISO datetime). */
+  startDate?: string | null;
+  endDate?: string | null;
   location?: string | null;
   isOnline: boolean;
   level?: string | null;
   goalType?: string | null;
   status?: string | null;
+  /** Fixed lesson schedule. Present on the new "lịch cố định" package model. */
+  sessions?: TrainingPackageSessionResponse[] | null;
 }
 
 export interface PublicCoachDetailResponse extends PublicCoachListItemResponse {
@@ -136,7 +166,11 @@ export interface TrainingPackageResponse {
   description?: string | null;
   price: number;
   sessionCount: number;
+  /** Backend-derived from startDate/endDate; never sent by the frontend on create. */
   durationDays: number;
+  /** Fixed-schedule window (ISO datetime). New "lịch cố định" model. */
+  startDate?: string | null;
+  endDate?: string | null;
   location?: string | null;
   isOnline: boolean;
   level?: string | null;
@@ -147,6 +181,8 @@ export interface TrainingPackageResponse {
   reviewedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Fixed lesson schedule (sessionNumber 1..sessionCount). */
+  sessions?: TrainingPackageSessionResponse[] | null;
 }
 
 // ---- Bookings / sessions ---------------------------------------------------
