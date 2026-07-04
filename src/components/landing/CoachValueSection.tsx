@@ -81,7 +81,7 @@ export function CoachValueSection() {
               className="mt-3 text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] text-slate-900 sm:text-[42px]"
             >
               Tạo gói tập,{" "}
-              <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
+              <span className="pt-[0.15em] bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
                 quản lý học viên.
               </span>
             </motion.h2>

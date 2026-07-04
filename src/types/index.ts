@@ -121,6 +121,19 @@ export type SessionStatus =
   | "cancelled"
   | "pending_confirmation";
 
+/**
+ * Booking lifecycle status (matches the Bookings API).
+ *   pending_payment → active → completed
+ *                   ↘ cancelled / refunded
+ * Sessions are auto-created by the backend only after a booking becomes active.
+ */
+export type BookingStatus =
+  | "pending_payment"
+  | "active"
+  | "completed"
+  | "cancelled"
+  | "refunded";
+
 export interface Session {
   id: string;
   title: string;

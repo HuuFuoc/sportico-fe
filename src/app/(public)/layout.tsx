@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { MiniChatDock } from "@/components/layout/navbar/MiniChatDock";
 
 /**
  * Public (logged-out) route group wrapper. Pages render their own
@@ -14,6 +15,7 @@ export default function PublicLayout({
   return (
     <div className="flex min-h-screen flex-col bg-surface-container-lowest">
       {children}
+      <MiniChatDock />
     </div>
   );
 }

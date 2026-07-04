@@ -107,7 +107,7 @@ export function TestimonialsSection() {
             className="mt-5 text-[36px] font-semibold leading-[1.04] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
           >
             Những vận động viên tập luyện{" "}
-            <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
+            <span className="pt-[0.15em] bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
               có chủ đích.
             </span>
           </motion.h2>

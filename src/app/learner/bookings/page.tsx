@@ -7,7 +7,6 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
-  CalendarPlus,
   CheckCircle2,
   Clock,
   CreditCard,
@@ -20,7 +19,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { BookSessionModal } from "@/components/common/BookSessionModal";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { findOrderCodeForBooking, clearPendingPayos } from "@/lib/payos-pending";
@@ -316,14 +314,12 @@ function BookingCard({
   index,
   coachProfile,
   shouldAnimate,
-  onBookSession,
   onSynced,
 }: {
   booking: Booking;
   index: number;
   coachProfile?: CoachProfile | null;
   shouldAnimate: boolean;
-  onBookSession: (b: Booking) => void;
   onSynced?: () => void;
 }) {
   const status = (booking.status ?? "").toLowerCase();
@@ -338,10 +334,6 @@ function BookingCard({
   const usedSessions = booking.usedSessions ?? booking.completedSessions;
   const remainingSessions =
     booking.remainingSessions ?? Math.max(0, booking.totalSessions - booking.completedSessions);
-  const canBookMore =
-    isActive &&
-    (booking.canBookSession !== false) &&
-    remainingSessions > 0;
 
   const completedSessions = booking.completedSessions;
   const progress =
@@ -560,20 +552,13 @@ function BookingCard({
 
           {isActive && (
             <div className="flex items-center gap-2">
-              {canBookMore ? (
-                <button
-                  onClick={() => onBookSession(booking)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] bg-gradient-to-br from-emerald-500 to-teal-500 px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-[0_3px_10px_-2px_rgba(16,185,129,0.35)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all"
-                >
-                  <CalendarPlus size={13} />
-                  Đặt buổi tập
-                </button>
-              ) : (
-                <div className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-red-200 bg-red-50 px-3.5 py-2 text-[12.5px] font-semibold text-red-600">
-                  <XCircle size={13} />
-                  Đã hết lượt đặt
-                </div>
-              )}
+              <Link
+                href="/learner/schedule"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-[8px] bg-gradient-to-br from-emerald-500 to-teal-500 px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-[0_3px_10px_-2px_rgba(16,185,129,0.35)] hover:shadow-[0_5px_14px_-2px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <CalendarDays size={13} />
+                Xem lịch học
+              </Link>
               <Link
                 href={`/learner/plan?booking=${booking.id}`}
                 className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-3 py-2 text-[12px] font-medium text-on-surface hover:bg-surface-container-low transition-colors"
@@ -643,7 +628,6 @@ export default function LearnerBookingsPage() {
   const allBookings = useMemo(() => bookingsData ?? [], [bookingsData]);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
-  const [bookSessionTarget, setBookSessionTarget] = useState<Booking | null>(null);
 
   // Batch-fetch coach profiles for all unique coachIds once bookings load
   const [coachProfiles, setCoachProfiles] = useState<Map<string, CoachProfile>>(new Map());
@@ -922,7 +906,6 @@ export default function LearnerBookingsPage() {
                       index={i}
                       coachProfile={coachProfiles.get(b.coachId) ?? null}
                       shouldAnimate={shouldAnimate}
-                      onBookSession={setBookSessionTarget}
                       onSynced={refetch}
                     />
                   ))}
@@ -932,20 +915,6 @@ export default function LearnerBookingsPage() {
           </>
         )}
       </div>
-
-      {/* Book Session Modal */}
-      <AnimatePresence>
-        {bookSessionTarget && (
-          <BookSessionModal
-            booking={bookSessionTarget}
-            onClose={() => setBookSessionTarget(null)}
-            onBooked={() => {
-              setBookSessionTarget(null);
-              refetch();
-            }}
-          />
-        )}
-      </AnimatePresence>
     </AppShell>
   );
 }

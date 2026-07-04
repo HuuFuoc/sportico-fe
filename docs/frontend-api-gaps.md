@@ -27,6 +27,14 @@ Confirmed from `CoachWalletsController.cs` (role: Coach).
 
 ## Schedule / Availability API Verification
 
+> **NOTE (2026-06-29):** Availability slots were the mechanism behind the old
+> manual session-booking flow. In the fixed-schedule model the package schedule
+> *is* the availability, and sessions are auto-created on payment. The calendar
+> UIs no longer create/cancel/view availability slots. The `api.fetchMySlots`,
+> `api.createSlot`, `api.cancelSlot`, `api.fetchCoachSlots` facade methods remain
+> in `src/lib/api.ts` (unused) for backward compatibility but are not wired to any
+> UI. Coach/learner calendars are now read-only views of `TrainingSession`s.
+
 Confirmed from `CoachAvailabilitySlotsController.cs` (roles: Coach/Authorized).
 
 | Purpose | Frontend Function | Confirmed Backend Endpoint | Method | Auth Role | Notes |
@@ -47,7 +55,7 @@ Confirmed from `TrainingSessionsController.cs`.
 | Learner: get own sessions | `api.fetchSessionsForLearner()` | `GET /api/learners/me/training-sessions` | GET | Learner | Paged; Filter: Status, StartFrom, StartTo |
 | Coach: get own sessions | `api.fetchSessionsForCoach()` | `GET /api/coaches/me/training-sessions` | GET | Coach | Paged; Filter: Status, StartFrom, StartTo |
 | Get sessions for booking | `backend.bookingSessions(bookingId)` | `GET /api/bookings/{bookingId}/sessions` | GET | Any Auth | Accessible by both learner and coach |
-| Learner: create session | `api.bookSession(bookingId, slotId)` | `POST /api/bookings/{bookingId}/sessions` | POST | Learner | Body: `{ availabilitySlotId, learnerNote }` |
+| ~~Learner: create session~~ | ~~`api.bookSession(...)`~~ | ~~`POST /api/bookings/{bookingId}/sessions`~~ | POST | Learner | **REMOVED (2026-06-29).** Fixed-schedule model: sessions are auto-created by the backend when a booking becomes active. No manual session booking in the UI. |
 | Coach: confirm session | `api.confirmSession(id, body)` | `PUT /api/training-sessions/{id}/confirm` | PUT | Coach | Body: `{ location, meetingUrl, coachNote }` |
 | Coach or Learner: cancel | `api.cancelSession(id, reason)` | `PUT /api/training-sessions/{id}/cancel` | PUT | Any Auth | Body: `{ reason }` |
 | Coach: complete session | `api.completeSession(id)` | `PUT /api/training-sessions/{id}/complete` | PUT | Coach | No body |
@@ -197,7 +205,7 @@ These endpoints were added to the frontend endpoint map (`src/lib/backend/endpoi
 | `/api/training-sessions/{id}/confirm` | PUT | **CONFIRMED** — integrated via `api.confirmSession()` |
 | `/api/training-sessions/{id}/cancel` | PUT | **CONFIRMED** — integrated via `api.cancelSession()` |
 | `/api/training-sessions/{id}/complete` | PUT | **CONFIRMED** — integrated via `api.completeSession()`, with confirmation dialog |
-| `/api/bookings/{id}/sessions` | POST | **CONFIRMED** — integrated via `api.bookSession()` with BE error code mapping |
+| `/api/bookings/{id}/sessions` | POST | **REMOVED from FE (2026-06-29)** — fixed-schedule model auto-creates sessions on payment; no manual learner session booking. `BookSessionModal`, `api.bookSession`, `backend.createSession`, `ep.createBookingSession` deleted. |
 
 ---
 

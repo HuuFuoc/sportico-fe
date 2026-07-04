@@ -121,7 +121,7 @@ export function HowItWorksSection() {
             className="mt-3 text-[32px] font-semibold leading-[1.08] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
           >
             Từ tìm kiếm đến{" "}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            <span className="pt-[0.15em] bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               tập luyện có định hướng.
             </span>
           </motion.h2>

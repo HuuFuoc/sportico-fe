@@ -1026,7 +1026,8 @@ function RailPerformance({ reduce }: { reduce: boolean }) {
         </button>
       </div>
 
-      <table className="w-full text-left">
+      <div className="overflow-x-auto">
+      <table className="w-full text-left min-w-[560px]">
         <thead className="bg-surface-container-low/30 border-b border-[var(--color-border-soft)] text-[10px] uppercase tracking-wider text-on-surface-variant">
           <tr>
             <th className="px-4 py-2 font-semibold">Kênh</th>
@@ -1103,6 +1104,7 @@ function RailPerformance({ reduce }: { reduce: boolean }) {
           })}
         </tbody>
       </table>
+      </div>
     </motion.section>
   );
 }

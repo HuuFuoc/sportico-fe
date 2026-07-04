@@ -1062,30 +1062,10 @@ export const api = {
       return (page.items ?? []).map(slotToUi);
     }, () => []),
 
-  /** Learner: book a session against an availability slot within a booking. */
-  bookSession: (
-    bookingId: string,
-    availabilitySlotId: string,
-    learnerNote?: string,
-  ): Promise<Session> =>
-    liveAuthed(
-      async () => {
-        const s = await backend.createSession(bookingId, { availabilitySlotId, learnerNote });
-        return map.sessionToSession(s);
-      },
-      () => ({
-        id: `mock-sess-${Date.now()}`,
-        title: "Buổi tập",
-        coachId: "",
-        learnerId: getCurrentUserId() ?? "learner-1",
-        bookingId,
-        start: new Date().toISOString(),
-        durationMinutes: 60,
-        status: "pending_confirmation" as const,
-        type: "1-on-1" as const,
-        price: 0,
-      }),
-    ),
+  // NOTE: Manual learner-initiated session booking
+  // (POST /api/bookings/{bookingId}/sessions) has been REMOVED. In the
+  // fixed-schedule model the backend auto-creates TrainingSessions when a
+  // booking becomes active — the calendar is read-only for learners.
 
   /** Coach: confirm a session (optionally set location/note). */
   confirmSession: (

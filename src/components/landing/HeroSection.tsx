@@ -200,7 +200,12 @@ export function HeroSection({ coach }: { coach: Coach }) {
           <h1
             className="mt-6 max-w-[820px] font-black uppercase tracking-[-0.03em] text-white"
             style={{
-              fontSize: "clamp(30px, 5vw, 56px)",
+              // Min lowered to 26px so the longest cycling phrase
+              // ("THỂ CHẤT & TINH THẦN") stays on ONE line down to 360px — at
+              // 30px it wrapped only on the longest word, causing a vertical
+              // jump each cycle. vw factor + max unchanged → tablet/desktop
+              // sizing is identical.
+              fontSize: "clamp(26px, 5vw, 56px)",
               lineHeight: 1.22,
             }}
           >
@@ -216,7 +221,10 @@ export function HeroSection({ coach }: { coach: Coach }) {
                   animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   exit={{ opacity: 0, y: -24, filter: "blur(10px)" }}
                   transition={{ duration: 0.55, ease: EASE }}
-                  className="inline-block bg-[linear-gradient(110deg,#ffffff_0%,#c7c4ff_40%,#a78bfa_55%,#ffffff_100%)] bg-[length:200%_100%] bg-clip-text text-transparent animate-gradient-x"
+                  // pt + matching -mt enlarges the background paint box upward
+                  // (so `bg-clip-text` covers stacked Vietnamese tone marks like
+                  // Ể/Ấ/Ầ) without shifting the text or the layout box.
+                  className="inline-block pt-[0.25em] -mt-[0.25em] bg-[linear-gradient(110deg,#ffffff_0%,#c7c4ff_40%,#a78bfa_55%,#ffffff_100%)] bg-[length:200%_100%] bg-clip-text text-transparent animate-gradient-x"
                 >
                   {CYCLE_WORDS[wordIdx]}
                 </motion.span>

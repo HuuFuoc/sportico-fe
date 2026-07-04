@@ -241,7 +241,7 @@ export function AIDeepDiveSection() {
             className="mt-5 text-[36px] font-semibold leading-[1.06] tracking-[-0.025em] text-white sm:text-[48px]"
           >
             AI ghép nối thông minh,{" "}
-            <span className="bg-[linear-gradient(110deg,#a78bfa_0%,#f0abfc_50%,#67e8f9_100%)] bg-clip-text text-transparent">
+            <span className="pt-[0.15em] bg-[linear-gradient(110deg,#a78bfa_0%,#f0abfc_50%,#67e8f9_100%)] bg-clip-text text-transparent">
               không phải bộ lọc thông thường.
             </span>
           </motion.h2>

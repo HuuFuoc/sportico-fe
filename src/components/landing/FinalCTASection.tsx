@@ -183,7 +183,7 @@ export function FinalCTASection() {
             className="mx-auto mt-6 max-w-3xl text-[36px] font-semibold leading-[1.04] tracking-[-0.03em] text-white sm:text-[52px]"
           >
             Bắt đầu tập luyện{" "}
-            <span className="bg-[linear-gradient(110deg,#fff_0%,#f0abfc_45%,#67e8f9_100%)] bg-clip-text text-transparent">
+            <span className="pt-[0.15em] bg-[linear-gradient(110deg,#fff_0%,#f0abfc_45%,#67e8f9_100%)] bg-clip-text text-transparent">
               có định hướng.
             </span>
           </motion.h2>

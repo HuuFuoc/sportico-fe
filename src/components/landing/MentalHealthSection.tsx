@@ -68,7 +68,7 @@ export function MentalHealthSection() {
             className="mt-3 text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
           >
             Sức khỏe tinh thần{" "}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            <span className="pt-[0.15em] bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               trước tiên.
             </span>
           </motion.h2>

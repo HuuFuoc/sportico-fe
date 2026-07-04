@@ -50,7 +50,6 @@ import { useAuthStore } from "@/lib/store/useAuthStore";
 import type { CurrentUserResponse, PublicCoachDetailResponse } from "@/lib/backend/dto";
 import type { CreateReviewRequest, UpdateReviewRequest, CreateReviewReportRequest } from "@/lib/backend/dto";
 import type { Review, ReviewSummary } from "@/types";
-import { BookSessionModal } from "@/components/common/BookSessionModal";
 import { CoachPackageCard } from "@/components/coach-packages/CoachPackageCard";
 import { PackageDetailModal } from "@/components/coach-packages/PackageDetailModal";
 import { CalendarPlus } from "lucide-react";
@@ -255,9 +254,9 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
 
   // ── Learner existing booking check (determines CTA state) ───────────────────
   // Load learner's bookings to determine if they already have a package with
-  // this coach — so the CTA can show "Đặt buổi tập" instead of "Mua gói".
+  // this coach — so the CTA can show "Xem lịch học" instead of "Mua gói".
   const isAuthed = !isMockMode() && !!getAccessToken();
-  const { data: myBookingsData, refetch: refetchMyBookings } = useApiResource<import("@/types").Booking[]>(
+  const { data: myBookingsData } = useApiResource<import("@/types").Booking[]>(
     () => isAuthed ? api.fetchMyBookings() : Promise.resolve([]),
     [isAuthed],
   );
@@ -270,8 +269,6 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
         s === "active" ? 0 : s === "pending_payment" ? 1 : 2;
       return rank(a.status?.toLowerCase()) - rank(b.status?.toLowerCase());
     })[0] ?? null;
-
-  const [bookSessionOpen, setBookSessionOpen] = useState(false);
 
   // Package detail modal — opened from a card's "Xem chi tiết".
   const [detailPackageId, setDetailPackageId] = useState<string | null>(null);
@@ -935,15 +932,15 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
 
                         {/* CTA — active booking / pending_payment / sold out / unauthenticated / no booking */}
                         {selectedPackageBooking?.status?.toLowerCase() === "active" ? (
-                          /* Learner already has an active booking for THIS package: book a session */
-                          <button
-                            type="button"
-                            onClick={() => setBookSessionOpen(true)}
+                          /* Learner already owns this package — lịch học đã được tạo tự động.
+                             Calendar is read-only, so route to the schedule instead of booking. */
+                          <Link
+                            href="/learner/schedule"
                             className="flex w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#10b981] to-[#34d399] px-4 py-3.5 text-[14px] font-bold text-white shadow-[0_4px_16px_-2px_rgba(16,185,129,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-2px_rgba(16,185,129,0.55)] active:translate-y-0"
                           >
                             <CalendarPlus size={16} />
-                            Đặt buổi tập
-                          </button>
+                            Xem lịch học của bạn
+                          </Link>
                         ) : selectedPackageBooking?.status?.toLowerCase() === "pending_payment" ? (
                           /* An earlier payment attempt for THIS package is still pending. */
                           <button
@@ -1064,21 +1061,6 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
       </main>
 
       <Footer />
-
-      {/* ── Book Session Modal (for learners with active booking for the selected package) ─────────── */}
-      <AnimatePresence>
-        {bookSessionOpen && selectedPackageBooking && selectedPackageBooking.status?.toLowerCase() === "active" && (
-          <BookSessionModal
-            booking={selectedPackageBooking}
-            onClose={() => setBookSessionOpen(false)}
-            onBooked={() => {
-              // Refetch bookings so completedSessions/progress is up-to-date.
-              // The modal already refetched coach slots internally.
-              refetchMyBookings();
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* ── Media lightbox ─────────────────────────────────────────────────── */}
       <AnimatePresence>

@@ -5,81 +5,43 @@ import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   CalendarCheck,
-  CalendarPlus,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
+  CreditCard,
   Hourglass,
-  Loader2,
   MapPin,
   MessageSquare,
+  Package,
   Sparkles,
   Star,
-  TrendingUp,
   Video,
+  Wallet,
   X,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { cn, initials, localDateKey } from "@/lib/utils";
+import { cn, initials, localDateKey, formatCurrencyVnd } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
-import { showSuccess, showApiError } from "@/lib/toast";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type { Coach, Session } from "@/types";
+import { bookingStatus, sessionStatus } from "@/lib/status-labels";
+import type { Booking, Coach, Session } from "@/types";
 
 const NOW = new Date();
 const EASE = [0.16, 1, 0.3, 1] as const;
 const WEEKDAYS_SHORT = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-type TabId = "all" | "requested" | "upcoming" | "completed" | "cancelled";
+type TabId = "all" | "upcoming" | "completed" | "cancelled" | "pending_payment";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "all",       label: "Tất cả" },
-  { id: "requested", label: "Chờ xác nhận" },
-  { id: "upcoming",  label: "Sắp tới" },
-  { id: "completed", label: "Hoàn thành" },
-  { id: "cancelled", label: "Đã huỷ" },
+  { id: "all", label: "Tất cả" },
+  { id: "upcoming", label: "Sắp học" },
+  { id: "completed", label: "Đã hoàn thành" },
+  { id: "cancelled", label: "Đã hủy" },
+  { id: "pending_payment", label: "Chờ thanh toán" },
 ];
-
-const STATUS_DISPLAY: Record<string, { label: string; chip: string; dotColor: string }> = {
-  pending_confirmation: {
-    label: "Chờ xác nhận",
-    chip: "bg-amber-50 text-amber-700 border-amber-200",
-    dotColor: "bg-amber-400",
-  },
-  scheduled: {
-    label: "Đã xác nhận",
-    chip: "bg-blue-50 text-blue-700 border-blue-200",
-    dotColor: "bg-blue-500",
-  },
-  in_progress: {
-    label: "Đang diễn ra",
-    chip: "bg-primary/10 text-primary border-primary/20",
-    dotColor: "bg-primary",
-  },
-  completed: {
-    label: "Hoàn thành",
-    chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    dotColor: "bg-emerald-500",
-  },
-  cancelled: {
-    label: "Đã huỷ",
-    chip: "bg-red-50 text-red-600 border-red-200",
-    dotColor: "bg-red-400",
-  },
-};
-
-function statusDisplay(status: string) {
-  return (
-    STATUS_DISPLAY[status?.toLowerCase()] ?? {
-      label: status ?? "Không rõ",
-      chip: "bg-surface-container-low text-on-surface-variant border-[var(--color-border-soft)]",
-      dotColor: "bg-on-surface-variant",
-    }
-  );
-}
 
 function startOfWeek(d: Date): Date {
   const date = new Date(d);
@@ -89,27 +51,15 @@ function startOfWeek(d: Date): Date {
   return date;
 }
 
-function filterSessions(sessions: Session[], tab: TabId): Session[] {
-  const now = NOW.getTime();
-  switch (tab) {
-    case "requested":
-      return sessions.filter((s) => s.status === "pending_confirmation");
-    case "upcoming":
-      return sessions.filter(
-        (s) =>
-          (s.status === "scheduled" || s.status === "in_progress") &&
-          new Date(s.start).getTime() >= now,
-      );
-    case "completed":
-      return sessions.filter((s) => s.status === "completed");
-    case "cancelled":
-      return sessions.filter((s) => s.status === "cancelled");
-    default:
-      return sessions;
-  }
+function isUpcoming(s: Session): boolean {
+  return (
+    (s.status === "scheduled" || s.status === "in_progress") &&
+    new Date(s.start).getTime() >= NOW.getTime()
+  );
 }
 
-function getSessionTitle(session: Session, coach?: Coach): string {
+function getSessionTitle(session: Session, coach?: Coach, booking?: Booking): string {
+  if (booking?.title && booking.title !== "Gói tập chưa có tên") return booking.title;
   if (coach?.sport && coach?.name) return `${coach.sport} với ${coach.name}`;
   if (coach?.name) return `Buổi tập với ${coach.name}`;
   if (session.title && session.title !== "Buổi tập") return session.title;
@@ -156,28 +106,6 @@ function groupSessionsByDate(
     }));
 }
 
-// ---- Cancel hook ------------------------------------------------------------
-
-function useCancelSession(onSuccess: () => void) {
-  const [cancelling, setCancelling] = useState<string | null>(null);
-
-  async function cancel(sessionId: string) {
-    if (!window.confirm("Bạn chắc chắn muốn huỷ buổi tập này?")) return;
-    setCancelling(sessionId);
-    try {
-      await api.cancelSession(sessionId);
-      showSuccess("Đã hủy buổi tập thành công.");
-      onSuccess();
-    } catch (err) {
-      showApiError(err);
-    } finally {
-      setCancelling(null);
-    }
-  }
-
-  return { cancel, cancelling };
-}
-
 // ---- Detail Modal -----------------------------------------------------------
 
 type DetailRowIconType = React.ComponentType<{ size?: number; className?: string }>;
@@ -209,27 +137,24 @@ function DetailRow({
 function SessionDetailModal({
   session,
   coach,
+  booking,
   onClose,
-  onCancel,
-  cancelling,
 }: {
   session: Session;
   coach?: Coach;
+  booking?: Booking;
   onClose: () => void;
-  onCancel: (id: string) => void;
-  cancelling: boolean;
 }) {
-  const { label, chip } = statusDisplay(session.status);
+  const sCfg = sessionStatus(session.status);
   const start = new Date(session.start);
   const isOnline =
     session.meetingUrl != null || session.location?.toLowerCase() === "online";
-  const canCancel =
-    session.status === "pending_confirmation" || session.status === "scheduled";
-  const title = getSessionTitle(session, coach);
+  const title = getSessionTitle(session, coach, booking);
+  const bCfg = booking ? bookingStatus(booking.status) : null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -240,11 +165,11 @@ function SessionDetailModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.22, ease: EASE }}
-        className="w-full max-w-md rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_20px_60px_-10px_rgba(15,15,30,0.25)] overflow-hidden"
+        className="w-full sm:max-w-md rounded-t-[20px] sm:rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest shadow-[0_20px_60px_-10px_rgba(15,15,30,0.25)] overflow-hidden max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-[var(--color-border-soft)]">
+        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-[var(--color-border-soft)] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
               {coach?.avatarUrl ? (
@@ -264,23 +189,46 @@ function SessionDetailModal({
               <span
                 className={cn(
                   "inline-flex items-center border px-2 py-0.5 rounded-full text-[11px] font-semibold mt-1",
-                  chip,
+                  sCfg.chip,
                 )}
               >
-                {label}
+                {sCfg.label}
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
             className="ml-2 w-8 h-8 rounded-full hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant transition-colors shrink-0"
+            aria-label="Đóng"
           >
             <X size={15} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-5 py-4 space-y-3.5">
+        <div className="px-5 py-4 space-y-3.5 overflow-y-auto">
+          {booking && (
+            <DetailRow icon={Package} label="Gói tập">
+              <p className="font-semibold text-on-surface">{booking.title}</p>
+              {bCfg && (
+                <span
+                  className={cn(
+                    "inline-flex items-center border px-2 py-0.5 rounded-full text-[11px] font-semibold mt-1",
+                    bCfg.chip,
+                  )}
+                >
+                  {bCfg.label}
+                </span>
+              )}
+            </DetailRow>
+          )}
+
+          <DetailRow icon={Star} label="Huấn luyện viên">
+            <p className="font-medium text-on-surface">
+              {coach?.name ?? "Huấn luyện viên"}
+            </p>
+          </DetailRow>
+
           <DetailRow icon={Clock} label="Thời gian">
             <p className="font-semibold text-on-surface">
               {start.toLocaleDateString("vi-VN", {
@@ -296,30 +244,27 @@ function SessionDetailModal({
             </p>
           </DetailRow>
 
-          {(isOnline || session.location) && (
-            <DetailRow
-              icon={isOnline ? Video : MapPin}
-              label="Địa điểm"
-            >
-              {isOnline ? (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-on-surface">Trực tuyến</span>
-                  {session.meetingUrl && (
-                    <a
-                      href={session.meetingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[12px] text-primary hover:underline"
-                    >
-                      Tham gia →
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <p className="font-medium text-on-surface">{session.location}</p>
-              )}
-            </DetailRow>
-          )}
+          <DetailRow icon={isOnline ? Video : MapPin} label="Hình thức học">
+            {isOnline ? (
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-on-surface">Trực tuyến (Online)</span>
+                {session.meetingUrl && (
+                  <a
+                    href={session.meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[12px] text-primary hover:underline"
+                  >
+                    Tham gia →
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="font-medium text-on-surface">
+                {session.location ?? "Trực tiếp (địa điểm sẽ được HLV xác nhận)"}
+              </p>
+            )}
+          </DetailRow>
 
           {session.learnerNote && (
             <DetailRow icon={MessageSquare} label="Ghi chú của bạn">
@@ -334,9 +279,9 @@ function SessionDetailModal({
           )}
         </div>
 
-        {/* Footer actions */}
-        <div className="flex items-center gap-2 px-5 pb-5 pt-3 border-t border-[var(--color-border-soft)]">
-          {session.status === "completed" && (
+        {/* Footer */}
+        <div className="flex items-center gap-2 px-5 pb-5 pt-3 border-t border-[var(--color-border-soft)] shrink-0">
+          {session.status === "completed" && coach && (
             <Link
               href={`/learner/coaches/${session.coachId}`}
               className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-[9px] border border-primary/20 bg-primary/5 text-primary text-[12.5px] font-semibold hover:bg-primary/10 transition-colors"
@@ -345,35 +290,9 @@ function SessionDetailModal({
               Đánh giá HLV
             </Link>
           )}
-          {(session.status === "completed" || session.status === "cancelled") && (
-            <Link
-              href="/learner/bookings"
-              className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-[9px] border border-[var(--color-border-soft)] bg-surface-container-lowest text-on-surface text-[12.5px] font-medium hover:bg-surface-container-low transition-colors"
-            >
-              <CalendarPlus size={13} />
-              Đặt lại
-            </Link>
-          )}
-          {canCancel && (
-            <button
-              onClick={() => {
-                onCancel(session.id);
-                onClose();
-              }}
-              disabled={cancelling}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-[9px] border border-red-200 bg-red-50 text-red-700 text-[12.5px] font-semibold hover:bg-red-100 disabled:opacity-60 transition-colors"
-            >
-              {cancelling ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <XCircle size={13} />
-              )}
-              Huỷ buổi tập
-            </button>
-          )}
           <button
             onClick={onClose}
-            className="h-9 px-4 rounded-[9px] border border-[var(--color-border-soft)] text-[12.5px] font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors shrink-0"
+            className="h-9 px-4 rounded-[9px] border border-[var(--color-border-soft)] text-[12.5px] font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors shrink-0 ml-auto"
           >
             Đóng
           </button>
@@ -388,27 +307,23 @@ function SessionDetailModal({
 function SessionCard({
   session,
   coach,
+  booking,
   delay,
   reduce,
-  onCancel,
-  cancelling,
   onViewDetail,
 }: {
   session: Session;
   coach?: Coach;
+  booking?: Booking;
   delay: number;
   reduce: boolean;
-  onCancel: (id: string) => void;
-  cancelling: boolean;
   onViewDetail: (s: Session) => void;
 }) {
-  const { label, chip } = statusDisplay(session.status);
+  const sCfg = sessionStatus(session.status);
   const start = new Date(session.start);
-  const canCancel =
-    session.status === "pending_confirmation" || session.status === "scheduled";
   const isOnline =
     session.meetingUrl != null || session.location?.toLowerCase() === "online";
-  const title = getSessionTitle(session, coach);
+  const title = getSessionTitle(session, coach, booking);
 
   return (
     <motion.div
@@ -430,35 +345,27 @@ function SessionCard({
 
       {/* Divider */}
       <div className="flex flex-col items-center pt-1 shrink-0">
-        <div
-          className={cn(
-            "w-2 h-2 rounded-full mt-1 shrink-0",
-            statusDisplay(session.status).dotColor,
-          )}
-        />
+        <div className={cn("w-2 h-2 rounded-full mt-1 shrink-0", sCfg.dot)} />
         <div className="w-px flex-1 bg-[var(--color-border-soft)] mt-1 mb-1 min-h-[20px]" />
       </div>
 
       {/* Main content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2 flex-wrap">
-          <div className="min-w-0">
-            <p className="text-[13.5px] font-semibold text-on-surface leading-tight truncate">
-              {title}
-            </p>
-          </div>
+          <p className="text-[13.5px] font-semibold text-on-surface leading-tight truncate min-w-0">
+            {title}
+          </p>
           <span
             className={cn(
               "inline-flex items-center border px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0",
-              chip,
+              sCfg.chip,
             )}
           >
-            {label}
+            {sCfg.label}
           </span>
         </div>
 
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          {/* Coach avatar + name */}
           <div className="flex items-center gap-1.5">
             <div className="w-5 h-5 rounded-full bg-surface-container-high overflow-hidden flex items-center justify-center text-[8px] font-semibold text-primary shrink-0">
               {coach?.avatarUrl ? (
@@ -476,7 +383,6 @@ function SessionCard({
             </span>
           </div>
 
-          {/* Location */}
           {isOnline ? (
             <div className="flex items-center gap-1 text-[12px] text-primary">
               <Video size={11} />
@@ -490,7 +396,6 @@ function SessionCard({
           ) : null}
         </div>
 
-        {/* Coach note inline */}
         {session.coachNote && (
           <p className="mt-1.5 flex items-start gap-1 text-[11.5px] text-primary/70 italic">
             <Sparkles size={11} className="mt-0.5 shrink-0" />
@@ -498,25 +403,58 @@ function SessionCard({
           </p>
         )}
       </div>
+    </motion.div>
+  );
+}
 
-      {/* Quick cancel (stop propagation so it doesn't open modal) */}
-      {canCancel && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onCancel(session.id);
-          }}
-          disabled={cancelling}
-          title="Huỷ buổi tập"
-          className="ml-1 w-7 h-7 rounded-[6px] border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-60 flex items-center justify-center transition-colors shrink-0 mt-0.5"
+// ---- Pending payment card ---------------------------------------------------
+
+function PendingPaymentCard({
+  booking,
+  coach,
+  delay,
+  reduce,
+}: {
+  booking: Booking;
+  coach?: Coach;
+  delay: number;
+  reduce: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.3, delay: reduce ? 0 : delay, ease: EASE }}
+      className="flex items-start gap-3 rounded-[12px] border border-amber-200 bg-amber-50/50 p-3.5"
+    >
+      <div className="w-9 h-9 rounded-[9px] bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white shrink-0">
+        <Hourglass size={15} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <p className="text-[13.5px] font-semibold text-on-surface leading-tight truncate min-w-0">
+            {booking.title}
+          </p>
+          <span className="inline-flex items-center border px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0 bg-amber-100 text-amber-700 border-amber-200">
+            Chờ thanh toán
+          </span>
+        </div>
+        <p className="text-[12px] text-on-surface-variant mt-1">
+          {coach?.name ? `HLV: ${coach.name} · ` : ""}
+          {booking.totalSessions} buổi
+          {booking.totalAmount > 0 && ` · ${formatCurrencyVnd(booking.totalAmount)}`}
+        </p>
+        <p className="text-[11.5px] text-amber-700 mt-1.5 leading-relaxed">
+          Lịch học sẽ được tạo tự động sau khi thanh toán thành công.
+        </p>
+        <Link
+          href="/learner/bookings"
+          className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-gradient-to-br from-amber-500 to-orange-500 text-white text-[12px] font-semibold shadow-[0_3px_10px_-2px_rgba(245,158,11,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          {cancelling ? (
-            <Loader2 size={11} className="animate-spin" />
-          ) : (
-            <XCircle size={12} />
-          )}
-        </button>
-      )}
+          <CreditCard size={13} />
+          Tiếp tục thanh toán
+        </Link>
+      </div>
     </motion.div>
   );
 }
@@ -526,16 +464,14 @@ function SessionCard({
 function GroupedSessionList({
   groups,
   coachById,
+  bookingById,
   reduce,
-  onCancel,
-  cancelling,
   onViewDetail,
 }: {
   groups: { dateKey: string; date: Date; items: Session[] }[];
   coachById: Map<string, Coach>;
+  bookingById: Map<string, Booking>;
   reduce: boolean;
-  onCancel: (id: string) => void;
-  cancelling: string | null;
   onViewDetail: (s: Session) => void;
 }) {
   let globalIndex = 0;
@@ -543,7 +479,6 @@ function GroupedSessionList({
     <div className="space-y-5">
       {groups.map((group) => (
         <div key={group.dateKey}>
-          {/* Day header */}
           <div className="flex items-center gap-2 mb-2.5 px-1">
             <p className="text-[12px] font-semibold text-on-surface-variant capitalize">
               {formatGroupDate(group.date)}
@@ -561,10 +496,9 @@ function GroupedSessionList({
                   key={s.id}
                   session={s}
                   coach={coachById.get(s.coachId)}
+                  booking={s.bookingId ? bookingById.get(s.bookingId) : undefined}
                   delay={idx * 0.035}
                   reduce={reduce}
-                  onCancel={onCancel}
-                  cancelling={cancelling === s.id}
                   onViewDetail={onViewDetail}
                 />
               );
@@ -581,28 +515,28 @@ function GroupedSessionList({
 function EmptyTabState({ tab }: { tab: TabId }) {
   const messages: Record<TabId, { title: string; body: string; showCta: boolean }> = {
     all: {
-      title: "Chưa có buổi tập nào",
-      body: "Mua gói tập và đặt lịch để bắt đầu hành trình của bạn.",
+      title: "Bạn chưa có lịch học nào",
+      body: "Hãy chọn một gói tập phù hợp để bắt đầu. Lịch học sẽ được tạo tự động sau khi bạn mua gói thành công.",
       showCta: true,
-    },
-    requested: {
-      title: "Không có buổi chờ xác nhận",
-      body: "Tất cả các buổi bạn đặt đã được xác nhận.",
-      showCta: false,
     },
     upcoming: {
-      title: "Không có buổi tập sắp tới",
-      body: "Đặt lịch mới từ gói tập đang hoạt động.",
-      showCta: true,
+      title: "Không có buổi học sắp tới",
+      body: "Các buổi học sắp diễn ra trong gói của bạn sẽ hiển thị ở đây.",
+      showCta: false,
     },
     completed: {
-      title: "Chưa có buổi tập hoàn thành",
+      title: "Chưa có buổi học hoàn thành",
       body: "Các buổi đã hoàn thành sẽ xuất hiện ở đây.",
       showCta: false,
     },
     cancelled: {
-      title: "Không có buổi tập đã huỷ",
+      title: "Không có buổi học đã hủy",
       body: "Tốt lắm!",
+      showCta: false,
+    },
+    pending_payment: {
+      title: "Không có gói chờ thanh toán",
+      body: "Các gói tập bạn đặt nhưng chưa thanh toán sẽ hiển thị ở đây.",
       showCta: false,
     },
   };
@@ -614,17 +548,17 @@ function EmptyTabState({ tab }: { tab: TabId }) {
       </div>
       <div>
         <p className="text-[13.5px] font-semibold text-on-surface">{m.title}</p>
-        <p className="text-[12.5px] text-on-surface-variant mt-0.5 max-w-[220px]">
+        <p className="text-[12.5px] text-on-surface-variant mt-0.5 max-w-[260px]">
           {m.body}
         </p>
       </div>
       {m.showCta && (
         <Link
-          href="/learner/bookings"
+          href="/learner/coaches"
           className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-[9px] bg-primary/10 text-primary text-[12.5px] font-semibold hover:bg-primary/15 transition-colors"
         >
-          <CalendarPlus size={13} />
-          Đặt buổi tập
+          <Package size={13} />
+          Khám phá gói tập
         </Link>
       )}
     </div>
@@ -636,21 +570,25 @@ function EmptyTabState({ tab }: { tab: TabId }) {
 function AIInsightCard({
   sessions,
   nextUpcoming,
-  requested,
+  pendingCount,
   coachById,
+  bookingById,
   reduce,
 }: {
   sessions: Session[];
   nextUpcoming: Session | null;
-  requested: number;
+  pendingCount: number;
   coachById: Map<string, Coach>;
+  bookingById: Map<string, Booking>;
   reduce: boolean;
 }) {
   const completed = sessions.filter((s) => s.status === "completed").length;
   const cancelled = sessions.filter((s) => s.status === "cancelled").length;
-  const nonCancelled = completed + sessions.filter(
-    (s) => s.status === "scheduled" || s.status === "in_progress" || s.status === "pending_confirmation",
-  ).length;
+  const nonCancelled =
+    completed +
+    sessions.filter(
+      (s) => s.status === "scheduled" || s.status === "in_progress",
+    ).length;
   const completionRate =
     nonCancelled > 0 ? Math.round((completed / nonCancelled) * 100) : 0;
 
@@ -659,43 +597,38 @@ function AIInsightCard({
   let ctaLabel: string;
   let ctaHref: string;
 
-  if (requested > 0) {
-    title = `${requested} buổi đang chờ HLV xác nhận`;
-    body = "HLV sẽ phản hồi sớm. Bạn sẽ nhận thông báo khi có cập nhật.";
-    ctaLabel = "Xem gói tập";
+  if (pendingCount > 0) {
+    title = `${pendingCount} gói đang chờ thanh toán`;
+    body = "Hoàn tất thanh toán để hệ thống tạo lịch học tự động cho bạn.";
+    ctaLabel = "Tiếp tục thanh toán";
     ctaHref = "/learner/bookings";
   } else if (nextUpcoming) {
     const start = new Date(nextUpcoming.start);
     const coach = coachById.get(nextUpcoming.coachId);
-    const sessionTitle = getSessionTitle(nextUpcoming, coach);
+    const booking = nextUpcoming.bookingId ? bookingById.get(nextUpcoming.bookingId) : undefined;
     title = `Buổi tiếp theo: ${start.toLocaleDateString("vi-VN", {
       weekday: "short",
       day: "numeric",
       month: "short",
     })}`;
-    body = `${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} · ${sessionTitle}`;
+    body = `${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} · ${getSessionTitle(nextUpcoming, coach, booking)}`;
     ctaLabel = "Xem lịch";
     ctaHref = "#upcoming";
   } else if (cancelled >= 3) {
-    title = "Bạn đã huỷ nhiều buổi gần đây";
-    body = "Thử điều chỉnh lịch tập để tránh bỏ lỡ các buổi đã đặt.";
-    ctaLabel = "Đặt buổi tập mới";
-    ctaHref = "/learner/bookings";
+    title = "Bạn đã bỏ lỡ nhiều buổi gần đây";
+    body = "Cố gắng tham gia đầy đủ các buổi học trong gói để đạt kết quả tốt nhất.";
+    ctaLabel = "Khám phá gói tập";
+    ctaHref = "/learner/coaches";
   } else if (completionRate >= 80 && completed >= 3) {
     title = `Tuyệt vời! Tỉ lệ hoàn thành ${completionRate}%`;
     body = "Bạn đang duy trì đà tập luyện tốt. Tiếp tục phát huy!";
-    ctaLabel = "Đặt thêm buổi";
-    ctaHref = "/learner/bookings";
-  } else if (sessions.length === 0) {
-    title = "Chưa có lịch tập nào";
-    body = "Đặt buổi mới từ gói tập đang hoạt động để bắt đầu.";
-    ctaLabel = "Đặt buổi tập";
+    ctaLabel = "Xem gói tập của tôi";
     ctaHref = "/learner/bookings";
   } else {
-    title = "Không có buổi tập sắp tới";
-    body = "Duy trì đà tập luyện bằng cách đặt buổi mới.";
-    ctaLabel = "Đặt buổi tập";
-    ctaHref = "/learner/bookings";
+    title = "Chưa có lịch học sắp tới";
+    body = "Chọn một gói tập phù hợp để bắt đầu hành trình của bạn.";
+    ctaLabel = "Khám phá gói tập";
+    ctaHref = "/learner/coaches";
   }
 
   return (
@@ -735,10 +668,12 @@ function AIInsightCard({
 function NextSessionCard({
   session,
   coach,
+  booking,
   reduce,
 }: {
   session: Session | null;
   coach?: Coach;
+  booking?: Booking;
   reduce: boolean;
 }) {
   return (
@@ -769,7 +704,7 @@ function NextSessionCard({
             </div>
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-on-surface truncate">
-                {getSessionTitle(session, coach)}
+                {getSessionTitle(session, coach, booking)}
               </p>
               <p className="text-[12px] text-on-surface-variant">
                 {coach?.name ?? "Huấn luyện viên"}
@@ -805,13 +740,13 @@ function NextSessionCard({
       ) : (
         <div className="px-4 py-5 text-center">
           <p className="text-[12.5px] text-on-surface-variant">
-            Bạn chưa có buổi tập sắp tới.
+            Bạn chưa có buổi học sắp tới.
           </p>
           <Link
-            href="/learner/bookings"
+            href="/learner/coaches"
             className="mt-2 inline-flex items-center gap-1 text-[12px] text-primary font-semibold hover:underline"
           >
-            Đặt buổi tập
+            Khám phá gói tập
           </Link>
         </div>
       )}
@@ -856,7 +791,6 @@ function WeeklyTimeline({
                 isToday && "bg-primary/[0.05]",
               )}
             >
-              {/* Day label */}
               <div className="w-8 text-center shrink-0 pt-0.5">
                 <p
                   className={cn(
@@ -876,7 +810,6 @@ function WeeklyTimeline({
                 </p>
               </div>
 
-              {/* Sessions for the day */}
               <div className="flex-1 min-w-0 pt-0.5">
                 {sessions.length === 0 ? (
                   <p className="text-[11px] text-on-surface-variant/40 mt-1">
@@ -886,7 +819,7 @@ function WeeklyTimeline({
                   <>
                     {sessions.slice(0, 2).map((s) => {
                       const coach = coachById.get(s.coachId);
-                      const { dotColor } = statusDisplay(s.status);
+                      const { dot } = sessionStatus(s.status);
                       const time = new Date(s.start).toLocaleTimeString("vi-VN", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -898,9 +831,7 @@ function WeeklyTimeline({
                         : `${time} · Buổi tập (${coachLast})`;
                       return (
                         <div key={s.id} className="flex items-center gap-1.5 mb-0.5">
-                          <span
-                            className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)}
-                          />
+                          <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dot)} />
                           <span className="text-[11.5px] truncate text-on-surface tabular-nums">
                             {entryText}
                           </span>
@@ -934,6 +865,18 @@ export default function LearnerSchedulePage() {
   } = useApiResource(() => api.fetchMyTrainingSessions(), []);
   const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
 
+  // Bookings drive the "Chờ thanh toán" entries (pending bookings have no
+  // sessions yet) and provide package titles + booking status for sessions.
+  const { data: bookingsData } = useApiResource(() => api.fetchMyBookings(), []);
+  const bookingById = useMemo(
+    () => new Map((bookingsData ?? []).map((b) => [b.id, b])),
+    [bookingsData],
+  );
+  const pendingBookings = useMemo(
+    () => (bookingsData ?? []).filter((b) => (b.status ?? "").toLowerCase() === "pending_payment"),
+    [bookingsData],
+  );
+
   const { data: coachesData } = useApiResource(() => api.fetchCoaches(), []);
   const coachById = useMemo(
     () => new Map((coachesData ?? []).map((c) => [c.id, c])),
@@ -944,8 +887,6 @@ export default function LearnerSchedulePage() {
   const [activeTab, setActiveTab] = useState<TabId>("all");
   const [weekOffset, setWeekOffset] = useState(0);
   const [detailSession, setDetailSession] = useState<Session | null>(null);
-
-  const { cancel, cancelling } = useCancelSession(refetch);
 
   // ---- Week navigation -----
   const weekStart = useMemo(() => {
@@ -969,39 +910,47 @@ export default function LearnerSchedulePage() {
     month: "short",
   })} – ${weekDays[6].toLocaleDateString("vi-VN", { day: "numeric", month: "short" })}`;
 
-  // ---- Stats (from all sessions, NOT filtered by tab) -----
-  const upcoming = sessions.filter(
-    (s) =>
-      (s.status === "scheduled" || s.status === "in_progress") &&
-      new Date(s.start) >= NOW,
-  ).length;
-  const requested = sessions.filter((s) => s.status === "pending_confirmation").length;
+  // ---- Stats -----
+  const upcoming = sessions.filter(isUpcoming).length;
   const completed = sessions.filter((s) => s.status === "completed").length;
   const cancelled = sessions.filter((s) => s.status === "cancelled").length;
+  const pendingPayment = pendingBookings.length;
 
   // ---- Next upcoming session -----
   const nextUpcoming = useMemo(
     () =>
       sessions
-        .filter(
-          (s) =>
-            (s.status === "scheduled" || s.status === "in_progress") &&
-            new Date(s.start).getTime() >= NOW.getTime(),
-        )
+        .filter(isUpcoming)
         .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())[0] ?? null,
     [sessions],
   );
 
   // ---- Filtered sessions for the list (tab-dependent) -----
-  const filteredSessions = useMemo(
-    () => filterSessions(sessions, activeTab),
-    [sessions, activeTab],
-  );
+  const filteredSessions = useMemo(() => {
+    switch (activeTab) {
+      case "upcoming":
+        return sessions.filter(isUpcoming);
+      case "completed":
+        return sessions.filter((s) => s.status === "completed");
+      case "cancelled":
+        return sessions.filter((s) => s.status === "cancelled");
+      case "pending_payment":
+        return [];
+      default:
+        return sessions;
+    }
+  }, [sessions, activeTab]);
 
   const groupedSessions = useMemo(
     () => groupSessionsByDate(filteredSessions),
     [filteredSessions],
   );
+
+  // Pending bookings show on "all" + "pending_payment" tabs only.
+  const showPending =
+    (activeTab === "all" || activeTab === "pending_payment") && pendingBookings.length > 0;
+
+  const hasListContent = groupedSessions.length > 0 || showPending;
 
   // ---- Weekly timeline uses ALL sessions (not filtered by tab) -----
   const weekBuckets = useMemo(() => {
@@ -1023,68 +972,36 @@ export default function LearnerSchedulePage() {
 
   if (loading) {
     return (
-      <AppShell role="learner" title="Lịch tập">
-        <LoadingState label="Đang tải lịch tập…" />
+      <AppShell role="learner" title="Lịch học">
+        <LoadingState label="Đang tải lịch học…" />
       </AppShell>
     );
   }
 
   if (error) {
     return (
-      <AppShell role="learner" title="Lịch tập">
+      <AppShell role="learner" title="Lịch học">
         <ErrorState onRetry={refetch} className="mx-auto mt-10 max-w-md" />
       </AppShell>
     );
   }
 
   const statCards = [
-    {
-      icon: CalendarCheck,
-      label: "Sắp tới",
-      value: upcoming,
-      accent: "indigo",
-    },
-    {
-      icon: Hourglass,
-      label: "Chờ xác nhận",
-      value: requested,
-      accent: "amber",
-    },
-    {
-      icon: CheckCircle2,
-      label: "Hoàn thành",
-      value: completed,
-      accent: "emerald",
-    },
-    {
-      icon: XCircle,
-      label: "Đã huỷ",
-      value: cancelled,
-      accent: "rose",
-    },
+    { icon: CalendarCheck, label: "Sắp học", value: upcoming, accent: "indigo" },
+    { icon: CheckCircle2, label: "Hoàn thành", value: completed, accent: "emerald" },
+    { icon: XCircle, label: "Đã hủy", value: cancelled, accent: "rose" },
+    { icon: Wallet, label: "Chờ thanh toán", value: pendingPayment, accent: "amber" },
   ] as const;
 
   const accentStyles: Record<string, { iconBg: string; glow: string }> = {
-    indigo: {
-      iconBg: "from-primary to-[#7d6dff]",
-      glow: "from-primary/15 to-primary/0",
-    },
-    amber: {
-      iconBg: "from-amber-400 to-orange-400",
-      glow: "from-amber-400/15 to-transparent",
-    },
-    emerald: {
-      iconBg: "from-[#10b981] to-[#34d399]",
-      glow: "from-[#34d399]/15 to-transparent",
-    },
-    rose: {
-      iconBg: "from-[#f43f5e] to-[#fb7185]",
-      glow: "from-[#fb7185]/15 to-transparent",
-    },
+    indigo: { iconBg: "from-primary to-[#7d6dff]", glow: "from-primary/15 to-primary/0" },
+    amber: { iconBg: "from-amber-400 to-orange-400", glow: "from-amber-400/15 to-transparent" },
+    emerald: { iconBg: "from-[#10b981] to-[#34d399]", glow: "from-[#34d399]/15 to-transparent" },
+    rose: { iconBg: "from-[#f43f5e] to-[#fb7185]", glow: "from-[#fb7185]/15 to-transparent" },
   };
 
   return (
-    <AppShell role="learner" title="Lịch tập">
+    <AppShell role="learner" title="Lịch học">
       <div className="max-w-[1200px] mx-auto space-y-5">
         {/* ---- HEADER ---- */}
         <motion.header
@@ -1095,10 +1012,10 @@ export default function LearnerSchedulePage() {
         >
           <div>
             <h1 className="text-[26px] font-bold tracking-tight text-on-surface">
-              Lịch tập của tôi
+              Lịch học của tôi
             </h1>
             <p className="text-[13.5px] text-on-surface-variant mt-0.5">
-              Theo dõi buổi sắp tới, lịch sử tập và trạng thái đặt lịch.
+              Xem các buổi học được tạo tự động từ gói tập bạn đã mua.
             </p>
           </div>
 
@@ -1127,11 +1044,11 @@ export default function LearnerSchedulePage() {
               {weekRangeLabel}
             </span>
             <Link
-              href="/learner/bookings"
+              href="/learner/coaches"
               className="ml-1 inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13px] font-semibold shadow-[0_4px_12px_-2px_rgba(53,37,205,0.4)] hover:shadow-[0_6px_18px_-3px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
-              <CalendarPlus size={13} strokeWidth={2.5} />
-              Đặt buổi tập
+              <Package size={13} strokeWidth={2.5} />
+              Khám phá gói tập
             </Link>
           </div>
         </motion.header>
@@ -1181,6 +1098,7 @@ export default function LearnerSchedulePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
           {/* LEFT: Sessions list */}
           <motion.div
+            id="upcoming"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reduce ? 0 : 0.45, delay: 0.08, ease: EASE }}
@@ -1191,8 +1109,14 @@ export default function LearnerSchedulePage() {
               {TABS.map((tab) => {
                 const count =
                   tab.id === "all"
-                    ? sessions.length
-                    : filterSessions(sessions, tab.id).length;
+                    ? sessions.length + pendingBookings.length
+                    : tab.id === "upcoming"
+                      ? upcoming
+                      : tab.id === "completed"
+                        ? completed
+                        : tab.id === "cancelled"
+                          ? cancelled
+                          : pendingPayment;
                 return (
                   <button
                     key={tab.id}
@@ -1208,11 +1132,7 @@ export default function LearnerSchedulePage() {
                       <motion.span
                         layoutId="scheduleTabPill"
                         className="absolute inset-0 bg-surface-container-low rounded-t-[6px]"
-                        transition={{
-                          type: "spring",
-                          duration: reduce ? 0 : 0.32,
-                          bounce: 0.2,
-                        }}
+                        transition={{ type: "spring", duration: reduce ? 0 : 0.32, bounce: 0.2 }}
                       />
                     )}
                     <span className="relative">
@@ -1220,7 +1140,7 @@ export default function LearnerSchedulePage() {
                       {count > 0 && (
                         <span
                           className={cn(
-                            "ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold",
+                            "ml-1.5 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-bold",
                             activeTab === tab.id
                               ? "bg-primary text-on-primary"
                               : "bg-surface-container-high text-on-surface-variant",
@@ -1245,17 +1165,44 @@ export default function LearnerSchedulePage() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
                 >
-                  {filteredSessions.length === 0 ? (
+                  {!hasListContent ? (
                     <EmptyTabState tab={activeTab} />
                   ) : (
-                    <GroupedSessionList
-                      groups={groupedSessions}
-                      coachById={coachById}
-                      reduce={reduce ?? false}
-                      onCancel={cancel}
-                      cancelling={cancelling}
-                      onViewDetail={setDetailSession}
-                    />
+                    <div className="space-y-5">
+                      {showPending && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2.5 px-1">
+                            <p className="text-[12px] font-semibold text-amber-700">
+                              Chờ thanh toán
+                            </p>
+                            <div className="flex-1 h-px bg-[var(--color-border-soft)]" />
+                            <span className="text-[11px] text-on-surface-variant/60 tabular-nums">
+                              {pendingBookings.length} gói
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {pendingBookings.map((b, i) => (
+                              <PendingPaymentCard
+                                key={b.id}
+                                booking={b}
+                                coach={coachById.get(b.coachId)}
+                                delay={i * 0.035}
+                                reduce={reduce ?? false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {groupedSessions.length > 0 && (
+                        <GroupedSessionList
+                          groups={groupedSessions}
+                          coachById={coachById}
+                          bookingById={bookingById}
+                          reduce={reduce ?? false}
+                          onViewDetail={setDetailSession}
+                        />
+                      )}
+                    </div>
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -1267,13 +1214,15 @@ export default function LearnerSchedulePage() {
             <AIInsightCard
               sessions={sessions}
               nextUpcoming={nextUpcoming}
-              requested={requested}
+              pendingCount={pendingPayment}
               coachById={coachById}
+              bookingById={bookingById}
               reduce={reduce ?? false}
             />
             <NextSessionCard
               session={nextUpcoming}
               coach={nextUpcoming ? coachById.get(nextUpcoming.coachId) : undefined}
+              booking={nextUpcoming?.bookingId ? bookingById.get(nextUpcoming.bookingId) : undefined}
               reduce={reduce ?? false}
             />
             <WeeklyTimeline
@@ -1292,15 +1241,11 @@ export default function LearnerSchedulePage() {
           <SessionDetailModal
             session={detailSession}
             coach={coachById.get(detailSession.coachId)}
+            booking={detailSession.bookingId ? bookingById.get(detailSession.bookingId) : undefined}
             onClose={() => setDetailSession(null)}
-            onCancel={cancel}
-            cancelling={cancelling === detailSession.id}
           />
         )}
       </AnimatePresence>
     </AppShell>
   );
 }
-
-// suppress unused import lint warnings
-void TrendingUp;

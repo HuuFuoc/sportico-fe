@@ -24,23 +24,30 @@ import { useState } from "react";
 interface SporticoVideoBackgroundProps {
   /** Poster image shown while video is loading (and as mobile fallback). */
   poster?: string;
-  /** Path to the video file (relative to /public). Defaults to the standard asset. */
+  /**
+   * Path to the video file (relative to /public). Leave empty to render the
+   * image only. The default is empty because the hero video asset is not
+   * shipped — pointing at a missing file caused a 404 on every page load (the
+   * `<video>` preloads even while hidden). Pass an explicit `src` once a real
+   * asset exists in `public/videos/` to re-enable the video layer.
+   */
   src?: string;
 }
 
 export function SporticoVideoBackground({
   poster = "/bg-hero.png",
-  src = "/videos/sportico-training-bg.mp4",
+  src = "",
 }: SporticoVideoBackgroundProps) {
   const [videoFailed, setVideoFailed] = useState(false);
 
-  if (videoFailed) {
+  // No video asset configured (or it failed to load) → image only, no request.
+  if (!src || videoFailed) {
     return (
       <img
         src={poster}
         alt=""
         aria-hidden
-        className="h-full w-full object-cover object-center"
+        className="absolute inset-0 h-full w-full object-cover object-center"
       />
     );
   }

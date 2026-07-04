@@ -335,7 +335,7 @@ export default function AdminUsersPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left min-w-[640px]">
                   <thead className="bg-surface-container-low/40 border-b border-[var(--color-border-soft)] text-[10.5px] uppercase tracking-wider text-on-surface-variant">
                     <tr>
                       <th className="pl-5 sm:pl-6 pr-3 py-3 font-semibold">

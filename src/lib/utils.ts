@@ -69,6 +69,24 @@ export function localDateKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Compact Vietnamese "time ago" label for feeds/notifications/message previews.
+ * e.g. "Vừa xong", "5 phút", "3 giờ", "2 ngày", then falls back to a short date.
+ * Uses the mock clock when in mock mode so fixtures read deterministically.
+ */
+export function formatRelativeTimeVi(iso: string): string {
+  const date = new Date(iso);
+  const now = (isMockMode() ? new Date(NOW) : new Date()).getTime();
+  const diffMin = Math.round((now - date.getTime()) / 60000);
+  if (diffMin < 1) return "Vừa xong";
+  if (diffMin < 60) return `${diffMin} phút`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} giờ`;
+  const diffDay = Math.round(diffHr / 24);
+  if (diffDay < 7) return `${diffDay} ngày`;
+  return date.toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" });
+}
+
 export function relativeDay(date: Date) {
   const today = isMockMode() ? new Date(NOW) : new Date();
   today.setHours(0, 0, 0, 0);

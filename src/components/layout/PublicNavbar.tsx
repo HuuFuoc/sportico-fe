@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/animated-navigation-tabs";
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { logout } from "@/lib/auth-api";
+import { getCurrentUserId } from "@/lib/auth-session";
 import { avatarFor, cn } from "@/lib/utils";
+import { NotificationNavButton } from "@/components/layout/navbar/NotificationNavButton";
+import { MessageNavButton } from "@/components/layout/navbar/MessageNavButton";
 import type { Role } from "@/types";
 
 interface PublicNavbarProps {
@@ -55,6 +58,14 @@ function settingsHref(role: Role): string {
   return `/${role}/settings`;
 }
 
+/** In-app inbox route for the role, or null when the role has no messages page
+ *  (admins have no inbox) — used to decide whether to show the chat icon. */
+function messagesHrefFor(role: Role): string | null {
+  if (role === "learner") return "/learner/messages";
+  if (role === "coach") return "/coach/messages";
+  return null;
+}
+
 export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -75,6 +86,11 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
 
   const displayName = authUser?.fullName ?? "Người dùng";
   const avatarSrc = authUser?.avatarUrl ?? avatarFor(authUser?.id ?? "guest");
+
+  // Resolve the signed-in user's id for thread lookups (real session first,
+  // then the auth store user as a fallback).
+  const currentUserId = getCurrentUserId() ?? authUser?.id ?? "";
+  const inboxHref = messagesHrefFor(menuRole);
 
   const navItems = buildNavItems(role);
   const activeHref = resolveActiveHref(navItems, pathname);
@@ -171,7 +187,22 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
         </nav>
 
         {/* Right cluster (auth actions + mobile hamburger) */}
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {isAuthenticated && (
+            <>
+              <NotificationNavButton
+                transparent={transparent}
+                seeAllHref={dashboardHref(menuRole)}
+              />
+              {inboxHref && (
+                <MessageNavButton
+                  userId={currentUserId}
+                  transparent={transparent}
+                  messagesHref={inboxHref}
+                />
+              )}
+            </>
+          )}
           {isAuthenticated ? (
             <UserMenu
               displayName={displayName}

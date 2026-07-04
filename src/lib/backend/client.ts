@@ -33,7 +33,6 @@ import type {
   CreatePostRequest,
   CreateReviewRequest,
   CreateReviewReportRequest,
-  CreateSessionRequest,
   CreateTeachingLocationRequest,
   CreateTrainingPlanRequest,
   CreateWeekRequest,
@@ -530,12 +529,6 @@ export const backend = {
       await GET<PagedResult<TrainingSessionResponse>>(
         ep.coachTrainingSessions + query,
       ),
-    );
-  },
-  /** Book a session against an availability slot */
-  async createSession(bookingId: string, body: CreateSessionRequest) {
-    return unwrap(
-      await POST<TrainingSessionResponse>(ep.createBookingSession(bookingId), body),
     );
   },
   async confirmSession(id: string, body?: ConfirmSessionRequest) {

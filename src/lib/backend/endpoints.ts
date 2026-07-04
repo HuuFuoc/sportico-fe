@@ -77,10 +77,9 @@ export const backendEndpoints = {
     `/api/payments/payos/${orderCode}/reconcile`,
 
   // ---- Sessions (per booking) -------------------------------------------
+  /** GET only — list a booking's auto-created TrainingSessions (read-only).
+   *  The legacy POST (manual session booking) has been removed. */
   bookingSessions: (bookingId: string) =>
-    `/api/bookings/${encodeURIComponent(bookingId)}/sessions`,
-  /** Learner books a session against an availability slot */
-  createBookingSession: (bookingId: string) =>
     `/api/bookings/${encodeURIComponent(bookingId)}/sessions`,
 
   // ---- Training sessions (global views) ---------------------------------

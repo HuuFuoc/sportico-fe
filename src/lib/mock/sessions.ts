@@ -157,7 +157,7 @@ export const mockSessions: Session[] = [
     price: 2_000_000,
   },
 
-  // ---------- Pending confirmations
+  // ---------- Auto-scheduled (created by backend after package purchase)
   {
     id: "sess-13",
     title: "Vinyasa Flow — Inversions",
@@ -165,7 +165,7 @@ export const mockSessions: Session[] = [
     learnerId: "learner-5",
     start: isoDay(2, 9, 0),
     durationMinutes: 60,
-    status: "pending_confirmation",
+    status: "scheduled",
     type: "1-on-1",
     location: "Online",
     price: 1_500_000,
@@ -177,7 +177,7 @@ export const mockSessions: Session[] = [
     learnerId: "learner-14",
     start: isoDay(3, 16, 0),
     durationMinutes: 60,
-    status: "pending_confirmation",
+    status: "scheduled",
     type: "1-on-1",
     location: "Houston Park",
     price: 1_625_000,

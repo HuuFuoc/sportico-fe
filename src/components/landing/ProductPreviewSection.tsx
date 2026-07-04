@@ -107,7 +107,7 @@ export function ProductPreviewSection() {
             className="mt-5 text-[36px] font-semibold leading-[1.04] tracking-[-0.025em] text-slate-900 sm:text-[44px]"
           >
             Mọi buổi tập đều được{" "}
-            <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
+            <span className="pt-[0.15em] bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-transparent">
               đo lường và thấu hiểu.
             </span>
           </motion.h2>
