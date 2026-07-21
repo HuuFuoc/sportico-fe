@@ -32,7 +32,11 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/logo.png",
+    // `icon` is deliberately omitted: src/app/favicon.ico is a Next file
+    // convention that already emits the tab icon. Declaring one here adds a
+    // SECOND competing <link rel="icon">, and the wide wordmark it pointed at
+    // was unreadable once scaled to 16px. Regenerate the .ico from the logo
+    // with `node scripts/generate-favicon.mjs`.
     apple: "/icons/apple-touch-icon.png",
   },
 };
