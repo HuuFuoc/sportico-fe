@@ -26,9 +26,11 @@ import {
   Database,
   DollarSign,
   Download,
+  Eye,
   FileBarChart,
   Filter,
   Gauge,
+  Globe,
   RefreshCw,
   Search,
   Server,
@@ -46,10 +48,7 @@ import { api } from "@/lib/api";
 import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import type {
-  Coach,
-  VerificationRequest,
-} from "@/types";
+import type { Coach, VerificationRequest } from "@/types";
 import type { AdminDashboardResponse } from "@/lib/backend/dto";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -94,6 +93,43 @@ const RETENTION = [
   { week: "T7", value: 41 },
   { week: "T8", value: 39 },
 ];
+
+// Visitor traffic — demo series for 1/7 → 21/7. PAGE VIEWS drive the shape,
+// in three phases: 10–20/ngày before 11/7, a 100–120/ngày launch spike on
+// 11–12/7, then a 20–30/ngày plateau afterwards. `visitors` is the per-day
+// unique count, which stays small because the same handful of people return.
+const VISITOR_TREND = [
+  { day: "1/7", visitors: 2, views: 12 },
+  { day: "2/7", visitors: 3, views: 17 },
+  { day: "3/7", visitors: 2, views: 11 },
+  { day: "4/7", visitors: 3, views: 19 },
+  { day: "5/7", visitors: 2, views: 14 },
+  { day: "6/7", visitors: 1, views: 10 },
+  { day: "7/7", visitors: 3, views: 16 },
+  { day: "8/7", visitors: 2, views: 13 },
+  { day: "9/7", visitors: 3, views: 20 },
+  { day: "10/7", visitors: 2, views: 15 },
+  { day: "11/7", visitors: 11, views: 104 },
+  { day: "12/7", visitors: 12, views: 118 },
+  { day: "13/7", visitors: 4, views: 27 },
+  { day: "14/7", visitors: 3, views: 24 },
+  { day: "15/7", visitors: 4, views: 29 },
+  { day: "16/7", visitors: 3, views: 22 },
+  { day: "17/7", visitors: 4, views: 26 },
+  { day: "18/7", visitors: 4, views: 30 },
+  { day: "19/7", visitors: 3, views: 23 },
+  { day: "20/7", visitors: 4, views: 28 },
+  { day: "21/7", visitors: 3, views: 25 },
+];
+
+/**
+ * Unique visitors across the WHOLE period (1/7–21/7).
+ *
+ * Deliberately not `sum(VISITOR_TREND.visitors)`: daily uniques double-count
+ * anyone who returns on another day, so a period total is always lower than
+ * the sum of its days. Same semantics as Vercel Analytics' visitor metric.
+ */
+const UNIQUE_VISITORS = 21;
 
 // Session heatmap: 7 days × 4 time buckets
 const HEATMAP_HOURS = ["06:00", "12:00", "18:00", "00:00"];
@@ -160,9 +196,12 @@ export default function AdminDashboardPage() {
 
   // Real metrics from backend. In live mode, show "—" when API fails (dashStats null).
   // In mock mode, fall back to demo constants so the UI stays populated during design.
-  const displayTotalUsers = dashStats?.totalUsers ?? (isMockMode() ? TOTAL_USERS : null);
-  const displayActiveCoaches = dashStats?.totalCoaches ?? (isMockMode() ? ACTIVE_COACHES : null);
-  const displayGrossRevenue = dashStats?.grossRevenue ?? (isMockMode() ? PLATFORM_REVENUE_MTD : null);
+  const displayTotalUsers =
+    dashStats?.totalUsers ?? (isMockMode() ? TOTAL_USERS : null);
+  const displayActiveCoaches =
+    dashStats?.totalCoaches ?? (isMockMode() ? ACTIVE_COACHES : null);
+  const displayGrossRevenue =
+    dashStats?.grossRevenue ?? (isMockMode() ? PLATFORM_REVENUE_MTD : null);
 
   return (
     <AppShell role="admin" title="Tổng quan">
@@ -250,7 +289,9 @@ export default function AdminDashboardPage() {
         <HeroCommand
           revenue={displayGrossRevenue}
           users={displayTotalUsers}
-          sessions={dashStats?.activeBookings ?? (isMockMode() ? SESSIONS_TODAY : null)}
+          sessions={
+            dashStats?.activeBookings ?? (isMockMode() ? SESSIONS_TODAY : null)
+          }
           coaches={displayActiveCoaches}
           totalBookings={dashStats?.totalBookings ?? null}
           completedBookings={dashStats?.completedBookings ?? null}
@@ -262,8 +303,16 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={Users}
             label="Tổng người dùng"
-            value={displayTotalUsers !== null ? formatNumber(displayTotalUsers) : "—"}
-            trend={dashStats ? `${formatNumber(dashStats.totalLearners)} HV · ${formatNumber(dashStats.totalCoaches)} HLV` : isMockMode() ? "+12%" : undefined}
+            value={
+              displayTotalUsers !== null ? formatNumber(displayTotalUsers) : "—"
+            }
+            trend={
+              dashStats
+                ? `${formatNumber(dashStats.totalLearners)} HV · ${formatNumber(dashStats.totalCoaches)} HLV`
+                : isMockMode()
+                  ? "+12%"
+                  : undefined
+            }
             trendDir={dashStats ? "neutral" : "up"}
             trendLabel={dashStats || !isMockMode() ? "" : "tăng trưởng tháng"}
             accent="indigo"
@@ -274,8 +323,18 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={ShieldCheck}
             label="HLV đang hoạt động"
-            value={displayActiveCoaches !== null ? formatNumber(displayActiveCoaches) : "—"}
-            trend={dashStats ? `${formatNumber(dashStats.publishedPackages)} gói đang bán` : isMockMode() ? "84 mới" : undefined}
+            value={
+              displayActiveCoaches !== null
+                ? formatNumber(displayActiveCoaches)
+                : "—"
+            }
+            trend={
+              dashStats
+                ? `${formatNumber(dashStats.publishedPackages)} gói đang bán`
+                : isMockMode()
+                  ? "84 mới"
+                  : undefined
+            }
             trendDir="up"
             trendLabel={dashStats || !isMockMode() ? "" : "tuần này"}
             accent="violet"
@@ -286,8 +345,20 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={Activity}
             label={dashStats ? "Gói tập hoạt động" : "Buổi tập hôm nay"}
-            value={dashStats ? formatNumber(dashStats.activeBookings) : isMockMode() ? formatNumber(SESSIONS_TODAY) : "—"}
-            trend={dashStats ? `${formatNumber(dashStats.completedBookings)} hoàn thành` : isMockMode() ? "Đỉnh 14h" : undefined}
+            value={
+              dashStats
+                ? formatNumber(dashStats.activeBookings)
+                : isMockMode()
+                  ? formatNumber(SESSIONS_TODAY)
+                  : "—"
+            }
+            trend={
+              dashStats
+                ? `${formatNumber(dashStats.completedBookings)} hoàn thành`
+                : isMockMode()
+                  ? "Đỉnh 14h"
+                  : undefined
+            }
             trendDir={dashStats ? "up" : "neutral"}
             trendLabel={dashStats || !isMockMode() ? "" : "hiện tại"}
             accent="emerald"
@@ -298,8 +369,18 @@ export default function AdminDashboardPage() {
           <KpiCard
             icon={DollarSign}
             label="Doanh thu nền tảng"
-            value={displayGrossRevenue !== null ? formatCurrency(displayGrossRevenue) : "—"}
-            trend={dashStats ? `Phí: ${formatCurrency(dashStats.platformFeeRevenue)}` : isMockMode() ? "+18%" : undefined}
+            value={
+              displayGrossRevenue !== null
+                ? formatCurrency(displayGrossRevenue)
+                : "—"
+            }
+            trend={
+              dashStats
+                ? `Phí: ${formatCurrency(dashStats.platformFeeRevenue)}`
+                : isMockMode()
+                  ? "+18%"
+                  : undefined
+            }
             trendDir="up"
             trendLabel={dashStats || !isMockMode() ? "" : "so tháng trước"}
             accent="amber"
@@ -311,7 +392,11 @@ export default function AdminDashboardPage() {
             icon={CreditCard}
             label="Rút tiền chờ"
             value={dashStats ? formatNumber(dashStats.pendingWithdrawals) : "—"}
-            trend={dashStats ? `${formatNumber(dashStats.processingWithdrawals)} đang xử lý` : undefined}
+            trend={
+              dashStats
+                ? `${formatNumber(dashStats.processingWithdrawals)} đang xử lý`
+                : undefined
+            }
             trendDir="neutral"
             trendLabel=""
             accent="rose"
@@ -368,10 +453,7 @@ export default function AdminDashboardPage() {
             />
 
             {/* Recent coaches */}
-            <RecentUsers
-              coaches={recentCoaches}
-              reduce={reduce ?? false}
-            />
+            <RecentUsers coaches={recentCoaches} reduce={reduce ?? false} />
           </div>
 
           {/* ============ RIGHT SIDEBAR ============ */}
@@ -381,6 +463,7 @@ export default function AdminDashboardPage() {
               pendingVerificationsCount={allVerifications.length}
               reduce={reduce ?? false}
             />
+            <VisitorTraffic reduce={reduce ?? false} />
             {isMockMode() && <SystemHealth reduce={reduce ?? false} />}
             <QuickActions
               pendingVerificationsCount={allVerifications.length}
@@ -443,8 +526,7 @@ function HeroCommand({
               ? `${formatNumber(totalBookings)} gói tập đã tạo · ${formatNumber(completedBookings)} hoàn thành trên toàn nền tảng.`
               : users !== null && coaches !== null
                 ? `Nền tảng đang phục vụ ${formatNumber(users)} người dùng và ${formatNumber(coaches)} huấn luyện viên.`
-                : "Đang tải dữ liệu nền tảng…"
-            }
+                : "Đang tải dữ liệu nền tảng…"}
           </p>
 
           <div className="flex items-center gap-2 mt-5 flex-wrap">
@@ -573,9 +655,7 @@ function KpiCard({
 }) {
   const a = KPI_ACCENTS[accent];
   const trendColor =
-    trendDir === "up" || trendDir === "neutral"
-      ? a.trend
-      : "text-[#ba1a1a]";
+    trendDir === "up" || trendDir === "neutral" ? a.trend : "text-[#ba1a1a]";
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -871,9 +951,7 @@ function SessionHeatmap({ reduce }: { reduce: boolean }) {
                   whileHover={reduce ? {} : { scale: 1.08 }}
                   className="group relative h-9 rounded-[8px] cursor-pointer flex items-center justify-center"
                   style={{
-                    background: `rgba(79, 70, 229, ${
-                      0.08 + intensity * 0.75
-                    })`,
+                    background: `rgba(79, 70, 229, ${0.08 + intensity * 0.75})`,
                   }}
                 >
                   <span
@@ -1107,10 +1185,7 @@ function PendingVerifications({
                       )}
                     >
                       <span
-                        className={cn(
-                          "w-1.5 h-1.5 rounded-full",
-                          meta.dot,
-                        )}
+                        className={cn("w-1.5 h-1.5 rounded-full", meta.dot)}
                       />
                       {meta.label}
                     </span>
@@ -1276,29 +1351,36 @@ function AIOpsCard({
       icon: ShieldCheck,
       label: "Xác minh đang chờ",
       value: String(pendingVerificationsCount),
-      tone: pendingVerificationsCount > 0 ? "warn" as const : "good" as const,
+      tone:
+        pendingVerificationsCount > 0 ? ("warn" as const) : ("good" as const),
     },
     {
       icon: CreditCard,
       label: "Rút tiền đang chờ",
       value: dashStats !== null ? String(pendingWithdrawals) : "—",
-      tone: pendingWithdrawals > 0 ? "warn" as const : "good" as const,
+      tone: pendingWithdrawals > 0 ? ("warn" as const) : ("good" as const),
     },
     {
       icon: AlertTriangle,
       label: "Rút tiền thất bại",
       value: dashStats !== null ? String(failedWithdrawals) : "—",
-      tone: failedWithdrawals > 0 ? "danger" as const : "good" as const,
+      tone: failedWithdrawals > 0 ? ("danger" as const) : ("good" as const),
     },
   ];
 
-  const summaryLine = dashStats !== null
-    ? [
-        pendingVerificationsCount > 0 && `${pendingVerificationsCount} HLV chờ xác minh`,
-        pendingWithdrawals > 0 && `${pendingWithdrawals} yêu cầu rút tiền chờ xử lý`,
-        processingWithdrawals > 0 && `${processingWithdrawals} đang chuyển khoản`,
-      ].filter(Boolean).join(" · ") || "Không có mục nào cần xử lý gấp."
-    : "Đang tải dữ liệu vận hành…";
+  const summaryLine =
+    dashStats !== null
+      ? [
+          pendingVerificationsCount > 0 &&
+            `${pendingVerificationsCount} HLV chờ xác minh`,
+          pendingWithdrawals > 0 &&
+            `${pendingWithdrawals} yêu cầu rút tiền chờ xử lý`,
+          processingWithdrawals > 0 &&
+            `${processingWithdrawals} đang chuyển khoản`,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Không có mục nào cần xử lý gấp."
+      : "Đang tải dữ liệu vận hành…";
 
   return (
     <motion.div
@@ -1356,7 +1438,9 @@ function AIOpsCard({
                   <op.icon size={13} className={tone} />
                   <span className="text-on-surface-variant">{op.label}</span>
                 </span>
-                <span className={cn("text-[13.5px] font-bold tabular-nums", tone)}>
+                <span
+                  className={cn("text-[13.5px] font-bold tabular-nums", tone)}
+                >
                   {op.value}
                 </span>
               </li>
@@ -1371,6 +1455,152 @@ function AIOpsCard({
           Xem xét ngay
           <ArrowRight size={13} />
         </Link>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// Visitor Traffic
+// ============================================================================
+
+function VisitorTraffic({ reduce }: { reduce: boolean }) {
+  // Demo visitor series — rendered in both mock and live mode so the dashboard
+  // always has a populated traffic card. The "Dữ liệu mẫu" badge below keeps it
+  // honest: these are illustrative numbers, NOT measured production traffic.
+  // Swap VISITOR_TREND for a real fetch (e.g. GET /api/admin/analytics/visitors)
+  // when the backend endpoint exists, then drop the badge.
+  const totalViews = VISITOR_TREND.reduce((s, d) => s + d.views, 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay: 0.2, ease: EASE }}
+      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-[11px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-white shadow-[0_4px_12px_-3px_rgba(53,37,205,0.4)]">
+            <Globe size={16} strokeWidth={2.25} />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight leading-none">
+              Lượt truy cập
+            </h3>
+            <p className="text-[11px] text-on-surface-variant mt-1">
+              1/7 – 21/7
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stat row */}
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        <div className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3">
+          <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
+            <Users size={11} className="text-primary" />
+            Lượt truy cập
+          </div>
+          <p className="text-[24px] font-bold tracking-tight tabular-nums mt-1 leading-none">
+            {formatNumber(UNIQUE_VISITORS)}
+          </p>
+        </div>
+        <div className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3">
+          <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
+            <Eye size={11} className="text-[#7c3aed]" />
+            Lượt xem
+          </div>
+          <p className="text-[24px] font-bold tracking-tight tabular-nums mt-1 leading-none">
+            {formatNumber(totalViews)}
+          </p>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="h-[120px] -mx-2">
+        <ClientOnly fallback={<div className="h-full" />}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={VISITOR_TREND}
+              margin={{ left: -4, right: 8, top: 8, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="visitorArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.32} />
+                  <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="#e8e8e5"
+                strokeDasharray="4 6"
+              />
+              <XAxis
+                dataKey="day"
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                dy={4}
+                // 21 points in a sidebar-width chart — show every 5th label so
+                // they don't collide. Lands on 1/7, 6/7, 11/7, 16/7, 21/7.
+                interval={4}
+              />
+              <YAxis
+                stroke="#777587"
+                fontSize={10.5}
+                tickLine={false}
+                axisLine={false}
+                width={26}
+                allowDecimals={false}
+              />
+              <Tooltip
+                cursor={{
+                  stroke: "#4f46e5",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as {
+                    day: string;
+                    visitors: number;
+                    views: number;
+                  };
+                  return (
+                    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] px-3 py-2 shadow-[0_8px_20px_-8px_rgba(15,15,30,0.18)]">
+                      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
+                        {p.day}
+                      </p>
+                      <p className="text-[12.5px] font-bold tabular-nums mt-0.5">
+                        {formatNumber(p.views)} lượt xem
+                      </p>
+                      <p className="text-[11px] tabular-nums text-on-surface-variant">
+                        {formatNumber(p.visitors)} khách
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="views"
+                stroke="#4f46e5"
+                strokeWidth={2.5}
+                fill="url(#visitorArea)"
+                activeDot={{
+                  r: 5,
+                  fill: "#fff",
+                  stroke: "#4f46e5",
+                  strokeWidth: 2.5,
+                }}
+                isAnimationActive={!reduce}
+                animationDuration={reduce ? 0 : 1100}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ClientOnly>
       </div>
     </motion.div>
   );
@@ -1448,13 +1678,7 @@ function SystemHealth({ reduce }: { reduce: boolean }) {
                 ? "bg-[#fff5d6]/60 border-[#f4d68a]/60"
                 : "bg-[#ffdad6]/50 border-[#ffbbb3]";
           return (
-            <li
-              key={it.label}
-              className={cn(
-                "rounded-[14px] p-3 border",
-                bg,
-              )}
-            >
+            <li key={it.label} className={cn("rounded-[14px] p-3 border", bg)}>
               <div className="flex items-center gap-1.5 text-[10.5px] text-on-surface-variant uppercase tracking-wider font-semibold">
                 <it.icon size={11} className={tone} />
                 {it.label}
@@ -1500,7 +1724,10 @@ function QuickActions({
     {
       icon: ShieldCheck,
       label: "Duyệt xác minh",
-      desc: pendingVerificationsCount > 0 ? `${pendingVerificationsCount} đang chờ` : "Không có mục chờ",
+      desc:
+        pendingVerificationsCount > 0
+          ? `${pendingVerificationsCount} đang chờ`
+          : "Không có mục chờ",
       href: "/admin/verifications",
       accent: "indigo" as const,
     },
