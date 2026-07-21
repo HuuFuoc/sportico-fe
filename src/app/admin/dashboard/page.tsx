@@ -26,11 +26,9 @@ import {
   Database,
   DollarSign,
   Download,
-  Eye,
   FileBarChart,
   Filter,
   Gauge,
-  Globe,
   RefreshCw,
   Search,
   Server,
@@ -94,43 +92,6 @@ const RETENTION = [
   { week: "T8", value: 39 },
 ];
 
-// Visitor traffic — demo series for 1/7 → 21/7. PAGE VIEWS drive the shape,
-// in three phases: 10–20/ngày before 11/7, a 100–120/ngày launch spike on
-// 11–12/7, then a 20–30/ngày plateau afterwards. `visitors` is the per-day
-// unique count, which stays small because the same handful of people return.
-const VISITOR_TREND = [
-  { day: "1/7", visitors: 2, views: 12 },
-  { day: "2/7", visitors: 3, views: 17 },
-  { day: "3/7", visitors: 2, views: 11 },
-  { day: "4/7", visitors: 3, views: 19 },
-  { day: "5/7", visitors: 2, views: 14 },
-  { day: "6/7", visitors: 1, views: 10 },
-  { day: "7/7", visitors: 3, views: 16 },
-  { day: "8/7", visitors: 2, views: 13 },
-  { day: "9/7", visitors: 3, views: 20 },
-  { day: "10/7", visitors: 2, views: 15 },
-  { day: "11/7", visitors: 11, views: 104 },
-  { day: "12/7", visitors: 12, views: 118 },
-  { day: "13/7", visitors: 4, views: 27 },
-  { day: "14/7", visitors: 3, views: 24 },
-  { day: "15/7", visitors: 4, views: 29 },
-  { day: "16/7", visitors: 3, views: 22 },
-  { day: "17/7", visitors: 4, views: 26 },
-  { day: "18/7", visitors: 4, views: 30 },
-  { day: "19/7", visitors: 3, views: 23 },
-  { day: "20/7", visitors: 4, views: 28 },
-  { day: "21/7", visitors: 3, views: 25 },
-];
-
-/**
- * Unique visitors across the WHOLE period (1/7–21/7).
- *
- * Deliberately not `sum(VISITOR_TREND.visitors)`: daily uniques double-count
- * anyone who returns on another day, so a period total is always lower than
- * the sum of its days. Same semantics as Vercel Analytics' visitor metric.
- */
-const UNIQUE_VISITORS = 21;
-
 // Session heatmap: 7 days × 4 time buckets
 const HEATMAP_HOURS = ["06:00", "12:00", "18:00", "00:00"];
 const HEATMAP_DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -151,6 +112,7 @@ export default function AdminDashboardPage() {
       ]),
     [],
   );
+
   const allVerifications = useMemo(() => data?.[0] ?? [], [data]);
   const allCoaches = useMemo(() => data?.[1] ?? [], [data]);
   /** Real platform dashboard — non-null in live mode, null in mock/demo mode. */
@@ -214,23 +176,7 @@ export default function AdminDashboardPage() {
           className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4"
         >
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium border border-primary/15">
-                <Terminal size={11} />
-                Trung tâm điều hành
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container text-[10.5px] font-semibold text-[#1f7a4d]">
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                Trực tiếp
-              </span>
-              <span className="text-[12px] text-on-surface-variant">
-                Cập nhật lúc{" "}
-                {new Date().toLocaleTimeString("vi-VN", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
+            <div className="flex items-center gap-2 mb-1.5"></div>
             <h1 className="text-[30px] sm:text-[36px] leading-[1.05] font-bold tracking-tight">
               Tổng quan nền tảng
             </h1>
@@ -293,8 +239,6 @@ export default function AdminDashboardPage() {
             dashStats?.activeBookings ?? (isMockMode() ? SESSIONS_TODAY : null)
           }
           coaches={displayActiveCoaches}
-          totalBookings={dashStats?.totalBookings ?? null}
-          completedBookings={dashStats?.completedBookings ?? null}
           reduce={reduce ?? false}
         />
 
@@ -306,15 +250,6 @@ export default function AdminDashboardPage() {
             value={
               displayTotalUsers !== null ? formatNumber(displayTotalUsers) : "—"
             }
-            trend={
-              dashStats
-                ? `${formatNumber(dashStats.totalLearners)} HV · ${formatNumber(dashStats.totalCoaches)} HLV`
-                : isMockMode()
-                  ? "+12%"
-                  : undefined
-            }
-            trendDir={dashStats ? "neutral" : "up"}
-            trendLabel={dashStats || !isMockMode() ? "" : "tăng trưởng tháng"}
             accent="indigo"
             spark={liveSpark(1, 18000, 2000)}
             delay={0.05}
@@ -328,44 +263,12 @@ export default function AdminDashboardPage() {
                 ? formatNumber(displayActiveCoaches)
                 : "—"
             }
-            trend={
-              dashStats
-                ? `${formatNumber(dashStats.publishedPackages)} gói đang bán`
-                : isMockMode()
-                  ? "84 mới"
-                  : undefined
-            }
-            trendDir="up"
-            trendLabel={dashStats || !isMockMode() ? "" : "tuần này"}
             accent="violet"
             spark={liveSpark(2, 1100, 60)}
             delay={0.1}
             reduce={reduce ?? false}
           />
-          <KpiCard
-            icon={Activity}
-            label={dashStats ? "Gói tập hoạt động" : "Buổi tập hôm nay"}
-            value={
-              dashStats
-                ? formatNumber(dashStats.activeBookings)
-                : isMockMode()
-                  ? formatNumber(SESSIONS_TODAY)
-                  : "—"
-            }
-            trend={
-              dashStats
-                ? `${formatNumber(dashStats.completedBookings)} hoàn thành`
-                : isMockMode()
-                  ? "Đỉnh 14h"
-                  : undefined
-            }
-            trendDir={dashStats ? "up" : "neutral"}
-            trendLabel={dashStats || !isMockMode() ? "" : "hiện tại"}
-            accent="emerald"
-            spark={liveSpark(3, 380, 60)}
-            delay={0.15}
-            reduce={reduce ?? false}
-          />
+
           <KpiCard
             icon={DollarSign}
             label="Doanh thu nền tảng"
@@ -374,15 +277,6 @@ export default function AdminDashboardPage() {
                 ? formatCurrency(displayGrossRevenue)
                 : "—"
             }
-            trend={
-              dashStats
-                ? `Phí: ${formatCurrency(dashStats.platformFeeRevenue)}`
-                : isMockMode()
-                  ? "+18%"
-                  : undefined
-            }
-            trendDir="up"
-            trendLabel={dashStats || !isMockMode() ? "" : "so tháng trước"}
             accent="amber"
             spark={liveSpark(4, 700000, 60000)}
             delay={0.2}
@@ -392,13 +286,6 @@ export default function AdminDashboardPage() {
             icon={CreditCard}
             label="Rút tiền chờ"
             value={dashStats ? formatNumber(dashStats.pendingWithdrawals) : "—"}
-            trend={
-              dashStats
-                ? `${formatNumber(dashStats.processingWithdrawals)} đang xử lý`
-                : undefined
-            }
-            trendDir="neutral"
-            trendLabel=""
             accent="rose"
             spark={liveSpark(5, 91, 2)}
             delay={0.25}
@@ -463,7 +350,6 @@ export default function AdminDashboardPage() {
               pendingVerificationsCount={allVerifications.length}
               reduce={reduce ?? false}
             />
-            <VisitorTraffic reduce={reduce ?? false} />
             {isMockMode() && <SystemHealth reduce={reduce ?? false} />}
             <QuickActions
               pendingVerificationsCount={allVerifications.length}
@@ -485,16 +371,12 @@ function HeroCommand({
   users,
   sessions,
   coaches,
-  totalBookings,
-  completedBookings,
   reduce,
 }: {
   revenue: number | null;
   users: number | null;
   sessions: number | null;
   coaches: number | null;
-  totalBookings: number | null;
-  completedBookings: number | null;
   reduce: boolean;
 }) {
   return (
@@ -511,7 +393,7 @@ function HeroCommand({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] uppercase tracking-wider font-bold text-primary">
-              Doanh thu nền tảng · Lũy kế
+              Doanh thu nền tảng
             </span>
           </div>
 
@@ -520,14 +402,6 @@ function HeroCommand({
               {revenue !== null ? formatCurrency(revenue) : "—"}
             </span>
           </div>
-
-          <p className="text-[13.5px] text-on-surface-variant mt-3 max-w-xl leading-relaxed">
-            {totalBookings !== null && completedBookings !== null
-              ? `${formatNumber(totalBookings)} gói tập đã tạo · ${formatNumber(completedBookings)} hoàn thành trên toàn nền tảng.`
-              : users !== null && coaches !== null
-                ? `Nền tảng đang phục vụ ${formatNumber(users)} người dùng và ${formatNumber(coaches)} huấn luyện viên.`
-                : "Đang tải dữ liệu nền tảng…"}
-          </p>
 
           <div className="flex items-center gap-2 mt-5 flex-wrap">
             <button className="inline-flex items-center gap-1.5 h-11 px-5 rounded-xl bg-gradient-to-br from-primary to-[#5b4ee8] text-on-primary text-[13.5px] font-semibold shadow-[0_4px_14px_-2px_rgba(53,37,205,0.45)] hover:shadow-[0_8px_22px_-4px_rgba(53,37,205,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all">
@@ -598,35 +472,30 @@ const KPI_ACCENTS = {
     glow: "shadow-[0_4px_14px_-3px_rgba(53,37,205,0.4)]",
     decor: "from-primary/15 to-primary/0",
     stroke: "#4f46e5",
-    trend: "text-primary",
   },
   violet: {
     iconBg: "bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]",
     glow: "shadow-[0_4px_14px_-3px_rgba(139,92,246,0.4)]",
     decor: "from-[#c084fc]/15 to-[#c084fc]/0",
     stroke: "#8b5cf6",
-    trend: "text-[#7c3aed]",
   },
   emerald: {
     iconBg: "bg-gradient-to-br from-[#10b981] to-[#34d399]",
     glow: "shadow-[0_4px_14px_-3px_rgba(16,185,129,0.4)]",
     decor: "from-[#34d399]/15 to-[#34d399]/0",
     stroke: "#10b981",
-    trend: "text-[#1f7a4d]",
   },
   amber: {
     iconBg: "bg-gradient-to-br from-[#f59e0b] to-[#fb923c]",
     glow: "shadow-[0_4px_14px_-3px_rgba(245,158,11,0.4)]",
     decor: "from-[#f59e0b]/15 to-[#f59e0b]/0",
     stroke: "#f59e0b",
-    trend: "text-[#b45309]",
   },
   rose: {
     iconBg: "bg-gradient-to-br from-[#f43f5e] to-[#fb7185]",
     glow: "shadow-[0_4px_14px_-3px_rgba(244,63,94,0.35)]",
     decor: "from-[#fb7185]/15 to-[#fb7185]/0",
     stroke: "#f43f5e",
-    trend: "text-[#be123c]",
   },
 } as const;
 
@@ -634,9 +503,6 @@ function KpiCard({
   icon: Icon,
   label,
   value,
-  trend,
-  trendDir,
-  trendLabel,
   accent,
   spark,
   delay,
@@ -645,17 +511,12 @@ function KpiCard({
   icon: typeof Users;
   label: string;
   value: string;
-  trend?: string;
-  trendDir?: "up" | "down" | "neutral";
-  trendLabel?: string;
   accent: keyof typeof KPI_ACCENTS;
   spark: { i: number; v: number }[];
   delay: number;
   reduce: boolean;
 }) {
   const a = KPI_ACCENTS[accent];
-  const trendColor =
-    trendDir === "up" || trendDir === "neutral" ? a.trend : "text-[#ba1a1a]";
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -714,22 +575,6 @@ function KpiCard({
             </ClientOnly>
           </div>
         )}
-        <div className="flex items-center gap-1.5 mt-1 text-[11px]">
-          {trend && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-0.5 font-semibold",
-                trendColor,
-              )}
-            >
-              <TrendingUp size={10} />
-              {trend}
-            </span>
-          )}
-          {trendLabel && (
-            <span className="text-on-surface-variant">{trendLabel}</span>
-          )}
-        </div>
       </div>
     </motion.div>
   );
@@ -1255,7 +1100,7 @@ function RecentUsers({
     id: c.id,
     avatar: c.avatarUrl,
     name: c.name,
-    sub: `${c.sport ?? "HLV"} · tham gia ${new Date(c.joinedAt).toLocaleDateString("vi-VN", { month: "short", day: "numeric" })}`,
+    sub: c.sport ?? "HLV",
     badge: c.verified ? "Đã xác minh" : "Chưa xác minh",
     tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
   }));
@@ -1455,152 +1300,6 @@ function AIOpsCard({
           Xem xét ngay
           <ArrowRight size={13} />
         </Link>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// Visitor Traffic
-// ============================================================================
-
-function VisitorTraffic({ reduce }: { reduce: boolean }) {
-  // Demo visitor series — rendered in both mock and live mode so the dashboard
-  // always has a populated traffic card. The "Dữ liệu mẫu" badge below keeps it
-  // honest: these are illustrative numbers, NOT measured production traffic.
-  // Swap VISITOR_TREND for a real fetch (e.g. GET /api/admin/analytics/visitors)
-  // when the backend endpoint exists, then drop the badge.
-  const totalViews = VISITOR_TREND.reduce((s, d) => s + d.views, 0);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay: 0.2, ease: EASE }}
-      className="rounded-[20px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-5 shadow-[0_1px_2px_rgba(15,15,30,0.04),0_8px_24px_-12px_rgba(15,15,30,0.06)]"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-[11px] bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-white shadow-[0_4px_12px_-3px_rgba(53,37,205,0.4)]">
-            <Globe size={16} strokeWidth={2.25} />
-          </div>
-          <div>
-            <h3 className="text-[15px] font-semibold tracking-tight leading-none">
-              Lượt truy cập
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mt-1">
-              1/7 – 21/7
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Stat row */}
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
-        <div className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3">
-          <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
-            <Users size={11} className="text-primary" />
-            Lượt truy cập
-          </div>
-          <p className="text-[24px] font-bold tracking-tight tabular-nums mt-1 leading-none">
-            {formatNumber(UNIQUE_VISITORS)}
-          </p>
-        </div>
-        <div className="rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3">
-          <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider font-semibold text-on-surface-variant">
-            <Eye size={11} className="text-[#7c3aed]" />
-            Lượt xem
-          </div>
-          <p className="text-[24px] font-bold tracking-tight tabular-nums mt-1 leading-none">
-            {formatNumber(totalViews)}
-          </p>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="h-[120px] -mx-2">
-        <ClientOnly fallback={<div className="h-full" />}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={VISITOR_TREND}
-              margin={{ left: -4, right: 8, top: 8, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="visitorArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.32} />
-                  <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                vertical={false}
-                stroke="#e8e8e5"
-                strokeDasharray="4 6"
-              />
-              <XAxis
-                dataKey="day"
-                stroke="#777587"
-                fontSize={10.5}
-                tickLine={false}
-                axisLine={false}
-                dy={4}
-                // 21 points in a sidebar-width chart — show every 5th label so
-                // they don't collide. Lands on 1/7, 6/7, 11/7, 16/7, 21/7.
-                interval={4}
-              />
-              <YAxis
-                stroke="#777587"
-                fontSize={10.5}
-                tickLine={false}
-                axisLine={false}
-                width={26}
-                allowDecimals={false}
-              />
-              <Tooltip
-                cursor={{
-                  stroke: "#4f46e5",
-                  strokeWidth: 1,
-                  strokeDasharray: "4 4",
-                }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const p = payload[0].payload as {
-                    day: string;
-                    visitors: number;
-                    views: number;
-                  };
-                  return (
-                    <div className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] px-3 py-2 shadow-[0_8px_20px_-8px_rgba(15,15,30,0.18)]">
-                      <p className="text-[10.5px] uppercase tracking-wider text-on-surface-variant font-semibold">
-                        {p.day}
-                      </p>
-                      <p className="text-[12.5px] font-bold tabular-nums mt-0.5">
-                        {formatNumber(p.views)} lượt xem
-                      </p>
-                      <p className="text-[11px] tabular-nums text-on-surface-variant">
-                        {formatNumber(p.visitors)} khách
-                      </p>
-                    </div>
-                  );
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="views"
-                stroke="#4f46e5"
-                strokeWidth={2.5}
-                fill="url(#visitorArea)"
-                activeDot={{
-                  r: 5,
-                  fill: "#fff",
-                  stroke: "#4f46e5",
-                  strokeWidth: 2.5,
-                }}
-                isAnimationActive={!reduce}
-                animationDuration={reduce ? 0 : 1100}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ClientOnly>
       </div>
     </motion.div>
   );

@@ -28,6 +28,7 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 import { showSuccess, showError } from "@/lib/toast";
 import * as adminUserService from "@/lib/admin/adminUserService";
 import type { AdminUserItem } from "@/lib/types/admin-user";
+import { VisitorAnalyticsSection } from "@/components/admin/VisitorAnalytics";
 import { UserFormModal } from "./_components/UserFormModal";
 import { UserDetailModal } from "./_components/UserDetailModal";
 
@@ -274,6 +275,9 @@ export default function AdminUsersPage() {
             reduce={reduce ?? false}
           />
         </section>
+
+        {/* ============ VISITOR ANALYTICS ============ */}
+        <VisitorAnalyticsSection reduce={reduce ?? false} />
 
         {/* ============ FILTER BAR ============ */}
         <div className="rounded-[16px] border border-[var(--color-border-soft)] bg-surface-container-lowest p-3 shadow-[0_2px_8px_-4px_rgba(15,15,30,0.06)]">

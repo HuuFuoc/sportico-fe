@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoadingState } from "@/components/common/AsyncStates";
 import { PersonalProfileForm } from "@/components/settings/PersonalProfileForm";
+import { PlatformCommissionCard } from "@/components/admin/PlatformCommissionCard";
 
 // ── Page wrapper (Suspense required for useSearchParams) ──────────────────────
 
@@ -28,13 +29,13 @@ function AdminSettingsInner() {
 
   return (
     <AppShell role="admin" title="Cài đặt">
-      <div className="mx-auto max-w-[640px] pb-16">
+      <div className="mx-auto max-w-[640px] space-y-5 pb-16">
         <header className="mb-6">
           <h1 className="text-[22px] font-bold tracking-tight text-on-surface">
-            Cài đặt tài khoản
+            Cài đặt
           </h1>
           <p className="mt-1 text-[13px] text-on-surface-variant">
-            Thông tin cá nhân cho tài khoản quản trị viên.
+            Thông tin cá nhân và cấu hình nền tảng.
           </p>
         </header>
 
@@ -47,6 +48,8 @@ function AdminSettingsInner() {
             skipHref="/admin/dashboard"
           />
         </div>
+
+        <PlatformCommissionCard />
       </div>
     </AppShell>
   );

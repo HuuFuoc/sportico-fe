@@ -149,6 +149,34 @@ export const backendEndpoints = {
   adminWithdrawalById: (id: string) =>
     `/api/admin/withdrawal-requests/${encodeURIComponent(id)}`,
 
+  // ---- Visitor analytics -------------------------------------------------
+  /**
+   * Records one page view. ANONYMOUS (no auth) and the only write endpoint —
+   * every /api/admin/analytics/* read below stays at zero without it.
+   */
+  analyticsPageView: "/api/analytics/pageview",
+
+  // ---- Admin visitor analytics -------------------------------------------
+  /**
+   * Aggregate analytics: visitor + page-view stats, chart, top pages, devices,
+   * browsers and countries in one response. Prefer this over the granular
+   * endpoints below when rendering a full view. Optional FromDate/ToDate query.
+   */
+  adminAnalyticsDashboard: "/api/admin/analytics/dashboard",
+  adminAnalyticsVisitors: "/api/admin/analytics/visitors",
+  adminAnalyticsPageViews: "/api/admin/analytics/pageviews",
+  /** Additionally accepts a `Limit` query param. */
+  adminAnalyticsTopPages: "/api/admin/analytics/top-pages",
+  adminAnalyticsDevices: "/api/admin/analytics/devices",
+  adminAnalyticsBrowsers: "/api/admin/analytics/browsers",
+  adminAnalyticsCountries: "/api/admin/analytics/countries",
+  /** Additionally accepts a `Granularity` query param. */
+  adminAnalyticsChart: "/api/admin/analytics/chart",
+
+  // ---- Admin platform settings -------------------------------------------
+  /** Platform commission percent. GET reads the current value, PUT updates it. */
+  adminPlatformCommission: "/api/admin/platform-settings/commission",
+
   // ---- Reviews -----------------------------------------------------------
   /** Public: list active reviews for a coach. Optional auth: canEdit flag set when learner owns the review. */
   coachReviews: (coachId: string) =>

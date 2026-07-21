@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { ScrollRestoration } from "@/components/common/ScrollRestoration";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegister } from "@/components/common/ServiceWorkerRegister";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
 import { AdvisoryWidgetGate } from "@/components/advisory/AdvisoryWidgetGate";
 import "./globals.css";
@@ -55,6 +57,9 @@ export default function RootLayout({
       <body className="min-h-full bg-surface text-on-surface font-sans">
         <ServiceWorkerRegister />
         <AuthBootstrap />
+        <Suspense fallback={null}>
+          <PageViewTracker />
+        </Suspense>
         <ScrollRestoration />
         {children}
         <AdvisoryWidgetGate />

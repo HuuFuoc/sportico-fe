@@ -763,6 +763,110 @@ export interface AdminDashboardResponse {
   failedWithdrawals: number;
 }
 
+// ---- Visitor analytics -----------------------------------------------------
+
+/**
+ * POST /api/analytics/pageview body — the write side that feeds every
+ * /api/admin/analytics/* read endpoint. Anonymous; the backend derives the
+ * visitor identity itself, so no id is sent from the client.
+ */
+export interface SubmitPageViewRequest {
+  path?: string | null;
+  title?: string | null;
+  referrer?: string | null;
+}
+
+// ---- Admin visitor analytics -----------------------------------------------
+
+/** GET /api/admin/analytics/visitors */
+export interface VisitorStatsResponse {
+  totalVisitors: number;
+  todayVisitors: number;
+  weeklyVisitors: number;
+  monthlyVisitors: number;
+  /** Visitors currently active on the site. */
+  activeVisitors: number;
+  returningVisitors: number;
+  newVisitors: number;
+}
+
+/** GET /api/admin/analytics/pageviews */
+export interface PageViewStatsResponse {
+  totalPageViews: number;
+  todayPageViews: number;
+  averagePageViewsPerSession: number;
+}
+
+/** One bucket of GET /api/admin/analytics/chart */
+export interface VisitorChartPointResponse {
+  /** ISO timestamp of the bucket start. */
+  periodStart: string;
+  /** Pre-formatted label from the backend — render this, don't re-derive it. */
+  periodLabel: string;
+  visitorCount: number;
+  pageViewCount: number;
+}
+
+/** GET /api/admin/analytics/top-pages */
+export interface TopPageResponse {
+  path: string;
+  viewCount: number;
+  uniqueVisitors: number;
+}
+
+/** GET /api/admin/analytics/devices */
+export interface DeviceStatResponse {
+  device: string;
+  count: number;
+  percentage: number;
+}
+
+/** GET /api/admin/analytics/browsers */
+export interface BrowserStatResponse {
+  browser: string;
+  count: number;
+  percentage: number;
+}
+
+/** GET /api/admin/analytics/countries */
+export interface CountryStatResponse {
+  country: string;
+  count: number;
+  percentage: number;
+}
+
+/**
+ * GET /api/admin/analytics/dashboard — every section above in ONE round-trip.
+ * Prefer this over the seven granular endpoints when rendering a full view.
+ * Array members may come back null from the backend; callers should `?? []`.
+ */
+export interface AdminAnalyticsDashboardResponse {
+  visitorStats: VisitorStatsResponse;
+  pageViewStats: PageViewStatsResponse;
+  visitorsChart?: VisitorChartPointResponse[] | null;
+  topPages?: TopPageResponse[] | null;
+  devices?: DeviceStatResponse[] | null;
+  browsers?: BrowserStatResponse[] | null;
+  countries?: CountryStatResponse[] | null;
+}
+
+// ---- Platform settings -----------------------------------------------------
+
+/** GET + PUT /api/admin/platform-settings/commission */
+export interface PlatformCommissionResponse {
+  /** Platform cut of each booking, as a percentage (0–100). */
+  commissionPercent: number;
+  /** ISO timestamp of the last change. */
+  updatedAt: string;
+  /** Admin who made the last change. */
+  updatedByUserId?: string | null;
+}
+
+/** PUT /api/admin/platform-settings/commission body. */
+export interface UpdatePlatformCommissionRequest {
+  commissionPercent: number;
+}
+
 // ---- Reviews ---------------------------------------------------------------
 
 /** Lightweight reviewer info embedded in ReviewResponse. */

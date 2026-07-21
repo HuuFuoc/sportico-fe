@@ -11,11 +11,19 @@
 import { apiFetch, ApiError, type ApiFetchOptions } from "@/lib/api-client";
 import { backendEndpoints as ep } from "@/lib/backend/endpoints";
 import type {
+  AdminAnalyticsDashboardResponse,
   AdminDashboardResponse,
   AdvisoryMessageRequest,
   AdvisoryMessageResponse,
   AvailabilitySlotResponse,
   BookingResponse,
+  BrowserStatResponse,
+  CountryStatResponse,
+  DeviceStatResponse,
+  PageViewStatsResponse,
+  TopPageResponse,
+  VisitorChartPointResponse,
+  VisitorStatsResponse,
   ChangePasswordRequest,
   ChatMessageResponse,
   ChatRoomResponse,
@@ -41,6 +49,7 @@ import type {
   LearnerAssessmentResponse,
   NotificationResponse,
   PagedResult,
+  PlatformCommissionResponse,
   PlatformPackageResponse,
   PostResponse,
   ProgressCheckInResponse,
@@ -53,6 +62,7 @@ import type {
   ReconcilePayOsResponse,
   ResolveReviewReportRequest,
   Result,
+  SubmitPageViewRequest,
   ReviewFilterRequest,
   ReviewReportResponse,
   ReviewResponse,
@@ -65,6 +75,7 @@ import type {
   UpdateCheckInFeedbackRequest,
   UpdateExerciseRequest,
   UpdateMeRequest,
+  UpdatePlatformCommissionRequest,
   UpdatePostRequest,
   UpdateReviewRequest,
   UpdateTeachingLocationRequest,
@@ -458,6 +469,102 @@ export const backend = {
   async adminDashboard(filter?: DashboardFilterParams) {
     const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
     return unwrap(await GET<AdminDashboardResponse>(ep.adminDashboard + query));
+  },
+
+  // ---- Visitor analytics -------------------------------------------------
+  /**
+   * Record one page view. Responds 202 with an EMPTY Result envelope, so this
+   * deliberately skips `unwrap` — unwrap throws when `data` is null.
+   *
+   * - `credentials: "include"` so the backend's anonymous visitor cookie
+   *   (`spt_vid`) round-trips; without it every hit looks like a new visitor.
+   * - `keepalive` lets the beacon outlive the navigation that triggered it.
+   * - `suppressAuthRedirect` because this endpoint is anonymous: a 401 here
+   *   must never bounce the user to /login.
+   */
+  async submitPageView(body: SubmitPageViewRequest): Promise<void> {
+    await POST<null>(ep.analyticsPageView, body, {
+      credentials: "include",
+      keepalive: true,
+      suppressAuthRedirect: true,
+    });
+  },
+
+  // ---- Visitor analytics (admin) -----------------------------------------
+  /** Everything in one call — prefer this over the granular methods below. */
+  async analyticsDashboard(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(
+      await GET<AdminAnalyticsDashboardResponse>(
+        ep.adminAnalyticsDashboard + query,
+      ),
+    );
+  },
+  async analyticsVisitors(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(
+      await GET<VisitorStatsResponse>(ep.adminAnalyticsVisitors + query),
+    );
+  },
+  async analyticsPageViews(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(
+      await GET<PageViewStatsResponse>(ep.adminAnalyticsPageViews + query),
+    );
+  },
+  async analyticsTopPages(
+    filter?: DashboardFilterParams & { limit?: number },
+  ) {
+    const query = qs({
+      FromDate: filter?.fromDate,
+      ToDate: filter?.toDate,
+      Limit: filter?.limit,
+    });
+    return unwrap(
+      await GET<TopPageResponse[]>(ep.adminAnalyticsTopPages + query),
+    );
+  },
+  async analyticsDevices(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(
+      await GET<DeviceStatResponse[]>(ep.adminAnalyticsDevices + query),
+    );
+  },
+  async analyticsBrowsers(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(
+      await GET<BrowserStatResponse[]>(ep.adminAnalyticsBrowsers + query),
+    );
+  },
+  async analyticsCountries(filter?: DashboardFilterParams) {
+    const query = qs({ FromDate: filter?.fromDate, ToDate: filter?.toDate });
+    return unwrap(
+      await GET<CountryStatResponse[]>(ep.adminAnalyticsCountries + query),
+    );
+  },
+  async analyticsChart(
+    filter?: DashboardFilterParams & { granularity?: string },
+  ) {
+    const query = qs({
+      FromDate: filter?.fromDate,
+      ToDate: filter?.toDate,
+      Granularity: filter?.granularity,
+    });
+    return unwrap(
+      await GET<VisitorChartPointResponse[]>(ep.adminAnalyticsChart + query),
+    );
+  },
+
+  // ---- Platform settings (admin) -----------------------------------------
+  async platformCommission() {
+    return unwrap(
+      await GET<PlatformCommissionResponse>(ep.adminPlatformCommission),
+    );
+  },
+  async updatePlatformCommission(body: UpdatePlatformCommissionRequest) {
+    return unwrap(
+      await PUT<PlatformCommissionResponse>(ep.adminPlatformCommission, body),
+    );
   },
 
   // ---- Posts (coach) -----------------------------------------------------

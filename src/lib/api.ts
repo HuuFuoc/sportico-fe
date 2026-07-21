@@ -830,6 +830,61 @@ export const api = {
       () => null,
     ),
 
+  // ---- Visitor analytics -------------------------------------------------
+  /**
+   * Fire-and-forget page-view beacon — the write side that makes the admin
+   * analytics endpoints report anything at all.
+   *
+   * Anonymous, so it uses `live` rather than `liveAuthed`. Failures are
+   * swallowed on purpose: a tracking hiccup must never surface an error toast
+   * or interrupt navigation.
+   */
+  trackPageView: (input: {
+    path: string;
+    title?: string;
+    referrer?: string;
+  }): Promise<void> =>
+    live(
+      () => backend.submitPageView(input).catch(() => undefined),
+      () => undefined,
+    ),
+
+  // ---- Visitor analytics (admin) -----------------------------------------
+  /**
+   * Aggregate visitor analytics for the admin dashboard — one round-trip for
+   * stats, chart, top pages, devices, browsers and countries.
+   *
+   * Returns null in mock mode (there is no visitor fixture — traffic only
+   * exists on a deployed site). In live mode errors PROPAGATE so the card can
+   * offer a retry; we never substitute invented traffic numbers.
+   */
+  fetchVisitorAnalytics: (filter?: {
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<
+    import("@/lib/backend/dto").AdminAnalyticsDashboardResponse | null
+  > => liveAuthed(() => backend.analyticsDashboard(filter), () => null),
+
+  // ---- Platform settings (admin) -----------------------------------------
+  /**
+   * Current platform commission percent. Returns null in mock mode (no fixture
+   * exists for it) so the UI can say the feature needs a backend connection.
+   * In live mode errors PROPAGATE — the caller shows a retry, we never invent
+   * a commission value.
+   */
+  fetchPlatformCommission: (): Promise<
+    import("@/lib/backend/dto").PlatformCommissionResponse | null
+  > => liveAuthed(() => backend.platformCommission(), () => null),
+
+  /** Admin: update the platform commission percent. Live-only. */
+  updatePlatformCommission: (
+    commissionPercent: number,
+  ): Promise<import("@/lib/backend/dto").PlatformCommissionResponse> =>
+    liveAuthed(
+      () => backend.updatePlatformCommission({ commissionPercent }),
+      () => Promise.reject(new Error("Cần đăng nhập và kết nối backend.")),
+    ),
+
   // ---- Earnings / payouts ------------------------------------------------
   fetchEarnings: (): Promise<EarningPoint[]> =>
     liveAuthed(async () => {
