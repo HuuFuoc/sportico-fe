@@ -83,6 +83,16 @@ export interface ApiFetchOptions extends RequestInit {
    * redirecting would break the login success handler.
    */
   suppressAuthRedirect?: boolean;
+  /**
+   * Send the request with NO `Authorization` header and never attempt a refresh
+   * or a redirect on 401.
+   *
+   * Used for genuinely public endpoints (e.g. the community feed) when the
+   * stored access token has already expired: replaying a dead token there turns
+   * a request that would have succeeded anonymously into a 401 that would then
+   * bounce the visitor to /login while they are only browsing public content.
+   */
+  omitAuth?: boolean;
 }
 
 /**
@@ -107,11 +117,12 @@ export async function apiFetch<T>(
   }
 
   const url = /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
-  const { headers, credentials, body, suppressAuthRedirect, ...rest } = options;
+  const { headers, credentials, body, suppressAuthRedirect, omitAuth, ...rest } =
+    options;
 
   // Bearer-token auth: replay the stored access token. A per-call `Authorization`
   // header (e.g. login passing a fresh token) still wins via the later spread.
-  const token = getAccessToken();
+  const token = omitAuth ? null : getAccessToken();
 
   let res: Response;
   try {
@@ -137,7 +148,12 @@ export async function apiFetch<T>(
     // suppressAuthRedirect: callers on auth paths (e.g. GET /api/auth/me during
     // the login flow) must NOT trigger a redirect or a refresh attempt — a 401
     // there is a recoverable failure, not an expired session.
-    if (res.status === 401 && typeof window !== "undefined" && !suppressAuthRedirect) {
+    if (
+      res.status === 401 &&
+      typeof window !== "undefined" &&
+      !suppressAuthRedirect &&
+      !omitAuth
+    ) {
       // Attempt a single token refresh before abandoning the session.
       // Multiple concurrent 401s share one refresh promise to avoid storms.
       if (_refreshCallback && !_isRetry) {

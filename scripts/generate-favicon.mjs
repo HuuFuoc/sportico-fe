@@ -1,9 +1,11 @@
 /**
- * Generates src/app/favicon.ico from public/logo.png (pure Node, no deps).
+ * Generates src/app/favicon.ico from public/icons/icon.png (pure Node, no deps).
  *
- * The logo is a wide "SPORTICO" wordmark — unreadable once a browser scales it
- * to a 16px tab. So this crops just the ball mark, centres it on the brand blue
- * sampled from the logo itself, and packs 16/32/48px frames into one .ico.
+ * icon.png is a square icon mark (the "S" glyph in a rounded blue tile) — it
+ * already reads fine at small sizes, so unlike the old wordmark-based logo
+ * this needs no cropping. It just strips the source's black rounded-corner
+ * mask (filling with the sampled brand blue, since .ico ignores alpha in
+ * most renderers) and packs 16/32/48px frames into one .ico.
  *
  * Run: node scripts/generate-favicon.mjs
  */
@@ -13,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE = join(ROOT, "public", "logo.png");
+const SOURCE = join(ROOT, "public", "icons", "icon.png");
 const OUT = join(ROOT, "src", "app", "favicon.ico");
 
 /* ---------------- PNG decode (RGB/RGBA, 8-bit, non-interlaced) ---------------- */
@@ -148,10 +150,10 @@ function encodePNG(size, rgba) {
   return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
 }
 
-/* ---------------- locate the ball mark ---------------- */
-const src = decodePNG(readFileSync(SOURCE));
-const bg = (() => {
-  // Top-centre sits above the wordmark → pure background blue.
+/* ---------------- sample the brand-blue background from the source ---------------- */
+function sampleBg(src) {
+  // Top-centre strip sits inside the rounded tile, above any glyph strokes →
+  // pure background blue.
   const y = Math.floor(src.height * 0.04);
   let r = 0, g = 0, b = 0, n = 0;
   for (let x = Math.floor(src.width * 0.4); x < Math.floor(src.width * 0.6); x++) {
@@ -159,83 +161,42 @@ const bg = (() => {
     r += src.data[i]; g += src.data[i + 1]; b += src.data[i + 2]; n++;
   }
   return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
-})();
-
-const isInk = (x, y) => {
-  const i = (y * src.width + x) * 4;
-  return src.data[i] > 190 && src.data[i + 1] > 190 && src.data[i + 2] > 190 && src.data[i + 3] > 128;
-};
-
-// The ball is the right-most blob on the lower mark row. Restrict the search to
-// below the wordmark, then isolate that blob by column density — a raw bounding
-// box would be dragged out to the full width by stray anti-aliasing specks.
-const win = {
-  x0: Math.floor(src.width * 0.5), x1: src.width,
-  y0: Math.floor(src.height * 0.55), y1: src.height,
-};
-const MIN_INK = 3; // a column/row needs this many ink pixels to count as solid
-
-const colInk = new Array(src.width).fill(0);
-for (let x = win.x0; x < win.x1; x++) {
-  for (let y = win.y0; y < win.y1; y++) if (isInk(x, y)) colInk[x]++;
 }
 
-// Walk right-to-left: the first solid run we meet is the ball.
-let maxX = -1, minX = -1;
-for (let x = win.x1 - 1; x >= win.x0; x--) {
-  if (maxX < 0) {
-    if (colInk[x] >= MIN_INK) maxX = x;
-  } else if (colInk[x] < MIN_INK) {
-    minX = x + 1;
-    break;
+/* ---------------- strip the source's black rounded-corner mask ----------------
+ * The artwork sits inside its own rounded square; everything outside that
+ * square is black. Fill those corners with the brand blue instead (an .ico
+ * needs to stay opaque), with a luminance ramp so the rounded edge stays
+ * anti-aliased instead of leaving a hard dark fringe.
+ */
+function stripCorners(img, bg) {
+  const [br, bg_, bb] = bg;
+  const DARK = 24; // <= → pure corner
+  const LIGHT = 110; // >= → real content (blue tile ~170, white glyph 255)
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = Math.max(d[i], d[i + 1], d[i + 2]);
+    if (lum >= LIGHT) continue;
+    const t = Math.max(0, (lum - DARK) / (LIGHT - DARK));
+    d[i] = Math.round(br * (1 - t) + d[i] * t);
+    d[i + 1] = Math.round(bg_ * (1 - t) + d[i + 1] * t);
+    d[i + 2] = Math.round(bb * (1 - t) + d[i + 2] * t);
+    d[i + 3] = 255;
   }
+  return img;
 }
-if (maxX < 0) throw new Error("Ball mark not found — check the search window");
-if (minX < 0) minX = win.x0;
 
-let minY = Infinity, maxY = -1;
-for (let y = win.y0; y < win.y1; y++) {
-  let n = 0;
-  for (let x = minX; x <= maxX; x++) if (isInk(x, y)) n++;
-  if (n < MIN_INK) continue;
-  if (y < minY) minY = y;
-  if (y > maxY) maxY = y;
-}
-if (maxY < 0) throw new Error("Ball mark has no solid rows");
-console.log(`bg blue      : rgb(${bg.join(",")})`);
-console.log(`ball bbox    : x ${minX}..${maxX}  y ${minY}..${maxY}  (${maxX - minX + 1} x ${maxY - minY + 1})`);
-
-/* ---------------- crop a padded square around the ball ---------------- */
-const PAD = 1.55; // ball occupies ~65% of the tile — breathing room, still bold
-const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-const side = Math.round(Math.max(maxX - minX + 1, maxY - minY + 1) * PAD);
-const ox = Math.round(cx - side / 2), oy = Math.round(cy - side / 2);
-
-const tile = Buffer.alloc(side * side * 4);
-for (let y = 0; y < side; y++) {
-  for (let x = 0; x < side; x++) {
-    const sx = ox + x, sy = oy + y;
-    const di = (y * side + x) * 4;
-    if (sx >= 0 && sx < src.width && sy >= 0 && sy < src.height) {
-      const si = (sy * src.width + sx) * 4;
-      tile[di] = src.data[si];
-      tile[di + 1] = src.data[si + 1];
-      tile[di + 2] = src.data[si + 2];
-    } else {
-      // Outside the artwork — extend the brand blue rather than leaving black.
-      tile[di] = bg[0]; tile[di + 1] = bg[1]; tile[di + 2] = bg[2];
-    }
-    tile[di + 3] = 255;
-  }
-}
-const cropped = { width: side, height: side, data: tile };
-console.log(`tile         : ${side} x ${side} (pad ${PAD})`);
+/* ---------------- run ---------------- */
+const src = decodePNG(readFileSync(SOURCE));
+const bg = sampleBg(src);
+console.log(`Source: icon.png ${src.width}x${src.height}`);
+console.log(`bg blue: rgb(${bg.join(",")})`);
 
 /* ---------------- pack PNG frames into one .ico ---------------- */
 // ICO has embedded PNG frames (Vista+): 6-byte ICONDIR, then one 16-byte
 // ICONDIRENTRY per frame, then the PNG blobs.
 const SIZES = [16, 32, 48];
-const frames = SIZES.map((s) => ({ size: s, png: encodePNG(s, resize(cropped, s).data) }));
+const frames = SIZES.map((s) => ({ size: s, png: encodePNG(s, stripCorners(resize(src, s), bg).data) }));
 
 const header = Buffer.alloc(6);
 header.writeUInt16LE(0, 0); // reserved

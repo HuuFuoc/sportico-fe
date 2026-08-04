@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 // Keep icon filenames in sync with scripts/generate-pwa-icons.mjs.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Sportico — Nền tảng huấn luyện thông minh",
+    name: "Sportico",
     short_name: "Sportico",
     description:
       "Nền tảng huấn luyện sử dụng AI để ghép nối học viên với HLV ưu tú.",

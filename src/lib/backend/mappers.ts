@@ -55,6 +55,7 @@ import type {
   WithdrawalRequestResponse,
 } from "@/lib/backend/dto";
 import { avatarFor } from "@/lib/utils";
+import { notificationTitleVi, notificationRoute, NOTIFICATION_ICON_BY_TYPE } from "@/lib/social/notification-mapper";
 
 const SPORTS: Sport[] = [
   "Badminton",
@@ -510,13 +511,20 @@ export function chatMessageToMessage(m: ChatMessageResponse): Message {
 }
 
 // ---- Notifications ---------------------------------------------------------
+//
+// Backend title/content arrive in English with no `referenceId`/`referenceType`
+// to deep-link to. `notificationTitleVi` / `notificationRoute` (social module)
+// give the best Vietnamese heading available and route to the right LIST page
+// per `type` — see that module for why a detail deep-link isn't possible.
 export function notificationToItem(n: NotificationResponse): NotificationItem {
   return {
     id: n.id,
-    title: n.title ?? "Thông báo",
+    title: notificationTitleVi(n),
     body: n.content ?? "",
     createdAt: n.createdAt,
     read: n.isRead,
+    href: notificationRoute(n.type),
+    icon: NOTIFICATION_ICON_BY_TYPE[(n.type ?? "").toLowerCase()],
   };
 }
 

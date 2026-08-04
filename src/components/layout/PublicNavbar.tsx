@@ -32,7 +32,8 @@ interface PublicNavbarProps {
 const NAV_BASE: AnimatedNavItem[] = [
   { id: 1, tile: "Trang chủ", href: "/" },
   { id: 2, tile: "Huấn luyện viên", href: "/coaches" },
-  { id: 3, tile: "Về chúng tôi", href: "/about" },
+  { id: 3, tile: "Cộng đồng", href: "/community" },
+  { id: 5, tile: "Về chúng tôi", href: "/about" },
 ];
 const BECOME_COACH: AnimatedNavItem = { id: 4, tile: "Trở thành HLV", href: "/onboarding" };
 

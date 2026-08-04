@@ -17,7 +17,7 @@
 // functions in coach-api.ts / training-package-api.ts, which delegate here.
 // ============================================================================
 
-import { apiFetch, ApiError, isMockMode } from "@/lib/api-client";
+import { apiFetch, ApiError, isMockMode, type ApiFetchOptions } from "@/lib/api-client";
 import type { PagedResult } from "@/lib/backend/dto";
 
 /** Backend `error` object inside a failed `Result<T>`. */
@@ -103,7 +103,7 @@ function assertLive(): void {
   }
 }
 
-async function rawCall<T>(path: string, init?: RequestInit): Promise<ResultEnvelope<T>> {
+async function rawCall<T>(path: string, init?: ApiFetchOptions): Promise<ResultEnvelope<T>> {
   assertLive();
   try {
     return await apiFetch<ResultEnvelope<T>>(path, init ?? {});
@@ -118,7 +118,7 @@ async function rawCall<T>(path: string, init?: RequestInit): Promise<ResultEnvel
 }
 
 /** Call an endpoint and return the unwrapped `data` (throws on failure / null). */
-export async function callData<T>(path: string, init?: RequestInit): Promise<T> {
+export async function callData<T>(path: string, init?: ApiFetchOptions): Promise<T> {
   const result = await rawCall<T>(path, init);
   if (result?.isSuccess && result.data != null) return result.data;
   throw envelopeError(result);
@@ -127,7 +127,7 @@ export async function callData<T>(path: string, init?: RequestInit): Promise<T> 
 /** Call a list endpoint and return the `PagedResult<T>` (tolerates null data). */
 export async function callPage<T>(
   path: string,
-  init?: RequestInit,
+  init?: ApiFetchOptions,
 ): Promise<PagedResult<T>> {
   const result = await rawCall<PagedResult<T>>(path, init);
   if (result?.isSuccess) {
@@ -147,7 +147,7 @@ export async function callPage<T>(
 }
 
 /** Call an endpoint whose success carries no data (e.g. DELETE). */
-export async function callVoid(path: string, init?: RequestInit): Promise<void> {
+export async function callVoid(path: string, init?: ApiFetchOptions): Promise<void> {
   const result = await rawCall<unknown>(path, init);
   if (result?.isSuccess) return;
   throw envelopeError(result);
@@ -163,12 +163,16 @@ function envelopeError(result: ResultEnvelope<unknown> | undefined): ApiResultEr
       code: err?.code ?? undefined,
       type: err?.type ?? undefined,
       details: err?.details ?? undefined,
+      // HTTP 200 carrying `isSuccess: false`. Recording the status keeps
+      // code+status error disambiguation (see social/errors.ts) total — an
+      // undefined status there would fall through every status branch.
+      status: 200,
     },
   );
 }
 
 // ---- Small JSON helpers (keep request bodies consistent) -------------------
 
-export function jsonBody(body: unknown): RequestInit {
+export function jsonBody(body: unknown): ApiFetchOptions {
   return { body: JSON.stringify(body) };
 }

@@ -36,16 +36,42 @@ const BASE_PREFIX = (process.env.AWS_S3_UPLOAD_PREFIX ?? "uploads").replace(
   "",
 );
 
-// 8 MB ceiling — generous for avatars/covers, cheap to reject oversized uploads.
-const MAX_BYTES = 8 * 1024 * 1024;
+// 8 MB ceiling for images — generous for avatars/covers.
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+// Video and documents are bulkier; 64 MB still fits comfortably in a Function
+// request body (100 MB limit) without needing a multipart/resumable flow.
+const MAX_MEDIA_BYTES = 64 * 1024 * 1024;
 
-// Allowed MIME → file extension. Keeps the key clean and blocks non-image bodies.
-const ALLOWED_TYPES: Record<string, string> = {
+// Allowed MIME → file extension. Keeps the key clean and blocks unknown bodies.
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/gif": "gif",
   "image/avif": "avif",
+};
+
+// Video for community post galleries (max 1 per post) and chat attachments.
+const ALLOWED_VIDEO_TYPES: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+};
+
+// Documents a learner or coach may reasonably attach to a chat message.
+const ALLOWED_FILE_TYPES: Record<string, string> = {
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "text/plain": "txt",
+};
+
+const ALLOWED_TYPES: Record<string, string> = {
+  ...ALLOWED_IMAGE_TYPES,
+  ...ALLOWED_VIDEO_TYPES,
+  ...ALLOWED_FILE_TYPES,
 };
 
 // Only allow simple folder names (a-z, 0-9, dash, slash) to avoid key injection.
@@ -94,13 +120,20 @@ export async function POST(request: NextRequest) {
   const ext = ALLOWED_TYPES[file.type];
   if (!ext) {
     return err(
-      "Định dạng ảnh không được hỗ trợ (chỉ chấp nhận JPG, PNG, WebP, GIF, AVIF).",
+      "Định dạng tệp không được hỗ trợ (ảnh JPG/PNG/WebP/GIF/AVIF, video MP4/WebM/MOV, tài liệu PDF/Word/Excel/TXT).",
       415,
     );
   }
 
-  if (file.size > MAX_BYTES) {
-    return err("Ảnh quá lớn. Kích thước tối đa là 8MB.", 413);
+  const isImage = file.type in ALLOWED_IMAGE_TYPES;
+  const maxBytes = isImage ? MAX_IMAGE_BYTES : MAX_MEDIA_BYTES;
+  if (file.size > maxBytes) {
+    return err(
+      isImage
+        ? "Ảnh quá lớn. Kích thước tối đa là 8MB."
+        : "Tệp quá lớn. Kích thước tối đa là 64MB.",
+      413,
+    );
   }
 
   // Sanitise optional sub-folder (e.g. "avatars", "coaches/covers"). Always

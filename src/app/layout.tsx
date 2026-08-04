@@ -9,6 +9,7 @@ import { ServiceWorkerRegister } from "@/components/common/ServiceWorkerRegister
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { AuthBootstrap } from "@/components/auth/AuthBootstrap";
 import { AdvisoryWidgetGate } from "@/components/advisory/AdvisoryWidgetGate";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,7 +22,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sportico — Nền tảng huấn luyện thông minh",
+  title: "Sportico",
   description:
     "Nền tảng huấn luyện sử dụng AI để ghép nối học viên với HLV ưu tú.",
   applicationName: "Sportico",
@@ -33,10 +34,9 @@ export const metadata: Metadata = {
   },
   icons: {
     // `icon` is deliberately omitted: src/app/favicon.ico is a Next file
-    // convention that already emits the tab icon. Declaring one here adds a
-    // SECOND competing <link rel="icon">, and the wide wordmark it pointed at
-    // was unreadable once scaled to 16px. Regenerate the .ico from the logo
-    // with `node scripts/generate-favicon.mjs`.
+    // convention that already emits the tab icon. Declaring one here would
+    // add a SECOND competing <link rel="icon">. Regenerate the .ico from
+    // public/icons/icon.png with `node scripts/generate-favicon.mjs`.
     apple: "/icons/apple-touch-icon.png",
   },
 };
@@ -59,15 +59,17 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-surface text-on-surface font-sans">
-        <ServiceWorkerRegister />
-        <AuthBootstrap />
-        <Suspense fallback={null}>
-          <PageViewTracker />
-        </Suspense>
-        <ScrollRestoration />
-        {children}
-        <AdvisoryWidgetGate />
-        <ScrollToTopButton />
+        <QueryProvider>
+          <ServiceWorkerRegister />
+          <AuthBootstrap />
+          <Suspense fallback={null}>
+            <PageViewTracker />
+          </Suspense>
+          <ScrollRestoration />
+          {children}
+          <AdvisoryWidgetGate />
+          <ScrollToTopButton />
+        </QueryProvider>
         <Toaster
           position="top-right"
           richColors
