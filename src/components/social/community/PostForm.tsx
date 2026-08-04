@@ -5,9 +5,14 @@ import { useForm, Controller } from "react-hook-form";
 import { Calendar, Group, MapPin, Coins } from "iconoir-react";
 import { MediaPicker } from "@/components/social/community/MediaPicker";
 import { zodResolver } from "@/lib/validation/auth";
-import { communityPostSchema, type CommunityPostFormValues, COMMUNITY_LEVELS } from "@/lib/social/validation/community";
+import {
+  communityPostSchema,
+  type CommunityPostFormValues,
+  COMMUNITY_LEVELS,
+  COMMUNITY_POST_TYPES,
+} from "@/lib/social/validation/community";
 import { isoUtcToLocalInput, localInputToIsoUtc } from "@/lib/social/datetime";
-import { LEVEL_LABELS, POST_TYPE_LABELS } from "@/lib/social/labels";
+import { LEVEL_LABELS, POST_TYPE_LABELS, isScheduledPostType } from "@/lib/social/labels";
 import { STABLE_SPORTS } from "@/lib/sports-api";
 import { cn } from "@/lib/utils";
 import type { CommunityPostMediaRequest, CommunityPostResponse } from "@/lib/social/types";
@@ -54,7 +59,7 @@ export function PostForm({ mode, initialPost, submitting, onSubmit, submitLabel,
     resolver: zodResolver(communityPostSchema),
     mode: "onBlur",
     defaultValues: {
-      postType: (initialPost?.postType as "recruitment" | "sharing") ?? "sharing",
+      postType: (initialPost?.postType as CommunityPostFormValues["postType"]) ?? "discussion",
       sportId: initialPost?.sportId ?? null,
       title: initialPost?.title ?? "",
       content: initialPost?.content ?? "",
@@ -73,7 +78,7 @@ export function PostForm({ mode, initialPost, submitting, onSubmit, submitLabel,
   });
 
   const postType = watch("postType");
-  const isRecruitment = postType === "recruitment";
+  const isScheduled = isScheduledPostType(postType);
 
   function submit(values: CommunityPostFormValues, publish: boolean) {
     onSubmit({ values: { ...values, publish }, media, mediaTouched });
@@ -85,19 +90,24 @@ export function PostForm({ mode, initialPost, submitting, onSubmit, submitLabel,
       className="space-y-5"
     >
       {mode === "create" && (
-        <div className="flex gap-2 rounded-[10px] bg-surface-container-high p-1">
-          {(["sharing", "recruitment"] as const).map((type) => (
-            <label
-              key={type}
-              className={cn(
-                "flex-1 cursor-pointer rounded-[8px] px-3 py-2 text-center text-[13px] font-semibold transition-colors",
-                postType === type ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant",
-              )}
-            >
-              <input type="radio" value={type} {...register("postType")} className="hidden" />
-              {POST_TYPE_LABELS[type]}
-            </label>
-          ))}
+        <div>
+          <label className="mb-1.5 block text-[12.5px] font-semibold text-on-surface">Loại bài đăng</label>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            {COMMUNITY_POST_TYPES.map((type) => (
+              <label
+                key={type}
+                className={cn(
+                  "cursor-pointer rounded-[8px] border px-2.5 py-2 text-center text-[12.5px] font-semibold transition-colors",
+                  postType === type
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-[var(--color-border-soft)] text-on-surface-variant hover:border-primary/30",
+                )}
+              >
+                <input type="radio" value={type} {...register("postType")} className="hidden" />
+                {POST_TYPE_LABELS[type]}
+              </label>
+            ))}
+          </div>
         </div>
       )}
 
@@ -117,7 +127,7 @@ export function PostForm({ mode, initialPost, submitting, onSubmit, submitLabel,
         {errors.content && <p className="mt-1 text-[11.5px] text-error">{errors.content.message}</p>}
       </div>
 
-      {isRecruitment && (
+      {isScheduled && (
         <div className="grid grid-cols-1 gap-4 rounded-[12px] border border-[var(--color-border-soft)] p-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-on-surface">

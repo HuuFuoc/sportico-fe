@@ -11,6 +11,7 @@ import { Pagination } from "@/components/social/Pagination";
 import { PostStatusBadge } from "@/components/social/community/PostStatusBadge";
 import { useAdminCommunityPosts } from "@/lib/social/hooks/useAdminCommunity";
 import { POST_TYPE_LABELS } from "@/lib/social/labels";
+import { COMMUNITY_POST_TYPES } from "@/lib/social/validation/community";
 import { formatDateVn } from "@/lib/social/datetime";
 import type { AdminCommunityPostFilters } from "@/lib/social/types";
 
@@ -55,8 +56,11 @@ export default function AdminCommunityPage() {
             className="rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2.5 py-2 text-[12.5px] focus:border-primary focus:outline-none"
           >
             <option value="">Mọi loại</option>
-            <option value="recruitment">{POST_TYPE_LABELS.recruitment}</option>
-            <option value="sharing">{POST_TYPE_LABELS.sharing}</option>
+            {COMMUNITY_POST_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {POST_TYPE_LABELS[type]}
+              </option>
+            ))}
           </select>
           <label className="flex items-center gap-1.5 rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2.5 py-2 text-[12.5px] text-on-surface-variant">
             <input

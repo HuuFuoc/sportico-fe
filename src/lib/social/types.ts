@@ -219,7 +219,23 @@ export interface BookingResponse {
 // Community
 // ---------------------------------------------------------------------------
 
-export type CommunityPostType = "recruitment" | "sharing";
+/**
+ * Confirmed against the LIVE backend's own validation error (not the handoff
+ * doc, which never enumerated this and implied a "recruitment"/"sharing"
+ * split that does not exist on the wire):
+ *
+ *   400 COMMON_VALIDATION_ERROR
+ *   "postType must be one of: looking_for_players, looking_for_team,
+ *    training_partner, friendly_match, event, discussion, question"
+ */
+export type CommunityPostType =
+  | "looking_for_players"
+  | "looking_for_team"
+  | "training_partner"
+  | "friendly_match"
+  | "event"
+  | "discussion"
+  | "question";
 
 export type CommunityPostStatus =
   | "draft"

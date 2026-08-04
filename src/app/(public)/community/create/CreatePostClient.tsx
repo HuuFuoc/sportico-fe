@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { PostForm, type PostFormSubmitPayload } from "@/components/social/community/PostForm";
 import { useCreateCommunityPost } from "@/lib/social/hooks/useCommunity";
+import { isScheduledPostType } from "@/lib/social/labels";
 import { showApiError, showSuccess } from "@/lib/toast";
 
 export function CreatePostClient() {
@@ -19,21 +20,22 @@ function CreatePostForm() {
   const createPost = useCreateCommunityPost();
 
   async function handleSubmit({ values, media }: PostFormSubmitPayload) {
+    const scheduled = isScheduledPostType(values.postType);
     try {
       const post = await createPost.mutateAsync({
         postType: values.postType,
-        sportId: values.postType === "recruitment" ? values.sportId : null,
+        sportId: scheduled ? values.sportId : null,
         title: values.title,
         content: values.content,
         locationName: values.locationName || null,
         address: values.address || null,
         latitude: values.latitude ?? null,
         longitude: values.longitude ?? null,
-        startAt: values.postType === "recruitment" ? values.startAt : null,
-        endAt: values.postType === "recruitment" ? values.endAt : null,
-        maxParticipants: values.postType === "recruitment" ? values.maxParticipants : null,
-        level: values.postType === "recruitment" ? values.level : null,
-        feePerPerson: values.postType === "recruitment" ? values.feePerPerson : null,
+        startAt: scheduled ? values.startAt : null,
+        endAt: scheduled ? values.endAt : null,
+        maxParticipants: scheduled ? values.maxParticipants : null,
+        level: scheduled ? values.level : null,
+        feePerPerson: scheduled ? values.feePerPerson : null,
         allowComments: values.allowComments,
         publish: values.publish,
         // Create always sends the full media list — there is no "keep existing"

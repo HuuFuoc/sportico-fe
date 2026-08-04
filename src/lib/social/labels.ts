@@ -4,9 +4,35 @@
 // ============================================================================
 
 export const POST_TYPE_LABELS: Record<string, string> = {
-  recruitment: "Tìm bạn tập",
-  sharing: "Chia sẻ",
+  looking_for_players: "Tìm người chơi",
+  looking_for_team: "Tìm đội/nhóm",
+  training_partner: "Tìm bạn tập",
+  friendly_match: "Giao hữu",
+  event: "Sự kiện",
+  discussion: "Thảo luận",
+  question: "Hỏi đáp",
 };
+
+/**
+ * The 5 types that organise an activity (people + a time/place) vs the 2 that
+ * are pure text content. The backend's own `postType` enum doesn't group them
+ * this way — this is a UI-only grouping so the create/edit form only asks for
+ * sportId/startAt/maxParticipants on the types where they're meaningful.
+ * Mirrors the original "recruitment post requires sportId/startAt/
+ * maxParticipants" requirement now that the literal "recruitment" value
+ * turned out not to exist on the wire.
+ */
+export const SCHEDULED_POST_TYPES: readonly string[] = [
+  "looking_for_players",
+  "looking_for_team",
+  "training_partner",
+  "friendly_match",
+  "event",
+];
+
+export function isScheduledPostType(postType: string | null | undefined): boolean {
+  return postType != null && SCHEDULED_POST_TYPES.includes(postType);
+}
 
 export const POST_STATUS_LABELS: Record<string, string> = {
   draft: "Bản nháp",

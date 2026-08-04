@@ -25,7 +25,7 @@ import { useCommunityPost, useCloseCommunityPost, useDeleteCommunityPost } from 
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { formatCurrencyVnd } from "@/lib/utils";
 import { formatDateTimeVn, formatRelativeVn } from "@/lib/social/datetime";
-import { LEVEL_LABELS, POST_TYPE_LABELS } from "@/lib/social/labels";
+import { LEVEL_LABELS, POST_TYPE_LABELS, isScheduledPostType } from "@/lib/social/labels";
 import { sportById } from "@/lib/sports-api";
 import { showApiError, showSuccess } from "@/lib/toast";
 
@@ -60,7 +60,7 @@ export function PostDetailClient({ postId }: { postId: string }) {
   }
 
   const status = (post.status ?? "").toLowerCase();
-  const isRecruitment = post.postType === "recruitment";
+  const isRecruitment = isScheduledPostType(post.postType);
   const sport = sportById(post.sportId ?? undefined);
   const canClose = post.canEdit && status === "published";
   // `/api/community/posts/me` can return an empty `author.fullName` for the

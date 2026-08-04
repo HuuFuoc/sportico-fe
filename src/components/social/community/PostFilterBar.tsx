@@ -1,10 +1,8 @@
 "use client";
 
 import { Search, Filter } from "iconoir-react";
-import { motion } from "motion/react";
-import { cn } from "@/lib/utils";
-import { STABLE_SPORTS } from "@/lib/sports-api";
 import { LEVEL_LABELS, POST_TYPE_LABELS } from "@/lib/social/labels";
+import { COMMUNITY_POST_TYPES } from "@/lib/social/validation/community";
 import type { CommunityPostFilters } from "@/lib/social/types";
 
 interface PostFilterBarProps {
@@ -19,12 +17,9 @@ const SORT_OPTIONS = [
   { value: "popular", label: "Phổ biến" },
 ];
 
-const TYPE_TABS: { value: CommunityPostFilters["postType"] | ""; label: string }[] = [
-  { value: "", label: "Tất cả" },
-  { value: "recruitment", label: POST_TYPE_LABELS.recruitment },
-  { value: "sharing", label: POST_TYPE_LABELS.sharing },
-];
-
+/** `filters.sportId` is intentionally NOT controlled here — the story bar
+ *  above the feed owns that filter now; both write to the same `filters`
+ *  object in the parent, so there is still exactly one source of truth. */
 export function PostFilterBar({ filters, onChange, showFollowingOnly }: PostFilterBarProps) {
   function set(patch: Partial<CommunityPostFilters>) {
     onChange({ ...filters, ...patch, pageNumber: 1 });
@@ -43,40 +38,15 @@ export function PostFilterBar({ filters, onChange, showFollowingOnly }: PostFilt
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex gap-1 rounded-[10px] bg-surface-container-high p-1">
-          {TYPE_TABS.map((tab) => {
-            const active = (filters.postType ?? "") === tab.value;
-            return (
-              <button
-                key={tab.value || "all"}
-                type="button"
-                onClick={() => set({ postType: (tab.value || null) as CommunityPostFilters["postType"] })}
-                className="relative rounded-[8px] px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-              >
-                {active && (
-                  <motion.span
-                    layoutId="post-type-pill"
-                    className="absolute inset-0 rounded-[8px] bg-surface-container-lowest shadow-sm"
-                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <span className={cn("relative", active ? "text-on-surface" : "text-on-surface-variant")}>
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
         <select
-          value={filters.sportId ?? ""}
-          onChange={(e) => set({ sportId: e.target.value ? Number(e.target.value) : null })}
+          value={filters.postType ?? ""}
+          onChange={(e) => set({ postType: (e.target.value || null) as CommunityPostFilters["postType"] })}
           className="rounded-[8px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-2.5 py-1.5 text-[12.5px] text-on-surface focus:border-primary focus:outline-none"
         >
-          <option value="">Mọi môn</option>
-          {STABLE_SPORTS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
+          <option value="">Mọi loại bài đăng</option>
+          {COMMUNITY_POST_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {POST_TYPE_LABELS[type]}
             </option>
           ))}
         </select>

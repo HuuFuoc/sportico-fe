@@ -25,9 +25,9 @@ function MyPosts() {
   const { data, isLoading, isError, refetch } = useMyCommunityPosts(filters);
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-[22px] font-bold text-on-surface">Bài đăng của tôi</h1>
+    <div className="mx-auto max-w-xl">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-[20px] font-bold text-on-surface">Bài đăng của tôi</h1>
         <Link
           href="/community/create"
           className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary px-4 py-2.5 text-[13.5px] font-semibold text-on-primary hover:bg-[#2d20b8]"
@@ -38,8 +38,8 @@ function MyPosts() {
       </div>
 
       {isLoading && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
             <PostCardSkeleton key={i} />
           ))}
         </div>
@@ -61,7 +61,7 @@ function MyPosts() {
       )}
 
       {!isLoading && !isError && data && data.items.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {data.items.map((post) => (
             <PostCard key={post.id} post={post} href={`/community/posts/${post.id}`} />
           ))}
@@ -73,7 +73,7 @@ function MyPosts() {
           pageNumber={data.pageNumber}
           totalPages={data.totalPages}
           onChange={(page) => setFilters((f) => ({ ...f, pageNumber: page }))}
-          className="mt-8"
+          className="mt-6"
         />
       )}
     </div>

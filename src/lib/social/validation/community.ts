@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isScheduledPostType } from "@/lib/social/labels";
 
 // ============================================================================
 // Community post form schema.
@@ -7,10 +8,24 @@ import { z } from "zod";
 // calls out explicitly: lat/lng bounds, the level enum, and the recruitment
 // requirements (sportId, startAt, maxParticipants >= 2). It must never be
 // LOOSER than the backend on a field the backend requires.
+//
+// `COMMUNITY_POST_TYPES` is the REAL enum, confirmed from a live 400 response
+// (`postType must be one of: looking_for_players, looking_for_team,
+// training_partner, friendly_match, event, discussion, question`) — the
+// handoff doc never enumerated this and implied a "recruitment"/"sharing"
+// split that does not exist on the wire.
 // ============================================================================
 
 export const COMMUNITY_LEVELS = ["beginner", "intermediate", "advanced", "all"] as const;
-export const COMMUNITY_POST_TYPES = ["recruitment", "sharing"] as const;
+export const COMMUNITY_POST_TYPES = [
+  "looking_for_players",
+  "looking_for_team",
+  "training_partner",
+  "friendly_match",
+  "event",
+  "discussion",
+  "question",
+] as const;
 
 const baseSchema = z.object({
   postType: z.enum(COMMUNITY_POST_TYPES, { message: "Vui lòng chọn loại bài đăng." }),
@@ -39,13 +54,13 @@ const baseSchema = z.object({
 });
 
 export const communityPostSchema = baseSchema.superRefine((data, ctx) => {
-  if (data.postType !== "recruitment") return;
+  if (!isScheduledPostType(data.postType)) return;
 
   if (data.sportId == null) {
-    ctx.addIssue({ code: "custom", path: ["sportId"], message: "Bài tìm bạn tập cần chọn môn thể thao." });
+    ctx.addIssue({ code: "custom", path: ["sportId"], message: "Bài này cần chọn môn thể thao." });
   }
   if (!data.startAt) {
-    ctx.addIssue({ code: "custom", path: ["startAt"], message: "Bài tìm bạn tập cần thời gian bắt đầu." });
+    ctx.addIssue({ code: "custom", path: ["startAt"], message: "Bài này cần thời gian bắt đầu." });
   }
   if (data.maxParticipants == null || data.maxParticipants < 2) {
     ctx.addIssue({

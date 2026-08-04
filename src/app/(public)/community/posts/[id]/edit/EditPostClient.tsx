@@ -6,6 +6,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LoadingState, ErrorState } from "@/components/common/AsyncStates";
 import { PostForm, type PostFormSubmitPayload } from "@/components/social/community/PostForm";
 import { useCommunityPost, useUpdateCommunityPost } from "@/lib/social/hooks/useCommunity";
+import { isScheduledPostType } from "@/lib/social/labels";
 import { mediaFieldForUpdate } from "@/lib/social/media-policy";
 import { showApiError, showSuccess } from "@/lib/toast";
 
@@ -48,6 +49,7 @@ function EditPostForm({ postId }: { postId: string }) {
   if (!post.canEdit) return null;
 
   async function handleSubmit({ values, media, mediaTouched }: PostFormSubmitPayload) {
+    const scheduled = isScheduledPostType(values.postType);
     try {
       await updatePost.mutateAsync({
         title: values.title,
@@ -56,11 +58,11 @@ function EditPostForm({ postId }: { postId: string }) {
         address: values.address || null,
         latitude: values.latitude ?? null,
         longitude: values.longitude ?? null,
-        startAt: values.postType === "recruitment" ? values.startAt : undefined,
-        endAt: values.postType === "recruitment" ? values.endAt : undefined,
-        maxParticipants: values.postType === "recruitment" ? values.maxParticipants : undefined,
-        level: values.postType === "recruitment" ? values.level : undefined,
-        feePerPerson: values.postType === "recruitment" ? values.feePerPerson : undefined,
+        startAt: scheduled ? values.startAt : undefined,
+        endAt: scheduled ? values.endAt : undefined,
+        maxParticipants: scheduled ? values.maxParticipants : undefined,
+        level: scheduled ? values.level : undefined,
+        feePerPerson: scheduled ? values.feePerPerson : undefined,
         allowComments: values.allowComments,
         // Omit the field entirely unless the user touched the media picker —
         // sending `[]` here would wipe the post's gallery.
