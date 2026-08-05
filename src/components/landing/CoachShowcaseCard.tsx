@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach } from "@/types";
 
 export function CoachShowcaseCard({ coach }: { coach: Coach }) {
@@ -14,10 +15,10 @@ export function CoachShowcaseCard({ coach }: { coach: Coach }) {
       {/* header */}
       <div className="flex items-start gap-3.5">
         <div className="relative shrink-0">
-          <img
-            src={coach.avatarUrl}
-            alt={coach.name}
-            className="h-14 w-14 rounded-[14px] object-cover"
+          <UserAvatar
+            avatarUrl={coach.avatarUrl}
+            name={coach.name}
+            className="h-14 w-14 rounded-[14px] text-[18px]"
           />
           {coach.verified && (
             <span className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white ring-2 ring-surface-container-lowest">

@@ -23,12 +23,14 @@ import { cn } from "@/lib/utils";
 import {
   createTrainingPackage,
   updateTrainingPackage,
+  getMyTrainingPackageById,
   levelLabel,
   goalTypeLabel,
   LEVEL_OPTIONS,
   GOAL_TYPE_OPTIONS,
 } from "@/lib/training-package-api";
 import { messageForApiError, validationDetails } from "@/lib/errors-vi";
+import { ApiResultError } from "@/lib/api-result";
 import {
   formatVND,
   calculatePricePerSession,
@@ -81,6 +83,18 @@ export function PackageFormModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [details, setDetails] = useState<string[]>([]);
+  // CONCURRENCY_CONFLICT on PUT: `sessions[]` is REQUIRED on every update (the
+  // backend's validator rejects a request without it, confirmed the hard way —
+  // see the comment in `submit`) and carries no per-session id, so sending it
+  // always makes the backend fully replace the package's session rows. If any
+  // existing session already has a booking, that replace conflicts — every
+  // time, not just on a stale read, which is why reloading doesn't fix it.
+  // There is no frontend-only workaround; this needs a backend-side change
+  // (e.g. an id-matched partial session update, or rejecting the edit earlier
+  // with a clearer error than a generic conflict).
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const [currentInitial, setCurrentInitial] = useState(initial);
 
   const set = (patch: Partial<FormState>) => setValues((v) => ({ ...v, ...patch }));
   const setSessions = (next: SessionDraft[]) => set({ sessions: next });
@@ -99,20 +113,37 @@ export function PackageFormModal({
     [sports, values.sportId],
   );
 
+  // Editing the schedule of a package where some session already has a
+  // booking is the reproducible CONCURRENCY_CONFLICT case (see the comment
+  // above `conflict`) — warn before the coach hits it, not just after.
+  const hasBookedSessions = useMemo(
+    () => (currentInitial?.sessions ?? []).some((s) => (s.bookedParticipants ?? 0) > 0),
+    [currentInitial],
+  );
+
   const submit = async () => {
     const v = validatePackageForm(values);
     if (v) {
       setErr(v);
       setDetails([]);
+      setConflict(false);
       return;
     }
     setSaving(true);
     setErr(null);
     setDetails([]);
+    setConflict(false);
     try {
       const payload = buildPackagePayload(values);
-      if (isEdit && initial) {
-        await updateTrainingPackage(initial.id, payload);
+      // CONFIRMED WRONG (kept as a record, don't repeat this mistake): omitting
+      // `sessions`/`sessionCount` on update was tried here on the theory that
+      // the backend treats them as optional on PUT (OpenAPI marks them
+      // `nullable`). It doesn't — the backend's own validator rejects a PUT
+      // without them ("SessionCount must be greater than 0", "Sessions are
+      // required"). `sessions` must ALWAYS be sent, full stop; there is no
+      // frontend-only way to avoid the full-replace behind it.
+      if (isEdit && currentInitial) {
+        await updateTrainingPackage(currentInitial.id, payload);
         onSaved("Đã cập nhật gói tập.");
       } else {
         await createTrainingPackage(payload);
@@ -122,7 +153,32 @@ export function PackageFormModal({
       const d = validationDetails(e);
       setDetails(d);
       setErr(d.length > 0 ? "Thông tin gói tập chưa hợp lệ:" : messageForApiError(e));
+      setConflict(e instanceof ApiResultError && e.code === "CONCURRENCY_CONFLICT");
       setSaving(false);
+    }
+  };
+
+  /**
+   * Reload the package fresh from the backend and rebuild the form from it.
+   * Only actually fixes a CONCURRENCY_CONFLICT that was caused by genuinely
+   * stale data; if the conflict is really "this session already has a
+   * booking" (see the comment above `conflict`), reloading won't help and the
+   * coach must avoid editing the schedule for this package.
+   */
+  const reloadAfterConflict = async () => {
+    if (!currentInitial) return;
+    setReloading(true);
+    try {
+      const fresh = await getMyTrainingPackageById(currentInitial.id);
+      setCurrentInitial(fresh);
+      setValues(initialState(fresh, sports));
+      setErr(null);
+      setDetails([]);
+      setConflict(false);
+    } catch (e) {
+      setErr(messageForApiError(e));
+    } finally {
+      setReloading(false);
     }
   };
 
@@ -172,6 +228,17 @@ export function PackageFormModal({
             description="Tạo nhanh nhiều buổi bằng lịch lặp, hoặc thêm từng buổi thủ công."
             icon={<CalendarClock size={16} />}
           >
+            {hasBookedSessions && (
+              <div className="mb-3 flex items-start gap-2 rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] text-amber-800">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  Gói này đã có học viên đặt vào ít nhất một buổi. Mỗi lần lưu, hệ thống tạo lại toàn bộ danh sách
+                  buổi tập (kể cả khi bạn không đổi lịch), nên việc lưu gói này — kể cả chỉ đổi giá/tiêu đề — có thể
+                  bị từ chối do buổi đã có người đặt. Đây là giới hạn hiện tại của hệ thống, không phải lỗi thao tác
+                  của bạn.
+                </span>
+              </div>
+            )}
             <ScheduleBuilder
               sessions={values.sessions}
               setSessions={setSessions}
@@ -202,6 +269,28 @@ export function PackageFormModal({
                     <li key={i}>{d}</li>
                   ))}
                 </ul>
+              )}
+              {conflict && hasBookedSessions && (
+                <p className="mt-1.5 text-[12px] text-rose-600">
+                  Gói này đã có buổi được học viên đặt, nên việc sửa lịch gần như chắc chắn sẽ tiếp tục bị từ chối
+                  theo cách này — đây là giới hạn của hệ thống hiện tại (không thể sửa từng buổi riêng lẻ), không
+                  phải do dữ liệu cũ. Vui lòng liên hệ đội kỹ thuật nếu cần đổi lịch của gói đã có người đặt.
+                </p>
+              )}
+              {conflict && (
+                <button
+                  type="button"
+                  onClick={() => void reloadAfterConflict()}
+                  disabled={reloading}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-[8px] border border-rose-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                >
+                  {reloading ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <AlertCircle size={13} />
+                  )}
+                  {reloading ? "Đang tải lại…" : "Tải lại dữ liệu mới nhất"}
+                </button>
               )}
             </div>
           )}

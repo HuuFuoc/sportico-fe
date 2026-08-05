@@ -63,6 +63,7 @@ import type { WithdrawalReceiptResponse } from "@/lib/api";
 import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach, Payout } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -1450,10 +1451,11 @@ function PayoutTable({
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <img
-                          src={coach?.avatarUrl}
-                          alt={coach?.name}
-                          className="w-7 h-7 rounded-full object-cover shrink-0"
+                        <UserAvatar
+                          avatarUrl={coach?.avatarUrl}
+                          name={coach?.name}
+                          size="xs"
+                          className="w-7 h-7 text-[10px] shrink-0"
                         />
                         <div className="min-w-0">
                           <p className="text-[12.5px] font-semibold truncate inline-flex items-center gap-1">

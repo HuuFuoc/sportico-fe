@@ -43,19 +43,6 @@ export function formatNumber(value: number) {
   return new Intl.NumberFormat("vi-VN").format(value);
 }
 
-export function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .slice(0, 2)
-    .join("");
-}
-
-export function avatarFor(seed: string | number) {
-  return `https://i.pravatar.cc/200?u=${encodeURIComponent(String(seed))}`;
-}
-
 /**
  * Local-timezone `YYYY-MM-DD` key. Use this — never `Date#toISOString()` —
  * to compare calendar days: `toISOString()` is UTC and shifts the day in

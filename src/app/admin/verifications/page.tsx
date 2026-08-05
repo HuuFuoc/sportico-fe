@@ -40,6 +40,7 @@ import { api, type VerificationKind } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { showSuccess, showError } from "@/lib/toast";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach, VerificationRequest } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -529,10 +530,11 @@ function QueueColumn({
                   />
                 )}
 
-                <img
-                  src={v.coachAvatar}
-                  alt={v.coachName}
-                  className="w-10 h-10 rounded-full object-cover shrink-0"
+                <UserAvatar
+                  avatarUrl={v.coachAvatar}
+                  name={v.coachName}
+                  size="md"
+                  className="w-10 h-10 shrink-0"
                 />
 
                 <div className="flex-1 min-w-0">
@@ -648,10 +650,11 @@ function ReviewPanel({
       <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
         {/* Identity */}
         <header className="flex items-start gap-4">
-          <img
-            src={v.coachAvatar}
-            alt={v.coachName}
-            className="w-20 h-20 rounded-2xl object-cover ring-4 ring-surface-container-lowest shadow-[0_8px_20px_-4px_rgba(15,15,30,0.18)] shrink-0"
+          <UserAvatar
+            avatarUrl={v.coachAvatar}
+            name={v.coachName}
+            size="xl"
+            className="w-20 h-20 text-[26px] rounded-2xl ring-4 ring-surface-container-lowest shadow-[0_8px_20px_-4px_rgba(15,15,30,0.18)] shrink-0"
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

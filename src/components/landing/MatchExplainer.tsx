@@ -3,6 +3,7 @@
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { AnimatedNumber } from "./AnimatedNumber";
 import type { Coach } from "@/types";
 
@@ -92,10 +93,10 @@ export function MatchExplainer({ coach }: { coach: Coach }) {
 
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <img
-              src={coach.avatarUrl}
-              alt={coach.name}
-              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/15"
+            <UserAvatar
+              avatarUrl={coach.avatarUrl}
+              name={coach.name}
+              className="h-10 w-10 ring-2 ring-white/15"
             />
             <div className="min-w-0">
               <p className="truncate text-[15px] font-semibold text-white">

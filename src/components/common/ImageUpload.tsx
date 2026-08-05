@@ -15,9 +15,10 @@
 // ============================================================================
 
 import { useId, useRef, useState } from "react";
-import { AlertCircle, ImagePlus, Loader2, RefreshCw, Trash2, User } from "lucide-react";
+import { AlertCircle, ImagePlus, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { IMAGE_ACCEPT, uploadImage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
+import { getUserInitials, getAvatarPalette } from "@/lib/avatar";
 
 type Variant = "avatar" | "cover" | "wide";
 
@@ -42,6 +43,9 @@ interface ImageUploadProps {
    * preview match a focal point chosen elsewhere so both stay in sync.
    */
   objectPosition?: string;
+  /** Name/email to derive initials from when `variant="avatar"` has no image. */
+  name?: string | null;
+  email?: string | null;
 }
 
 export function ImageUpload({
@@ -55,6 +59,8 @@ export function ImageUpload({
   allowRemove = false,
   onError,
   objectPosition,
+  name,
+  email,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -124,8 +130,14 @@ export function ImageUpload({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center bg-primary/10 text-primary">
-              <User size={30} />
+            <span
+              className={cn(
+                "flex h-full w-full items-center justify-center text-[22px] font-semibold",
+                getAvatarPalette(name?.trim() || email?.trim() || "user").bg,
+                getAvatarPalette(name?.trim() || email?.trim() || "user").text,
+              )}
+            >
+              {getUserInitials(name, email)}
             </span>
           )}
           {/* Hover / uploading overlay */}

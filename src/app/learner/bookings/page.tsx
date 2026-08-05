@@ -19,11 +19,12 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { findOrderCodeForBooking, clearPendingPayos } from "@/lib/payos-pending";
 import { showError } from "@/lib/toast";
-import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
+import { cn, formatCurrencyVnd } from "@/lib/utils";
 import type { Booking } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -346,7 +347,6 @@ function BookingCard({
       : 0;
 
   const coachName = coachProfile?.name;
-  const coachAvatar = coachProfile?.avatarUrl ?? avatarFor(booking.coachId);
 
   const paymentPaid = !!(booking.paidAt || isActive || isCompleted);
 
@@ -372,13 +372,11 @@ function BookingCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <img
-                src={coachAvatar}
-                alt={coachName ?? "Coach"}
-                className="h-11 w-11 rounded-full object-cover ring-2 ring-[var(--color-border-soft)]"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = avatarFor(booking.coachId);
-                }}
+              <UserAvatar
+                avatarUrl={coachProfile?.avatarUrl}
+                name={coachName}
+                size="lg"
+                className="h-11 w-11 text-[13px] ring-2 ring-[var(--color-border-soft)]"
               />
               {isActive && (
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-surface-container-lowest bg-emerald-500" />

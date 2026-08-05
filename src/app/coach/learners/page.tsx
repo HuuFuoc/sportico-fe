@@ -21,7 +21,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
-import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
+import { cn, formatCurrencyVnd } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Booking } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -132,7 +133,6 @@ function BookingCard({
       : 0;
   const remaining = Math.max(0, booking.totalSessions - booking.completedSessions);
   const learnerId = booking.learnerId;
-  const learnerAvatar = profile?.avatarUrl ?? avatarFor(learnerId ?? booking.id);
   const displayName = profile?.name ?? learnerFallbackName(learnerId);
   const isActive = booking.status?.toLowerCase() === "active";
   const paymentPaid = !!(booking.paidAt || isActive || booking.status?.toLowerCase() === "completed");
@@ -151,13 +151,11 @@ function BookingCard({
         {/* Learner identity row */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img
-              src={learnerAvatar}
-              alt={displayName}
-              className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-[var(--color-border-soft)]"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = avatarFor(booking.id);
-              }}
+            <UserAvatar
+              avatarUrl={profile?.avatarUrl}
+              name={displayName}
+              size="md"
+              className="h-10 w-10 shrink-0 ring-2 ring-[var(--color-border-soft)]"
             />
             <div className="min-w-0">
               <p className="truncate text-[14px] font-semibold text-on-surface">

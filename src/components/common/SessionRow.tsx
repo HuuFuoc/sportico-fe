@@ -1,9 +1,10 @@
 "use client";
 
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { cn, initials, relativeDay } from "@/lib/utils";
+import { cn, relativeDay } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach, Learner, Session } from "@/types";
 
 interface SessionRowProps {
@@ -41,17 +42,12 @@ export function SessionRow({
         className,
       )}
     >
-      <div className="w-10 h-10 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-medium shrink-0 overflow-hidden">
-        {other?.avatarUrl ? (
-          <img
-            src={other.avatarUrl}
-            alt={other.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          initials(other?.name ?? "?")
-        )}
-      </div>
+      <UserAvatar
+        avatarUrl={other?.avatarUrl}
+        name={other?.name ?? "?"}
+        size="md"
+        className="w-10 h-10 shrink-0"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-body-base font-medium text-on-surface truncate">

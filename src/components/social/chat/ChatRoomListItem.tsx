@@ -7,6 +7,7 @@ import { useIsBlocked } from "@/lib/social/hooks/useBlock";
 import { formatChatTimestamp } from "@/lib/social/datetime";
 import { CHAT_ROOM_STATUS_LABELS } from "@/lib/social/labels";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { ChatRoomResponse } from "@/lib/social/types";
 
 interface ChatRoomListItemProps {
@@ -31,8 +32,14 @@ export function ChatRoomListItem({ room, currentUserId, active }: ChatRoomListIt
         active ? "bg-primary/10" : "hover:bg-surface-container-high",
       )}
     >
-      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[14px] font-semibold text-primary">
-        {(otherUser?.name ?? "?").slice(0, 1).toUpperCase()}
+      <div className="relative shrink-0">
+        <UserAvatar
+          avatarUrl={otherUser?.avatarUrl}
+          name={otherUser?.name}
+          size="md"
+          className="h-11 w-11 text-[14px]"
+          isLoading={!otherUser}
+        />
         {blocked && (
           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white">
             <Prohibition width={10} height={10} />

@@ -183,6 +183,8 @@ export function PersonalProfileForm({
             variant="avatar"
             value={avatarPreview || undefined}
             folder="avatars"
+            name={form.fullName || authUser?.fullName}
+            email={authUser?.email}
             onChange={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
             onError={(text) => showError(text)}
           />

@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/store/useAuthStore";
 import { api } from "@/lib/api";
 import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 interface TopBarProps {
   role: AppRole;
@@ -16,7 +17,11 @@ interface TopBarProps {
   searchPlaceholder?: string;
 }
 
-function useCurrentUser(): { name: string; avatarUrl: string | null } | null {
+function useCurrentUser(): {
+  name: string;
+  email: string | null;
+  avatarUrl: string | null;
+} | null {
   const authUser = useAuthStore((s) => s.user);
   const id = useAppStore((s) => s.currentUserId);
   const { data: mockUser } = useApiResource(
@@ -27,11 +32,16 @@ function useCurrentUser(): { name: string; avatarUrl: string | null } | null {
   if (authUser) {
     return {
       name: authUser.fullName ?? "Người dùng",
+      email: authUser.email ?? null,
       avatarUrl: authUser.avatarUrl ?? null,
     };
   }
   if (mockUser) {
-    return { name: mockUser.name, avatarUrl: mockUser.avatarUrl ?? null };
+    return {
+      name: mockUser.name,
+      email: mockUser.email ?? null,
+      avatarUrl: mockUser.avatarUrl ?? null,
+    };
   }
   return null;
 }
@@ -233,10 +243,12 @@ export function TopBar({ role, title, searchPlaceholder }: TopBarProps) {
               {role}
             </p>
           </div>
-          <img
-            src={user?.avatarUrl ?? "https://i.pravatar.cc/64?u=guest"}
-            alt={user?.name ?? "User"}
-            className="w-9 h-9 rounded-full object-cover border border-[var(--color-border-soft)]"
+          <UserAvatar
+            avatarUrl={user?.avatarUrl}
+            name={user?.name}
+            email={user?.email}
+            size="sm"
+            className="h-9 w-9 border border-[var(--color-border-soft)] text-[12px]"
           />
         </div>
       </div>

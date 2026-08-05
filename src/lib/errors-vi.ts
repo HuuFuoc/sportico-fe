@@ -41,6 +41,10 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   TRAINING_PACKAGE_NOT_OWNED: "Bạn chỉ có thể quản lý gói tập của chính mình.",
   INVALID_TRAINING_PACKAGE_STATUS: "Trạng thái gói tập không cho phép cập nhật.",
   TRAINING_PACKAGE_NOT_PUBLISHED: "Gói tập chưa được xuất bản.",
+  // Optimistic concurrency: the record changed (e.g. a learner booked into a
+  // session) between when the form loaded and when it was saved. Never
+  // auto-retry — the caller must refetch fresh data first.
+  CONCURRENCY_CONFLICT: "Dữ liệu gói tập vừa được thay đổi (có thể do học viên vừa đặt lịch). Vui lòng tải lại và thử lưu lại.",
   // Booking / session scheduling
   BOOKING_NOT_FOUND: "Không tìm thấy gói đặt lịch.",
   BOOKING_NOT_ACTIVE: "Gói tập đã hết hạn hoặc chưa được kích hoạt.",

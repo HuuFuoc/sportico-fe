@@ -26,7 +26,8 @@ import {
   Video,
   Zap,
 } from "lucide-react";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { LoadingState } from "@/components/common/AsyncStates";
@@ -467,26 +468,18 @@ export function MessagesView({
                 >
                   {/* Avatar */}
                   <div className="relative shrink-0">
-                    <div
-                      className={cn(
-                        "w-11 h-11 rounded-full flex items-center justify-center overflow-hidden",
-                        t.isAI
-                          ? "bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]"
-                          : "bg-surface-container-high text-primary font-medium text-[13px]",
-                      )}
-                    >
-                      {t.isAI ? (
+                    {t.isAI ? (
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]">
                         <Sparkles size={18} className="drop-shadow-sm" />
-                      ) : avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt={name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        initials(name)
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <UserAvatar
+                        avatarUrl={avatarUrl}
+                        name={name}
+                        size="md"
+                        className="w-11 h-11 text-[13px]"
+                      />
+                    )}
                     {/* AI is always available — this is a real property of the
                         assistant, not a presence claim. Humans get no dot
                         because the backend exposes no online status. */}
@@ -570,26 +563,18 @@ export function MessagesView({
               </button>
 
               <div className="relative shrink-0">
-                <div
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center overflow-hidden",
-                    active.isAI
-                      ? "bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]"
-                      : "bg-surface-container-high text-primary font-medium text-[13px]",
-                  )}
-                >
-                  {active.isAI ? (
+                {active.isAI ? (
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]">
                     <Sparkles size={18} />
-                  ) : otherAvatarUrl ? (
-                    <img
-                      src={otherAvatarUrl}
-                      alt={otherName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    initials(otherName)
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <UserAvatar
+                    avatarUrl={otherAvatarUrl}
+                    name={otherName}
+                    size="md"
+                    className="w-10 h-10 text-[13px]"
+                  />
+                )}
                 {active.isAI && (
                   <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-surface-container-lowest" />
                 )}
@@ -836,26 +821,18 @@ function MessageList({
               {!fromMe && (
                 <div className="w-8 shrink-0">
                   {isGroupEnd && (
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center overflow-hidden",
-                        fromAI
-                          ? "bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_3px_8px_-2px_rgba(53,37,205,0.35)]"
-                          : "bg-surface-container-high text-primary font-medium text-[11px]",
-                      )}
-                    >
-                      {fromAI ? (
+                    fromAI ? (
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_3px_8px_-2px_rgba(53,37,205,0.35)]">
                         <Sparkles size={13} />
-                      ) : otherAvatarUrl ? (
-                        <img
-                          src={otherAvatarUrl}
-                          alt={otherName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        initials(otherName)
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <UserAvatar
+                        avatarUrl={otherAvatarUrl}
+                        name={otherName}
+                        size="xs"
+                        className="w-8 h-8 text-[11px]"
+                      />
+                    )
                   )}
                 </div>
               )}

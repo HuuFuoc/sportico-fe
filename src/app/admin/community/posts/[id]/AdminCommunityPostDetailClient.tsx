@@ -11,6 +11,7 @@ import { Pagination } from "@/components/social/Pagination";
 import { RowSkeleton } from "@/components/social/Skeleton";
 import { MediaGallery } from "@/components/social/community/MediaGallery";
 import { PostStatusBadge } from "@/components/social/community/PostStatusBadge";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import {
   useAdminCommunityPost,
   useAdminPostComments,
@@ -280,9 +281,12 @@ function AdminCommentRow({
 
   return (
     <div className="flex items-start gap-3 px-4 py-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-[12px] font-semibold text-on-surface-variant">
-        {(comment.author?.fullName ?? "?").slice(0, 1).toUpperCase()}
-      </div>
+      <UserAvatar
+        avatarUrl={comment.author?.avatarUrl}
+        name={comment.author?.fullName}
+        size="sm"
+        className="h-8 w-8 text-[12px]"
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-[12px]">
           {isReply && <ReplyToMessage width={11} height={11} className="text-on-surface-variant" />}

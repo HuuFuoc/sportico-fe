@@ -10,6 +10,7 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 import { useAppStore, type AppRole } from "@/lib/store/useAppStore";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { logout } from "@/lib/auth-api";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 interface NavItem {
   href: string;
@@ -276,17 +277,13 @@ export function Sidebar({ role }: { role: AppRole }) {
         <div className="border-t border-[var(--color-border-soft)] p-3">
           <div className="flex items-center gap-2.5 rounded-[11px] border border-[var(--color-border-soft)] bg-surface-container-low/60 p-2">
             <div className="relative shrink-0">
-              {displayAvatar ? (
-                <img
-                  src={displayAvatar}
-                  alt={displayName}
-                  className="h-9 w-9 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <MaterialIcon name="person" filled size={18} />
-                </div>
-              )}
+              <UserAvatar
+                avatarUrl={displayAvatar}
+                name={displayName}
+                email={displayEmail}
+                size="sm"
+                className="h-9 w-9 text-[12px]"
+              />
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-container-lowest bg-emerald-500" />
             </div>
             <div className="min-w-0 flex-1">

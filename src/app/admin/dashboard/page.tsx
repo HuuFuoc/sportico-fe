@@ -46,6 +46,7 @@ import { api } from "@/lib/api";
 import { isMockMode } from "@/lib/api-client";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach, VerificationRequest } from "@/types";
 import type { AdminDashboardResponse } from "@/lib/backend/dto";
 
@@ -1013,10 +1014,11 @@ function PendingVerifications({
               className="group relative overflow-hidden rounded-[16px] border border-[var(--color-border-soft)] hover:border-primary/20 bg-surface-container-lowest p-4 transition-all shadow-[0_1px_2px_rgba(15,15,30,0.03)] hover:shadow-[0_6px_18px_-6px_rgba(15,15,30,0.12)]"
             >
               <div className="flex items-start gap-3 mb-3">
-                <img
-                  src={v.coachAvatar}
-                  alt={v.coachName}
-                  className="w-11 h-11 rounded-full object-cover shrink-0"
+                <UserAvatar
+                  avatarUrl={v.coachAvatar}
+                  name={v.coachName}
+                  size="md"
+                  className="w-11 h-11 shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
@@ -1100,6 +1102,7 @@ function RecentUsers({
     id: c.id,
     avatar: c.avatarUrl,
     name: c.name,
+    email: c.email,
     sub: c.sport ?? "HLV",
     badge: c.verified ? "Đã xác minh" : "Chưa xác minh",
     tone: (c.verified ? "good" : "neutral") as "good" | "neutral",
@@ -1142,10 +1145,12 @@ function RecentUsers({
             whileHover={reduce ? {} : { x: 2 }}
             className="group flex items-center gap-3 px-3 py-2.5 rounded-[12px] hover:bg-surface-container-low/60 transition-colors cursor-pointer"
           >
-            <img
-              src={it.avatar}
-              alt={it.name}
-              className="w-9 h-9 rounded-full object-cover shrink-0"
+            <UserAvatar
+              avatarUrl={it.avatar}
+              name={it.name}
+              email={it.email}
+              size="sm"
+              className="w-9 h-9 text-[12px] shrink-0"
             />
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold truncate">{it.name}</p>

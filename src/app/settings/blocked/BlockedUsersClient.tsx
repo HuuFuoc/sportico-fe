@@ -5,6 +5,7 @@ import { Prohibition } from "iconoir-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LoadingState, ErrorState } from "@/components/common/AsyncStates";
 import { EmptyState } from "@/components/common/EmptyState";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { useBlockedUsers, useUnblockUser } from "@/lib/social/hooks/useBlock";
 import { formatDateVn } from "@/lib/social/datetime";
 import { showApiError, showSuccess } from "@/lib/toast";
@@ -53,9 +54,7 @@ function BlockedUsersList() {
           <div className="divide-y divide-[var(--color-border-soft)] overflow-hidden rounded-[14px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
             {data.map((u) => (
               <div key={u.userId} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-[13px] font-semibold text-rose-700">
-                  {(u.fullName ?? "?").slice(0, 1).toUpperCase()}
-                </div>
+                <UserAvatar avatarUrl={u.avatarUrl} name={u.fullName} size="md" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13.5px] font-medium text-on-surface">{u.fullName || "Người dùng"}</p>
                   <p className="text-[11.5px] text-on-surface-variant">

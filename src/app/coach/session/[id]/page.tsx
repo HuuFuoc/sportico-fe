@@ -6,6 +6,7 @@ import { AIInsightBanner } from "@/components/common/AIInsightBanner";
 import { AIBadge } from "@/components/common/AIBadge";
 import { api } from "@/lib/api";
 import { formatCurrency, relativeDay } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -102,10 +103,11 @@ export default async function SessionDetailPage({ params }: PageProps) {
           <div className="lg:col-span-8 space-y-4">
             {/* Video / preview */}
             <div className="bg-on-surface rounded-[12px] aspect-video relative overflow-hidden group">
-              <img
-                src={`https://i.pravatar.cc/1200?u=session-${session.id}`}
-                alt=""
-                className="w-full h-full object-cover opacity-80"
+              <UserAvatar
+                avatarUrl={learner?.avatarUrl}
+                name={learner?.name}
+                size="xl"
+                className="flex h-full w-full rounded-none text-[64px] opacity-80"
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
@@ -232,10 +234,10 @@ export default async function SessionDetailPage({ params }: PageProps) {
           <aside className="lg:col-span-4 space-y-4">
             <section className="bg-surface-container-lowest border border-[var(--color-border-soft)] rounded-[10px] p-4">
               <div className="flex items-center gap-3 mb-3">
-                <img
-                  src={learner?.avatarUrl}
-                  alt={learner?.name}
-                  className="w-14 h-14 rounded-full object-cover"
+                <UserAvatar
+                  avatarUrl={learner?.avatarUrl}
+                  name={learner?.name}
+                  size="lg"
                 />
                 <div className="min-w-0">
                   <p className="text-h3 truncate">{learner?.name}</p>

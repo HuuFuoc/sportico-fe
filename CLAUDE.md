@@ -108,7 +108,8 @@ src/
 │   ├── layout/                  # AppShell, Sidebar, TopBar, PublicNavbar, Footer,
 │   │                            # RoleSwitcher (dev), AskAIPanel
 │   ├── common/                  # StatCard, CoachCard, SessionRow, AIInsightBanner,
-│   │                            # AIBadge, ChartCard, ClientOnly, EmptyState, MessagesView
+│   │                            # AIBadge, ChartCard, ClientOnly, EmptyState, MessagesView,
+│   │                            # UserAvatar (◀ the ONLY avatar component — see 8g)
 │   ├── dashboard/               # ActivityHeatmap, ProgressRing, Sparkline, AICoachCard
 │   ├── coach/                   # DataViz
 │   ├── landing/                 # HeroSection (GRIND-style), HeroPreview, MatchExplainer,
@@ -116,8 +117,8 @@ src/
 │   └── icons/MaterialIcon.tsx   # Variable-font wrapper
 ├── lib/
 │   ├── api.ts                   # ◀ ALL async functions — swap point khi có backend
-│   ├── utils.ts                 # cn (clsx+twMerge), formatCurrency, avatarFor, relativeDay,
-│   │                            # localDateKey, initials
+│   ├── utils.ts                 # cn (clsx+twMerge), formatCurrency, relativeDay, localDateKey
+│   ├── avatar.ts                # getUserInitials(name, email), getAvatarPalette(seed) — see 8g
 │   ├── mock/                    # users, sessions, messages, earnings, analytics,
 │   │                            # insights, wellness, clock (NOW)
 │   ├── store/useAppStore.ts     # zustand: currentRole, currentUserId, sidebar state
@@ -291,7 +292,13 @@ import { cn } from "@/lib/utils";   // = twMerge(clsx(...))
 Mọi value tài chính / metric / count → `tabular-nums`. Đặc biệt quan trọng cho table và KPI.
 
 ### 8g. Avatar
-Mock dùng `avatarFor(seed)` → pravatar URL. Khi swap sang ảnh thật, cần add domain vào `next.config.ts` nếu chuyển sang `next/image`.
+**Không còn avatar random / third-party** (đã bỏ `avatarFor()` / pravatar.cc hoàn toàn). Quy tắc:
+
+- Component dùng chung duy nhất: `<UserAvatar avatarUrl={..} name={..} email={..} size="xs|sm|md|lg|xl" />` ở `src/components/common/UserAvatar.tsx`.
+- Có ảnh hợp lệ (load thành công) → hiện ảnh. Không có ảnh / ảnh lỗi → hiện initials (nền màu deterministic theo tên/email, không đổi mỗi lần render).
+- Logic tạo initials chỉ nằm ở `getUserInitials(name, email)` trong `src/lib/avatar.ts` — đừng viết `.slice(0,1)`/`.charAt(0)` riêng lẻ ở component khác.
+- `avatarUrl` rỗng/`""`/`null` từ mock hoặc backend là hợp lệ ("chưa có ảnh") — `UserAvatar` tự fallback, không cần `?? avatarFor(...)` hay URL mặc định nào khác.
+- Raw `<img>` (không phải `next/image`) — nhất quán với phần còn lại của codebase.
 
 ---
 

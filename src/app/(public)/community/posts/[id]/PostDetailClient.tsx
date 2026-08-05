@@ -21,6 +21,7 @@ import { MediaGallery } from "@/components/social/community/MediaGallery";
 import { LikeButton } from "@/components/social/community/LikeButton";
 import { ApplicationPanel } from "@/components/social/community/ApplicationPanel";
 import { CommentThread } from "@/components/social/community/CommentThread";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { useCommunityPost, useCloseCommunityPost, useDeleteCommunityPost } from "@/lib/social/hooks/useCommunity";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { formatCurrencyVnd } from "@/lib/utils";
@@ -70,6 +71,7 @@ export function PostDetailClient({ postId }: { postId: string }) {
     post.author?.fullName?.trim() ||
     (post.canEdit ? currentUser?.fullName?.trim() : "") ||
     "Người dùng";
+  const authorAvatarUrl = post.author?.avatarUrl || (post.canEdit ? currentUser?.avatarUrl : null);
 
   async function handleClose() {
     try {
@@ -110,9 +112,12 @@ export function PostDetailClient({ postId }: { postId: string }) {
         <h1 className="text-[20px] font-bold leading-snug text-on-surface">{post.title}</h1>
 
         <div className="mt-2 flex items-center gap-2 text-[12.5px] text-on-surface-variant">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-            {authorName.slice(0, 1).toUpperCase()}
-          </div>
+          <UserAvatar
+            avatarUrl={authorAvatarUrl}
+            name={authorName}
+            size="sm"
+            className="h-7 w-7 text-[11px]"
+          />
           <span className="font-medium text-on-surface">{authorName}</span>
           <span>·</span>
           <span>{formatRelativeVn(post.publishedAt ?? post.createdAt)}</span>

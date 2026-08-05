@@ -13,9 +13,10 @@ import {
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { logout } from "@/lib/auth-api";
 import { getCurrentUserId } from "@/lib/auth-session";
-import { avatarFor, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { NotificationNavButton } from "@/components/layout/navbar/NotificationNavButton";
 import { MessageNavButton } from "@/components/layout/navbar/MessageNavButton";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Role } from "@/types";
 
 interface PublicNavbarProps {
@@ -86,7 +87,8 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
   const menuRole: Role = role ?? "learner";
 
   const displayName = authUser?.fullName ?? "Người dùng";
-  const avatarSrc = authUser?.avatarUrl ?? avatarFor(authUser?.id ?? "guest");
+  const avatarUrl = authUser?.avatarUrl ?? null;
+  const displayEmail = authUser?.email ?? null;
 
   // Resolve the signed-in user's id for thread lookups (real session first,
   // then the auth store user as a fallback).
@@ -207,7 +209,8 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
           {isAuthenticated ? (
             <UserMenu
               displayName={displayName}
-              avatarSrc={avatarSrc}
+              avatarUrl={avatarUrl}
+              email={displayEmail}
               role={menuRole}
               transparent={transparent}
               open={menuOpen}
@@ -297,7 +300,8 @@ export function PublicNavbar({ variant = "solid" }: PublicNavbarProps) {
 
 function UserMenu({
   displayName,
-  avatarSrc,
+  avatarUrl,
+  email,
   role,
   transparent,
   open,
@@ -307,7 +311,8 @@ function UserMenu({
   menuRef,
 }: {
   displayName: string;
-  avatarSrc: string;
+  avatarUrl: string | null;
+  email: string | null;
   role: Role;
   transparent: boolean;
   open: boolean;
@@ -330,10 +335,12 @@ function UserMenu({
             : "bg-surface-container-low hover:bg-surface-container",
         )}
       >
-        <img
-          src={avatarSrc}
-          alt={displayName}
-          className="h-10 w-10 rounded-full object-cover"
+        <UserAvatar
+          avatarUrl={avatarUrl}
+          name={displayName}
+          email={email}
+          size="md"
+          className="h-10 w-10 text-[13px]"
         />
         <span
           className={cn(

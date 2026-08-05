@@ -8,14 +8,14 @@ import {
 } from "motion/react";
 import { useRef } from "react";
 import { Quote, Sparkles, Star } from "lucide-react";
-import { avatarFor, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 const EASE = [0.16, 1, 0.3, 1] as Easing;
 
 interface Testimonial {
   name: string;
   role: string;
-  avatar: string;
   metric: string;
   metricLabel: string;
   quote: string;
@@ -26,7 +26,6 @@ interface Testimonial {
 const FEATURED: Testimonial = {
   name: "Mia Carter",
   role: "Vận động viên 5K",
-  avatar: avatarFor("learner-11"),
   metric: "−90 giây",
   metricLabel: "thành tích 5K trong 2 tháng",
   quote:
@@ -39,7 +38,6 @@ const SUPPORTING: Testimonial[] = [
   {
     name: "Alex Rivera",
     role: "Vận động viên marathon",
-    avatar: avatarFor("learner-1"),
     metric: "+24 giờ",
     metricLabel: "đã tập · 12 tuần",
     quote:
@@ -50,7 +48,6 @@ const SUPPORTING: Testimonial[] = [
   {
     name: "Daniel Wong",
     role: "Boxer nghiệp dư",
-    avatar: avatarFor("learner-6"),
     metric: "4,9★",
     metricLabel: "đánh giá HLV",
     quote:
@@ -268,10 +265,10 @@ function FeaturedQuote({
         {/* Footer */}
         <figcaption className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5">
           <div className="relative">
-            <img
-              src={t.avatar}
-              alt={t.name}
-              className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-[0_4px_12px_-2px_rgba(15,23,42,0.15)]"
+            <UserAvatar
+              name={t.name}
+              size="md"
+              className="h-12 w-12 text-[14px] ring-2 ring-white shadow-[0_4px_12px_-2px_rgba(15,23,42,0.15)]"
             />
             <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-500 ring-2 ring-white">
               <Sparkles size={8} className="text-white" />
@@ -338,11 +335,7 @@ function SupportingQuote({
       </blockquote>
 
       <figcaption className="mt-5 flex items-center gap-2.5 border-t border-slate-100 pt-3.5">
-        <img
-          src={t.avatar}
-          alt={t.name}
-          className="h-9 w-9 rounded-full object-cover"
-        />
+        <UserAvatar name={t.name} size="sm" className="h-9 w-9 text-[12px]" />
         <div className="flex-1">
           <p className="text-[13px] font-semibold text-slate-900">{t.name}</p>
           <p className="text-[11.5px] text-slate-500">

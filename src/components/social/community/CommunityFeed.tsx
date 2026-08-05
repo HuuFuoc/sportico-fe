@@ -7,6 +7,7 @@ import { MediaImagePlus } from "iconoir-react";
 import { PostCard } from "@/components/social/community/PostCard";
 import { PostFilterBar } from "@/components/social/community/PostFilterBar";
 import { SportStoriesBar } from "@/components/social/community/SportStoriesBar";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { PostCardSkeleton } from "@/components/social/Skeleton";
 import { Pagination } from "@/components/social/Pagination";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -43,9 +44,13 @@ export function CommunityFeed() {
         href="/community/create"
         className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--color-border-soft)] bg-surface-container-lowest p-3 transition-colors hover:border-primary/30"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#7d6dff] text-[13px] font-semibold text-white">
-          {(currentUser?.fullName?.trim() || "?").slice(0, 1).toUpperCase()}
-        </span>
+        <UserAvatar
+          avatarUrl={currentUser?.avatarUrl}
+          name={currentUser?.fullName}
+          email={currentUser?.email}
+          size="sm"
+          className="h-9 w-9 text-[13px]"
+        />
         <span className="flex-1 truncate rounded-full bg-surface-container-high px-4 py-2 text-[13.5px] text-on-surface-variant">
           Bạn đang tập luyện gì hôm nay?
         </span>

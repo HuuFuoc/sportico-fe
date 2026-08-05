@@ -1,5 +1,4 @@
 ﻿import type { Admin, Coach, Learner, Sport } from "@/types";
-import { avatarFor } from "@/lib/utils";
 import { AVAILABLE_SPORTS } from "@/lib/constants";
 
 // ============================================================================
@@ -10,7 +9,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-1",
     name: "Sarah Jenkins",
-    avatarUrl: avatarFor("coach-1"),
+    avatarUrl: "",
     email: "sarah.jenkins@procoach.ai",
     joinedAt: "2024-02-12",
     role: "coach",
@@ -32,7 +31,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-2",
     name: "David Miller",
-    avatarUrl: avatarFor("coach-2"),
+    avatarUrl: "",
     email: "david.miller@procoach.ai",
     joinedAt: "2024-03-04",
     role: "coach",
@@ -54,7 +53,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-3",
     name: "Elena Sokolova",
-    avatarUrl: avatarFor("coach-3"),
+    avatarUrl: "",
     email: "elena.s@procoach.ai",
     joinedAt: "2023-11-22",
     role: "coach",
@@ -76,7 +75,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-4",
     name: "Marcus Vane",
-    avatarUrl: avatarFor("coach-4"),
+    avatarUrl: "",
     email: "marcus.vane@procoach.ai",
     joinedAt: "2024-01-08",
     role: "coach",
@@ -98,7 +97,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-5",
     name: "Priya Raman",
-    avatarUrl: avatarFor("coach-5"),
+    avatarUrl: "",
     email: "priya.raman@procoach.ai",
     joinedAt: "2024-04-19",
     role: "coach",
@@ -120,7 +119,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-6",
     name: "Liam O'Connor",
-    avatarUrl: avatarFor("coach-6"),
+    avatarUrl: "",
     email: "liam.oc@procoach.ai",
     joinedAt: "2024-05-30",
     role: "coach",
@@ -142,7 +141,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-7",
     name: "Ava Tanaka",
-    avatarUrl: avatarFor("coach-7"),
+    avatarUrl: "",
     email: "ava.tanaka@procoach.ai",
     joinedAt: "2024-06-14",
     role: "coach",
@@ -164,7 +163,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-8",
     name: "Jamal Brooks",
-    avatarUrl: avatarFor("coach-8"),
+    avatarUrl: "",
     email: "jamal.brooks@procoach.ai",
     joinedAt: "2024-07-01",
     role: "coach",
@@ -186,7 +185,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-9",
     name: "Sofia Romano",
-    avatarUrl: avatarFor("coach-9"),
+    avatarUrl: "",
     email: "sofia.romano@procoach.ai",
     joinedAt: "2024-08-22",
     role: "coach",
@@ -208,7 +207,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-10",
     name: "Noah Park",
-    avatarUrl: avatarFor("coach-10"),
+    avatarUrl: "",
     email: "noah.park@procoach.ai",
     joinedAt: "2024-09-10",
     role: "coach",
@@ -230,7 +229,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-11",
     name: "Maya Hill",
-    avatarUrl: avatarFor("coach-11"),
+    avatarUrl: "",
     email: "maya.hill@procoach.ai",
     joinedAt: "2024-10-02",
     role: "coach",
@@ -252,7 +251,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-12",
     name: "Diego Alvarez",
-    avatarUrl: avatarFor("coach-12"),
+    avatarUrl: "",
     email: "diego.alvarez@procoach.ai",
     joinedAt: "2024-10-19",
     role: "coach",
@@ -274,7 +273,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-13",
     name: "Hana Vogel",
-    avatarUrl: avatarFor("coach-13"),
+    avatarUrl: "",
     email: "hana.vogel@procoach.ai",
     joinedAt: "2025-01-11",
     role: "coach",
@@ -296,7 +295,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-14",
     name: "Theo Nakamura",
-    avatarUrl: avatarFor("coach-14"),
+    avatarUrl: "",
     email: "theo.nakamura@procoach.ai",
     joinedAt: "2025-02-05",
     role: "coach",
@@ -318,7 +317,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-15",
     name: "Aiden Foster",
-    avatarUrl: avatarFor("coach-15"),
+    avatarUrl: "",
     email: "aiden.foster@procoach.ai",
     joinedAt: "2025-02-20",
     role: "coach",
@@ -340,7 +339,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-16",
     name: "Riley Chen",
-    avatarUrl: avatarFor("coach-16"),
+    avatarUrl: "",
     email: "riley.chen@procoach.ai",
     joinedAt: "2025-03-08",
     role: "coach",
@@ -362,7 +361,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-17",
     name: "Zara Mohammed",
-    avatarUrl: avatarFor("coach-17"),
+    avatarUrl: "",
     email: "zara.m@procoach.ai",
     joinedAt: "2025-03-19",
     role: "coach",
@@ -384,7 +383,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-18",
     name: "Oscar Reyes",
-    avatarUrl: avatarFor("coach-18"),
+    avatarUrl: "",
     email: "oscar.reyes@procoach.ai",
     joinedAt: "2025-04-02",
     role: "coach",
@@ -406,7 +405,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-19",
     name: "Nguyễn Minh Tuấn",
-    avatarUrl: avatarFor("coach-19"),
+    avatarUrl: "",
     email: "tuannm@sportico.vn",
     joinedAt: "2025-01-15",
     role: "coach",
@@ -428,7 +427,7 @@ export const mockCoaches: Coach[] = [
   {
     id: "coach-20",
     name: "Trần Thị Lan Anh",
-    avatarUrl: avatarFor("coach-20"),
+    avatarUrl: "",
     email: "lananht@sportico.vn",
     joinedAt: "2025-02-10",
     role: "coach",
@@ -457,7 +456,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-1",
     name: "Alex Rivera",
-    avatarUrl: avatarFor("learner-1"),
+    avatarUrl: "",
     email: "alex.rivera@example.com",
     joinedAt: "2024-09-20",
     role: "learner",
@@ -471,7 +470,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-2",
     name: "James Smith",
-    avatarUrl: avatarFor("learner-2"),
+    avatarUrl: "",
     email: "james.s@example.com",
     joinedAt: "2024-08-11",
     role: "learner",
@@ -485,7 +484,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-3",
     name: "Emma Lofton",
-    avatarUrl: avatarFor("learner-3"),
+    avatarUrl: "",
     email: "emma.l@example.com",
     joinedAt: "2024-10-04",
     role: "learner",
@@ -499,7 +498,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-4",
     name: "Marcus Knight",
-    avatarUrl: avatarFor("learner-4"),
+    avatarUrl: "",
     email: "marcus.k@example.com",
     joinedAt: "2024-07-22",
     role: "learner",
@@ -513,7 +512,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-5",
     name: "Sofia Patel",
-    avatarUrl: avatarFor("learner-5"),
+    avatarUrl: "",
     email: "sofia.p@example.com",
     joinedAt: "2025-01-15",
     role: "learner",
@@ -527,7 +526,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-6",
     name: "Daniel Wong",
-    avatarUrl: avatarFor("learner-6"),
+    avatarUrl: "",
     email: "daniel.w@example.com",
     joinedAt: "2024-11-30",
     role: "learner",
@@ -541,7 +540,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-7",
     name: "Lila Bennett",
-    avatarUrl: avatarFor("learner-7"),
+    avatarUrl: "",
     email: "lila.b@example.com",
     joinedAt: "2025-02-08",
     role: "learner",
@@ -555,7 +554,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-8",
     name: "Ethan Brooks",
-    avatarUrl: avatarFor("learner-8"),
+    avatarUrl: "",
     email: "ethan.b@example.com",
     joinedAt: "2025-03-01",
     role: "learner",
@@ -569,7 +568,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-9",
     name: "Nora Greene",
-    avatarUrl: avatarFor("learner-9"),
+    avatarUrl: "",
     email: "nora.g@example.com",
     joinedAt: "2024-12-12",
     role: "learner",
@@ -583,7 +582,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-10",
     name: "Owen Park",
-    avatarUrl: avatarFor("learner-10"),
+    avatarUrl: "",
     email: "owen.p@example.com",
     joinedAt: "2025-01-25",
     role: "learner",
@@ -597,7 +596,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-11",
     name: "Mia Carter",
-    avatarUrl: avatarFor("learner-11"),
+    avatarUrl: "",
     email: "mia.c@example.com",
     joinedAt: "2024-09-08",
     role: "learner",
@@ -611,7 +610,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-12",
     name: "Felix Romano",
-    avatarUrl: avatarFor("learner-12"),
+    avatarUrl: "",
     email: "felix.r@example.com",
     joinedAt: "2025-02-19",
     role: "learner",
@@ -625,7 +624,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-13",
     name: "Aisha Khan",
-    avatarUrl: avatarFor("learner-13"),
+    avatarUrl: "",
     email: "aisha.k@example.com",
     joinedAt: "2024-11-04",
     role: "learner",
@@ -639,7 +638,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-14",
     name: "Ryan Pierce",
-    avatarUrl: avatarFor("learner-14"),
+    avatarUrl: "",
     email: "ryan.p@example.com",
     joinedAt: "2025-03-12",
     role: "learner",
@@ -653,7 +652,7 @@ export const mockLearners: Learner[] = [
   {
     id: "learner-15",
     name: "Hannah Diaz",
-    avatarUrl: avatarFor("learner-15"),
+    avatarUrl: "",
     email: "hannah.d@example.com",
     joinedAt: "2025-04-01",
     role: "learner",
@@ -674,7 +673,7 @@ export const mockAdmins: Admin[] = [
   {
     id: "admin-1",
     name: "Morgan Hayes",
-    avatarUrl: avatarFor("admin-1"),
+    avatarUrl: "",
     email: "morgan@procoach.ai",
     joinedAt: "2023-08-01",
     role: "admin",
@@ -683,7 +682,7 @@ export const mockAdmins: Admin[] = [
   {
     id: "admin-2",
     name: "Riya Kapoor",
-    avatarUrl: avatarFor("admin-2"),
+    avatarUrl: "",
     email: "riya@procoach.ai",
     joinedAt: "2024-01-10",
     role: "admin",
@@ -692,7 +691,7 @@ export const mockAdmins: Admin[] = [
   {
     id: "admin-3",
     name: "Lukas Wagner",
-    avatarUrl: avatarFor("admin-3"),
+    avatarUrl: "",
     email: "lukas@procoach.ai",
     joinedAt: "2024-06-22",
     role: "admin",

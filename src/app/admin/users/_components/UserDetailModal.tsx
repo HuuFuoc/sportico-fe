@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Calendar, Mail, Phone, Shield, User, X } from "lucide-react";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { AdminUserItem } from "@/lib/types/admin-user";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -138,9 +139,12 @@ export function UserDetailModal({ open, user, onClose, onEdit }: UserDetailModal
 
             {/* Avatar + name block */}
             <div className="px-6 pt-5 pb-4 flex items-center gap-4 border-b border-[var(--color-border-soft)]">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-[#7d6dff] flex items-center justify-center text-on-primary text-[18px] font-bold shrink-0">
-                {initials(user.fullName ?? "?")}
-              </div>
+              <UserAvatar
+                name={user.fullName}
+                email={user.email}
+                size="lg"
+                className="h-14 w-14 text-[18px] shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-[16px] font-bold truncate">{user.fullName}</p>
                 <p className="text-[12px] text-on-surface-variant truncate">{user.email}</p>

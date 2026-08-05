@@ -22,7 +22,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { cn, initials, localDateKey, formatCurrencyVnd } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
+import { cn, localDateKey, formatCurrencyVnd } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
@@ -171,17 +172,12 @@ function SessionDetailModal({
         {/* Header */}
         <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-[var(--color-border-soft)] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
-              {coach?.avatarUrl ? (
-                <img
-                  src={coach.avatarUrl}
-                  alt={coach.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials(coach?.name ?? "HLV")
-              )}
-            </div>
+            <UserAvatar
+              avatarUrl={coach?.avatarUrl}
+              name={coach?.name ?? "HLV"}
+              size="md"
+              className="w-10 h-10 text-[11px] shrink-0"
+            />
             <div className="min-w-0">
               <p className="text-[15px] font-bold text-on-surface leading-tight truncate">
                 {title}
@@ -367,17 +363,12 @@ function SessionCard({
 
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-surface-container-high overflow-hidden flex items-center justify-center text-[8px] font-semibold text-primary shrink-0">
-              {coach?.avatarUrl ? (
-                <img
-                  src={coach.avatarUrl}
-                  alt={coach.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials(coach?.name ?? "HLV")
-              )}
-            </div>
+            <UserAvatar
+              avatarUrl={coach?.avatarUrl}
+              name={coach?.name ?? "HLV"}
+              size="xs"
+              className="w-5 h-5 text-[8px] shrink-0"
+            />
             <span className="text-[12px] text-on-surface-variant truncate max-w-[120px]">
               {coach?.name ?? "Huấn luyện viên"}
             </span>
@@ -691,17 +682,12 @@ function NextSessionCard({
       {session ? (
         <div className="p-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-surface-container-high overflow-hidden flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
-              {coach?.avatarUrl ? (
-                <img
-                  src={coach.avatarUrl}
-                  alt={coach.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials(coach?.name ?? "HLV")
-              )}
-            </div>
+            <UserAvatar
+              avatarUrl={coach?.avatarUrl}
+              name={coach?.name ?? "HLV"}
+              size="sm"
+              className="w-9 h-9 text-[10px] shrink-0"
+            />
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-on-surface truncate">
                 {getSessionTitle(session, coach, booking)}

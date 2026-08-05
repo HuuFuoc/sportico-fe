@@ -20,6 +20,7 @@ import { api, type VerificationKind } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { showSuccess, showError } from "@/lib/toast";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { VerificationRequest } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -217,13 +218,11 @@ function BankVerificationRow({
         {/* Coach */}
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
-            <img
-              src={coachAvatar}
-              alt={coachName}
-              className="h-8 w-8 shrink-0 rounded-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = item.coachAvatar;
-              }}
+            <UserAvatar
+              avatarUrl={coachAvatar}
+              name={coachName}
+              size="sm"
+              className="h-8 w-8 shrink-0"
             />
             <div className="min-w-0">
               <p className="text-[13px] font-medium text-on-surface truncate">

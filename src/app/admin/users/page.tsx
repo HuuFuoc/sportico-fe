@@ -23,12 +23,13 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import { cn, formatNumber, initials } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { showSuccess, showError } from "@/lib/toast";
 import * as adminUserService from "@/lib/admin/adminUserService";
 import type { AdminUserItem } from "@/lib/types/admin-user";
 import { VisitorAnalyticsSection } from "@/components/admin/VisitorAnalytics";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { UserFormModal } from "./_components/UserFormModal";
 import { UserDetailModal } from "./_components/UserDetailModal";
 
@@ -392,9 +393,12 @@ export default function AdminUsersPage() {
                           <td className="pl-5 sm:pl-6 pr-3 py-3">
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative shrink-0">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/60 to-[#7d6dff]/60 flex items-center justify-center text-on-primary text-[13px] font-semibold">
-                                  {initials(u.fullName ?? "?")}
-                                </div>
+                                <UserAvatar
+                                  name={u.fullName}
+                                  email={u.email}
+                                  size="md"
+                                  className="h-10 w-10 text-[13px]"
+                                />
                                 <span
                                   className={cn(
                                     "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-surface-container-lowest",

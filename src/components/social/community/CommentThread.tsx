@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { EditPencil, ChatBubble, ReplyToMessage, Trash } from "iconoir-react";
 import ClassicLoader from "@/components/ui/loader";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { formatRelativeVn } from "@/lib/social/datetime";
 import {
   COMMENT_MAX_LENGTH,
@@ -171,9 +172,12 @@ function CommentItem({
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
       <div className="flex gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[12px] font-semibold text-primary">
-          {(comment.author?.fullName ?? "?").slice(0, 1).toUpperCase()}
-        </div>
+        <UserAvatar
+          avatarUrl={comment.author?.avatarUrl}
+          name={comment.author?.fullName}
+          size="sm"
+          className="h-8 w-8 text-[12px]"
+        />
         <div className="min-w-0 flex-1">
           <div className="rounded-[12px] bg-surface-container-high px-3 py-2">
             <p className="text-[12.5px] font-semibold text-on-surface">
@@ -265,9 +269,12 @@ function ReplyItem({ postId, reply }: { postId: string; reply: CommunityCommentR
 
   return (
     <div className="flex gap-2">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-[10.5px] font-semibold text-on-surface-variant">
-        {(reply.author?.fullName ?? "?").slice(0, 1).toUpperCase()}
-      </div>
+      <UserAvatar
+        avatarUrl={reply.author?.avatarUrl}
+        name={reply.author?.fullName}
+        size="xs"
+        className="h-6 w-6 text-[10.5px]"
+      />
       <div className="min-w-0 flex-1">
         <div className="rounded-[10px] bg-surface-container-high px-2.5 py-1.5">
           <p className="text-[12px] font-semibold text-on-surface">{reply.author?.fullName || "Người dùng"}</p>

@@ -54,7 +54,6 @@ import type {
   TrainingSessionResponse,
   WithdrawalRequestResponse,
 } from "@/lib/backend/dto";
-import { avatarFor } from "@/lib/utils";
 import { notificationTitleVi, notificationRoute, NOTIFICATION_ICON_BY_TYPE } from "@/lib/social/notification-mapper";
 
 const SPORTS: Sport[] = [
@@ -198,7 +197,7 @@ export function publicCoachListItemToCoach(
   return {
     id: c.coachId,
     name: c.fullName?.trim() || coachDisplayName(c.coachId),
-    avatarUrl: c.avatarUrl || avatarFor(c.coachId),
+    avatarUrl: c.avatarUrl || "",
     email: "",
     joinedAt: "",
     role: "coach",
@@ -229,7 +228,7 @@ export function currentUserToLearner(
   return {
     id: u.id,
     name: u.fullName?.trim() || fallback?.name || "Học viên Sportico",
-    avatarUrl: u.avatarUrl || fallback?.avatarUrl || avatarFor(u.id),
+    avatarUrl: u.avatarUrl || fallback?.avatarUrl || "",
     email: u.email,
     joinedAt: fallback?.joinedAt ?? "",
     role: "learner",
@@ -636,7 +635,7 @@ export function postToVerification(p: PostResponse): VerificationRequest {
     id: p.id,
     coachId: p.coachId,
     coachName: coachDisplayName(p.coachId),
-    coachAvatar: avatarFor(p.coachId),
+    coachAvatar: "",
     sport: toSport(p.sportName) ?? "Strength",
     submittedAt: p.createdAt,
     status: "pending",
@@ -657,7 +656,7 @@ export function trainingPackageToVerification(
     id: p.id,
     coachId: p.coachId,
     coachName: coachDisplayName(p.coachId),
-    coachAvatar: avatarFor(p.coachId),
+    coachAvatar: "",
     sport: toSport(p.sportName) ?? "Strength",
     submittedAt: p.createdAt,
     status: "pending",
@@ -687,7 +686,7 @@ export function payoutAccountToVerification(
     id: a.id,
     coachId: a.coachId,
     coachName: coachDisplayName(a.coachId),
-    coachAvatar: avatarFor(a.coachId),
+    coachAvatar: "",
     sport: "Strength",
     submittedAt: a.createdAt,
     status: "pending",

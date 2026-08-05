@@ -13,6 +13,7 @@ import {
 } from "iconoir-react";
 import ClassicLoader from "@/components/ui/loader";
 import { ErrorState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { ReportModal } from "@/components/social/ReportModal";
 import { Modal } from "@/components/social/Modal";
 import { ChatComposer } from "@/components/social/chat/ChatComposer";
@@ -152,9 +153,13 @@ export function ChatWindow({ room, backHref }: ChatWindowProps) {
             <ArrowLeft width={18} height={18} />
           </Link>
         )}
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">
-          {(otherUser?.name ?? "?").slice(0, 1).toUpperCase()}
-        </div>
+        <UserAvatar
+          avatarUrl={otherUser?.avatarUrl}
+          name={otherUser?.name}
+          size="sm"
+          className="h-9 w-9 text-[13px]"
+          isLoading={!otherUser}
+        />
         <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-on-surface">{otherUser?.name ?? "Đang tải…"}</p>
         <button
           type="button"

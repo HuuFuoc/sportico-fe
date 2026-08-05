@@ -35,6 +35,7 @@ import { PublicNavbar } from "@/components/layout/PublicNavbar";
 import { Footer } from "@/components/layout/Footer";
 import { TiltedCard } from "@/components/ui/TiltedCard";
 import { LoadingState, ErrorState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { savePendingPayos } from "@/lib/payos-pending";
@@ -507,25 +508,14 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
               {/* Avatar + identity — overlaid at the bottom of the cover */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end gap-4 px-5 pb-5 sm:px-7 sm:pb-6">
                 {/* Avatar */}
-                <div
-                  className="shrink-0 overflow-hidden rounded-full border-4 border-white/25 bg-surface
+                <UserAvatar
+                  avatarUrl={coach.avatarUrl}
+                  name={displayName}
+                  className="shrink-0 border-4 border-white/25 bg-surface
                               h-[88px] w-[88px] sm:h-[108px] sm:w-[108px]
+                              text-3xl sm:text-[34px]
                               shadow-[0_4px_20px_rgba(0,0,0,0.35)] ring-2 ring-white/10"
-                >
-                  {coach.avatarUrl ? (
-                    <img
-                      src={coach.avatarUrl}
-                      alt={displayName}
-                      className="h-full w-full object-cover object-center"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-[#7d6dff] text-white">
-                      <span className="text-3xl sm:text-[34px] font-bold leading-none">
-                        {displayName.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                />
 
                 {/* Identity */}
                 <div className="min-w-0 flex-1 pb-1 space-y-1">
@@ -772,17 +762,11 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
                 >
                   {/* Coach context strip */}
                   <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-border-soft)]">
-                    {coach.avatarUrl ? (
-                      <img
-                        src={coach.avatarUrl}
-                        alt={displayName}
-                        className="h-10 w-10 rounded-full object-cover shrink-0"
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[15px]">
-                        {displayName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <UserAvatar
+                      avatarUrl={coach.avatarUrl}
+                      name={displayName}
+                      className="h-10 w-10 shrink-0"
+                    />
                     <div className="min-w-0">
                       <p className="text-[13.5px] font-semibold text-on-surface truncate">
                         {displayName}
@@ -1196,17 +1180,11 @@ function ReviewCard({
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          {review.learnerAvatarUrl ? (
-            <img
-              src={review.learnerAvatarUrl}
-              alt={review.learnerName ?? ""}
-              className="h-8 w-8 rounded-full object-cover shrink-0"
-            />
-          ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-bold text-primary">
-              {(review.learnerName ?? "?").charAt(0).toUpperCase()}
-            </div>
-          )}
+          <UserAvatar
+            avatarUrl={review.learnerAvatarUrl}
+            name={review.learnerName}
+            className="h-8 w-8 shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-on-surface truncate">
               {review.learnerName ?? `Học viên`}

@@ -32,11 +32,12 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { api } from "@/lib/api";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState } from "@/components/common/AsyncStates";
-import { cn, formatCurrencyVnd, avatarFor } from "@/lib/utils";
+import { cn, formatCurrencyVnd } from "@/lib/utils";
 import type {
   Booking,
   LearnerAssessment,
@@ -925,20 +926,17 @@ function CoachPaymentSummary({ booking }: { booking: Booking }) {
   );
   const coachName =
     coach?.name ?? `Coach ${booking.coachId.slice(0, 4).toUpperCase()}`;
-  const coachAvatar = coach?.avatarUrl ?? avatarFor(booking.coachId);
   const payment = getPaymentLabel(booking);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {/* Coach */}
       <div className="flex items-center gap-3 rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest px-4 py-3">
-        <img
-          src={coachAvatar}
-          alt={coachName}
-          className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-[var(--color-border-soft)]"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = avatarFor(booking.coachId);
-          }}
+        <UserAvatar
+          avatarUrl={coach?.avatarUrl}
+          name={coachName}
+          size="sm"
+          className="w-9 h-9 text-[12px] shrink-0 ring-1 ring-[var(--color-border-soft)]"
         />
         <div className="min-w-0">
           <p className="text-[10.5px] text-on-surface-variant">HLV phụ trách</p>

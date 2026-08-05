@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, X, ChevronDown } from "lucide-react";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api, getSportId } from "@/lib/api";
 import { AVAILABLE_SPORTS, sportLabel } from "@/lib/constants";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState } from "@/components/common/AsyncStates";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach, Sport } from "@/types";
 
 // ── Types & constants ─────────────────────────────────────────────────────────
@@ -476,7 +477,6 @@ function FilterSelect({
 
 function CoachCard({ coach, index }: { coach: Coach; index: number }) {
   const [saved, setSaved] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
   const profileHref = `/coaches/${coach.id}`;
   const hasRating = (coach.rating ?? 0) > 0 && (coach.reviewCount ?? 0) > 0;
@@ -492,18 +492,11 @@ function CoachCard({ coach, index }: { coach: Coach; index: number }) {
       {/* Header: avatar + identity */}
       <div className="flex items-start gap-3.5">
         <div className="relative shrink-0">
-          {!imgError && coach.avatarUrl ? (
-            <img
-              src={coach.avatarUrl}
-              alt={coach.name}
-              onError={() => setImgError(true)}
-              className="h-[60px] w-[60px] rounded-[14px] object-cover"
-            />
-          ) : (
-            <div className="flex h-[60px] w-[60px] items-center justify-center rounded-[14px] bg-gradient-to-br from-primary/20 to-primary/10 text-[18px] font-bold text-primary">
-              {initials(coach.name)}
-            </div>
-          )}
+          <UserAvatar
+            avatarUrl={coach.avatarUrl}
+            name={coach.name}
+            className="h-[60px] w-[60px] rounded-[14px] text-[18px]"
+          />
           {coach.verified && (
             <span
               className="absolute -bottom-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white ring-2 ring-surface-container-lowest"

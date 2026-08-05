@@ -13,16 +13,14 @@ import {
   type ComponentType,
 } from "react";
 import { ShieldCheck, Sparkles, Star, Users } from "lucide-react";
-import { avatarFor, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-const TRUST_AVATARS = [
-  avatarFor("learner-1"),
-  avatarFor("learner-2"),
-  avatarFor("learner-6"),
-  avatarFor("learner-11"),
-];
+// Real mock learner names (see src/lib/mock/users.ts) — a trust row of
+// initials, not fabricated stock photos.
+const TRUST_LEARNERS = ["Alex Rivera", "James Smith", "Daniel Wong", "Mia Carter"];
 
 // 94% accuracy sparkline data
 const ACCURACY_TREND = [78, 81, 83, 85, 88, 90, 92, 94];
@@ -53,11 +51,9 @@ export function StatStrip() {
           className="mb-12 flex flex-wrap items-center justify-center gap-3"
         >
           <div className="flex -space-x-1.5">
-            {TRUST_AVATARS.map((src, i) => (
-              <motion.img
-                key={src}
-                src={src}
-                alt=""
+            {TRUST_LEARNERS.map((name, i) => (
+              <motion.div
+                key={name}
                 initial={{ opacity: 0, scale: 0, x: -8 }}
                 animate={
                   inView
@@ -69,8 +65,13 @@ export function StatStrip() {
                   duration: 0.4,
                   ease: EASE,
                 }}
-                className="h-7 w-7 rounded-full border-2 border-white object-cover shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
-              />
+              >
+                <UserAvatar
+                  name={name}
+                  size="xs"
+                  className="h-7 w-7 border-2 border-white text-[10.5px] shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
+                />
+              </motion.div>
             ))}
           </div>
           <p className="text-[13px] text-slate-500 sm:text-[13.5px]">
@@ -141,10 +142,10 @@ export function StatStrip() {
           }}
           className="mt-10 flex flex-wrap items-center justify-center gap-3 text-center"
         >
-          <img
-            src={TRUST_AVATARS[0]}
-            alt=""
-            className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-[0_2px_6px_rgba(15,23,42,0.1)]"
+          <UserAvatar
+            name="Mia Carter"
+            size="sm"
+            className="h-9 w-9 text-[12px] ring-2 ring-white shadow-[0_2px_6px_rgba(15,23,42,0.1)]"
           />
           <blockquote className="text-[14px] text-slate-600 sm:text-[15px]">
             <span className="text-slate-900">

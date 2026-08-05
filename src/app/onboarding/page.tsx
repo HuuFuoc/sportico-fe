@@ -16,12 +16,13 @@ import {
   Wallet,
 } from "lucide-react";
 import { PublicNavbar } from "@/components/layout/PublicNavbar";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { getSports } from "@/lib/sports-api";
 import { registerCoachAndElevate } from "@/lib/coach-onboarding";
 import { messageForApiError } from "@/lib/errors-vi";
 import { useAuthStore } from "@/lib/store/useAuthStore";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { SportOption } from "@/lib/types/coach";
 
 const RELOGIN_MESSAGE =
@@ -311,6 +312,7 @@ export default function CoachOnboardingPage() {
               <ProfilePreview
                 fullName={user?.fullName ?? ""}
                 avatarUrl={user?.avatarUrl ?? null}
+                email={user?.email ?? null}
                 headline={headline.trim()}
                 experienceYears={experienceYears !== "" ? yearsNum : null}
                 sports={selectedSports}
@@ -380,6 +382,7 @@ function SidebarHeading({ children }: { children: React.ReactNode }) {
 function ProfilePreview({
   fullName,
   avatarUrl,
+  email,
   headline,
   experienceYears,
   sports,
@@ -387,6 +390,7 @@ function ProfilePreview({
 }: {
   fullName: string;
   avatarUrl: string | null;
+  email?: string | null;
   headline: string;
   experienceYears: number | null;
   sports: SportOption[];
@@ -398,17 +402,13 @@ function ProfilePreview({
     <div className="overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-10px_rgba(0,0,0,0.09)]">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-primary/10 bg-gradient-to-br from-primary/[0.06] to-[#7d6dff]/[0.06] px-4 py-4">
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={fullName || "Avatar"}
-            className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white"
-          />
-        ) : (
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#7d6dff] text-[15px] font-bold text-on-primary ring-2 ring-white">
-            {fullName ? initials(fullName) : <Users size={18} />}
-          </div>
-        )}
+        <UserAvatar
+          avatarUrl={avatarUrl}
+          name={fullName}
+          email={email}
+          size="lg"
+          className="h-11 w-11 text-[15px] shrink-0 ring-2 ring-white"
+        />
         <div className="min-w-0">
           <p
             className={cn(

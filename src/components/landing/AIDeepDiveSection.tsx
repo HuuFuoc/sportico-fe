@@ -25,7 +25,8 @@ import {
   Target,
   type LucideIcon,
 } from "lucide-react";
-import { avatarFor, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 const EASE = [0.16, 1, 0.3, 1] as Easing;
 
@@ -77,9 +78,9 @@ const TONE_MAP = {
 
 // Match results shown in the engine panel
 const ENGINE_MATCHES = [
-  { name: "Sarah Jenkins", score: 96, avatar: avatarFor("coach-1") },
-  { name: "Marcus Reed", score: 91, avatar: avatarFor("coach-5") },
-  { name: "Elena Voss", score: 87, avatar: avatarFor("coach-3") },
+  { name: "Sarah Jenkins", score: 96 },
+  { name: "Marcus Reed", score: 91 },
+  { name: "Elena Voss", score: 87 },
 ];
 
 // Deterministic sparkles
@@ -431,10 +432,10 @@ function EnginePanel({
 
         {/* Input row */}
         <div className="mt-5 flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
-          <img
-            src={avatarFor("learner-1")}
-            alt=""
-            className="h-9 w-9 rounded-full object-cover ring-2 ring-white/15"
+          <UserAvatar
+            name="Alex Rivera"
+            size="sm"
+            className="h-9 w-9 text-[12px] ring-2 ring-white/15"
           />
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-semibold text-white">Alex Rivera</p>
@@ -652,11 +653,7 @@ function MatchOutputRow({
       >
         {rank}
       </span>
-      <img
-        src={match.avatar}
-        alt=""
-        className="h-7 w-7 rounded-full object-cover"
-      />
+      <UserAvatar name={match.name} size="xs" className="h-7 w-7 text-[11px]" />
       <p className="flex-1 truncate text-[11.5px] font-semibold text-white">
         {match.name}
       </p>

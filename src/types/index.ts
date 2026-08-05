@@ -162,7 +162,7 @@ export interface Booking {
   id: string;
   title: string;
   coachId: string;
-  /** learnerId is returned by the backend but learnerName/avatar are not — use avatarFor(learnerId) as fallback */
+  /** learnerId is returned by the backend but learnerName/avatar are not — resolve them via a profile lookup; UserAvatar falls back to initials if still missing */
   learnerId?: string;
   trainingPackageId?: string;
   totalSessions: number;

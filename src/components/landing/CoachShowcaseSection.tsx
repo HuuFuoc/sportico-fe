@@ -6,7 +6,7 @@ import {
   useReducedMotion,
   type Easing,
 } from "motion/react";
-import { useMemo, useRef, useState, useCallback, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { SpotlightCard } from "@/components/reactbits/SpotlightCard";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Coach } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as Easing;
@@ -239,29 +240,6 @@ function CoachCard({
     return 2 + (hash % 6);
   }, [coach.id]);
 
-  const [imgError, setImgError] = useState(false);
-  const handleImgError = useCallback(() => setImgError(true), []);
-
-  // Load saved avatar focal-point; default to top-center for portrait photos.
-  const [avatarObjPos, setAvatarObjPos] = useState("50% 15%");
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`sportico_avatar_pos_${coach.id}`);
-      if (raw) {
-        const p = JSON.parse(raw) as { x: number; y: number };
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          setAvatarObjPos(`${p.x}% ${p.y}%`);
-        }
-      }
-    } catch {}
-  }, [coach.id]);
-
-  const initials = coach.name
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-
   return (
     <motion.div
       className="h-full"
@@ -281,26 +259,22 @@ function CoachCard({
     >
       {/* Cover image area */}
       <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-cyan-100">
-        {imgError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-violet-200 via-fuchsia-100 to-cyan-100">
-            <span className="text-4xl font-bold text-violet-600/60">{initials}</span>
-          </div>
-        ) : (
-          <motion.img
-            src={coach.avatarUrl}
-            alt={coach.name}
-            onError={handleImgError}
-            initial={{ scale: 1.08 }}
-            animate={inView ? { scale: 1 } : {}}
-            transition={{
-              duration: reduce ? 0 : 1.2,
-              delay: reduce ? 0 : delay + 0.1,
-              ease: "easeOut",
-            }}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-            style={{ objectPosition: avatarObjPos }}
+        <motion.div
+          initial={{ scale: 1.08 }}
+          animate={inView ? { scale: 1 } : {}}
+          transition={{
+            duration: reduce ? 0 : 1.2,
+            delay: reduce ? 0 : delay + 0.1,
+            ease: "easeOut",
+          }}
+          className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.04]"
+        >
+          <UserAvatar
+            avatarUrl={coach.avatarUrl}
+            name={coach.name}
+            className="h-full w-full rounded-none text-4xl"
           />
-        )}
+        </motion.div>
         {/* Bottom gradient for text */}
         <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
 

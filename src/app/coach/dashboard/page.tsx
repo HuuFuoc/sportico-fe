@@ -47,7 +47,8 @@ import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { NOW } from "@/lib/mock/clock";
 import { isMockMode } from "@/lib/api-client";
-import { cn, formatCurrency, initials } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { Session, Learner } from "@/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -896,19 +897,12 @@ function TodayRow({
     >
       <span className="absolute -left-[18px] top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-surface-container-lowest border-2 border-primary shadow-[0_0_0_4px_rgba(53,37,205,0.08)]" />
 
-      <div className="w-12 h-12 rounded-xl bg-surface-container-high overflow-hidden shrink-0">
-        {learner?.avatarUrl ? (
-          <img
-            src={learner.avatarUrl}
-            alt={learner.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span className="flex items-center justify-center w-full h-full text-primary font-semibold">
-            {initials(learner?.name ?? "?")}
-          </span>
-        )}
-      </div>
+      <UserAvatar
+        avatarUrl={learner?.avatarUrl}
+        name={learner?.name}
+        size="lg"
+        className="w-12 h-12 rounded-xl text-[13px]"
+      />
 
       <div className="flex-1 min-w-0">
         <p className="text-[14.5px] font-semibold truncate">{learner?.name}</p>
@@ -1039,10 +1033,11 @@ function LearnerCard({
     >
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
-          <img
-            src={learner.avatarUrl}
-            alt={learner.name}
-            className="w-11 h-11 rounded-full object-cover"
+          <UserAvatar
+            avatarUrl={learner.avatarUrl}
+            name={learner.name}
+            size="lg"
+            className="w-11 h-11 text-[13px]"
           />
           {learner.streakDays > 0 && (
             <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-gradient-to-br from-[#ff8a3d] to-[#ff5e3d] border-2 border-surface-container-lowest flex items-center justify-center">

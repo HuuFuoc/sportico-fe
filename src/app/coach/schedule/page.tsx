@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ClientOnly } from "@/components/common/ClientOnly";
-import { cn, formatCurrency, initials, localDateKey } from "@/lib/utils";
+import { cn, formatCurrency, localDateKey } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { api } from "@/lib/api";
 import { isMockMode } from "@/lib/api-client";
 import { getCurrentUserId } from "@/lib/auth-session";
@@ -874,13 +875,12 @@ function NeedsCompletion({
                 key={s.id}
                 className="flex items-center gap-3 bg-surface-container-lowest rounded-[14px] p-3 border border-[var(--color-border-soft)] hover:border-[#f59e0b]/30 transition-colors"
               >
-                <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden text-[11px] flex items-center justify-center text-primary font-semibold shrink-0">
-                  {learner?.avatarUrl ? (
-                    <img src={learner.avatarUrl} alt={learner.name} className="w-full h-full object-cover" />
-                  ) : (
-                    initials(learner?.name ?? s.learnerId.slice(0, 2).toUpperCase())
-                  )}
-                </div>
+                <UserAvatar
+                  avatarUrl={learner?.avatarUrl}
+                  name={learner?.name ?? s.learnerId.slice(0, 2).toUpperCase()}
+                  size="md"
+                  className="w-10 h-10 text-[11px] shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13.5px] font-semibold truncate">
                     {learner?.name ?? `Học viên ${s.learnerId.slice(0, 6)}`} — {s.title}
@@ -1176,13 +1176,12 @@ function LearnerSessionRow({
 
   return (
     <div className="flex items-center gap-2.5 p-2.5 rounded-[12px] border border-[var(--color-border-soft)] bg-surface-container-lowest">
-      <div className="w-9 h-9 rounded-full bg-surface-container-high overflow-hidden text-[11px] flex items-center justify-center text-primary font-semibold shrink-0">
-        {learner?.avatarUrl ? (
-          <img src={learner.avatarUrl} alt={learner.name} className="w-full h-full object-cover" />
-        ) : (
-          initials(learner?.name ?? session.learnerId.slice(0, 2).toUpperCase())
-        )}
-      </div>
+      <UserAvatar
+        avatarUrl={learner?.avatarUrl}
+        name={learner?.name ?? session.learnerId.slice(0, 2).toUpperCase()}
+        size="sm"
+        className="w-9 h-9 text-[11px] shrink-0"
+      />
       <div className="flex-1 min-w-0">
         <p className="text-[12.5px] font-semibold truncate">
           {learner?.name ?? `Học viên ${session.learnerId.slice(0, 6)}`}
@@ -1372,13 +1371,12 @@ function TodayRow({ session, delay, reduce }: { session: Session; delay: number;
           {session.durationMinutes}m
         </p>
       </div>
-      <div className="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden shrink-0 text-[11px] flex items-center justify-center text-primary font-semibold">
-        {learner?.avatarUrl ? (
-          <img src={learner.avatarUrl} alt={learner.name} className="w-full h-full object-cover" />
-        ) : (
-          initials(learner?.name ?? "?")
-        )}
-      </div>
+      <UserAvatar
+        avatarUrl={learner?.avatarUrl}
+        name={learner?.name ?? "?"}
+        size="sm"
+        className="w-8 h-8 text-[11px] shrink-0"
+      />
       <div className="flex-1 min-w-0">
         <p className="text-[12.5px] font-semibold truncate">{learner?.name ?? "Học viên"}</p>
         <p className="text-[11px] text-on-surface-variant truncate">{session.title}</p>

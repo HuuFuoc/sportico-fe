@@ -21,7 +21,8 @@ import { api } from "@/lib/api";
 import type { WithdrawalReceiptResponse } from "@/lib/api";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
-import { cn, formatCurrency, initials } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
+import { cn, formatCurrency } from "@/lib/utils";
 import { messageForApiError } from "@/lib/errors-vi";
 import { showSuccess, showError } from "@/lib/toast";
 import type { Payout } from "@/types";
@@ -536,17 +537,12 @@ function WithdrawalRow({
       <tr className="border-b border-[var(--color-border-soft)] last:border-b-0 hover:bg-surface-container-low/20 transition-colors">
         <td className="px-5 py-3.5">
           <div className="flex items-center gap-2.5">
-            {coachProfile?.avatarUrl ? (
-              <img
-                src={coachProfile.avatarUrl}
-                alt={coachProfile.name}
-                className="w-8 h-8 rounded-full object-cover shrink-0 border border-[var(--color-border-soft)]"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-[11px] font-bold text-primary">
-                {coachProfile?.name ? initials(coachProfile.name) : w.coachId.slice(0, 2).toUpperCase()}
-              </div>
-            )}
+            <UserAvatar
+              avatarUrl={coachProfile?.avatarUrl}
+              name={coachProfile?.name}
+              size="sm"
+              className="w-8 h-8 shrink-0 border border-[var(--color-border-soft)]"
+            />
             <div className="min-w-0">
               <p className="text-[13px] font-medium truncate">
                 {coachProfile?.name ?? <span className="font-mono text-on-surface-variant">{w.coachId.slice(0, 8).toUpperCase()}</span>}

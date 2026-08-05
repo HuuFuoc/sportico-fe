@@ -13,6 +13,7 @@ import {
 import { PostStatusBadge } from "@/components/social/community/PostStatusBadge";
 import { PostMediaCarousel } from "@/components/social/community/PostMediaCarousel";
 import { LikeButton } from "@/components/social/community/LikeButton";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { formatCurrencyVnd } from "@/lib/utils";
 import { formatDateTimeVn, formatRelativeVn } from "@/lib/social/datetime";
 import { LEVEL_LABELS, POST_TYPE_LABELS, isScheduledPostType } from "@/lib/social/labels";
@@ -45,9 +46,7 @@ export function PostCard({ post, href }: PostCardProps) {
       {/* Header */}
       <div className="flex items-start gap-3 p-4">
         <Link href={href} className="shrink-0">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#7d6dff] text-[14px] font-semibold text-white">
-            {authorName.slice(0, 1).toUpperCase()}
-          </span>
+          <UserAvatar avatarUrl={post.author?.avatarUrl} name={authorName} size="md" />
         </Link>
         <div className="min-w-0 flex-1">
           <Link href={href} className="block truncate text-[13.5px] font-semibold text-on-surface hover:underline">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MaterialIcon } from "@/components/icons/MaterialIcon";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Coach } from "@/types";
 
@@ -27,10 +28,10 @@ export function CoachCard({
       )}
     >
       <div className="relative h-32 bg-surface-container-high overflow-hidden">
-        <img
-          src={coach.avatarUrl}
-          alt={coach.name}
-          className="w-full h-full object-cover"
+        <UserAvatar
+          avatarUrl={coach.avatarUrl}
+          name={coach.name}
+          className="h-full w-full rounded-none text-[28px]"
         />
         {showMatch && typeof coach.matchPercent === "number" && (
           <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/95 backdrop-blur text-[10px] font-medium text-primary border border-primary/20">

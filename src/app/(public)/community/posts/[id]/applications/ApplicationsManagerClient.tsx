@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/common/AsyncStates";
 import { EmptyState } from "@/components/common/EmptyState";
 import { RowSkeleton } from "@/components/social/Skeleton";
 import { Pagination } from "@/components/social/Pagination";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { useCommunityPost } from "@/lib/social/hooks/useCommunity";
 import { useAcceptApplication, useApplications, useRejectApplication } from "@/lib/social/hooks/useApplications";
 import { APPLICATION_STATUS_BADGE_CLASS, APPLICATION_STATUS_LABELS } from "@/lib/social/labels";
@@ -138,9 +139,12 @@ function ApplicationsManager({ postId }: { postId: string }) {
           <div className="divide-y divide-[var(--color-border-soft)]">
             {data.items.map((app) => (
               <div key={app.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">
-                  {(app.applicant?.fullName ?? "?").slice(0, 1).toUpperCase()}
-                </div>
+                <UserAvatar
+                  avatarUrl={app.applicant?.avatarUrl}
+                  name={app.applicant?.fullName}
+                  size="sm"
+                  className="h-9 w-9 text-[13px]"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13.5px] font-medium text-on-surface">
                     {app.applicant?.fullName || "Người dùng"}

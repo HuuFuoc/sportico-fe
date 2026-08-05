@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, BadgeCheck, Calendar, Sparkles } from "lucide-react";
-import { avatarFor } from "@/lib/utils";
 import { ClientOnly } from "@/components/common/ClientOnly";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 type Variant = "login" | "register";
 
@@ -288,12 +288,12 @@ export function AuthVisualPanel({ variant }: { variant?: Variant }) {
           className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/15 bg-black/40 px-2 py-2 backdrop-blur-md"
         >
           <div className="flex -space-x-2">
-            {["learner-11", "learner-2", "learner-6"].map((seed) => (
-              <img
-                key={seed}
-                src={avatarFor(seed)}
-                alt=""
-                className="h-7 w-7 rounded-full border-2 border-black object-cover"
+            {["Mia Carter", "James Smith", "Daniel Wong"].map((name) => (
+              <UserAvatar
+                key={name}
+                name={name}
+                size="xs"
+                className="h-7 w-7 border-2 border-black text-[10.5px]"
               />
             ))}
           </div>
@@ -304,10 +304,10 @@ export function AuthVisualPanel({ variant }: { variant?: Variant }) {
             </p>
           </div>
           <span className="mx-1 inline-block h-6 w-px bg-white/15" />
-          <img
-            src={avatarFor("coach-1")}
-            alt=""
-            className="h-9 w-9 rounded-full border-2 border-violet-400 object-cover shadow-[0_0_0_4px_rgba(167,139,250,0.18)]"
+          <UserAvatar
+            name="Sarah Jenkins"
+            size="sm"
+            className="h-9 w-9 border-2 border-violet-400 text-[12px] shadow-[0_0_0_4px_rgba(167,139,250,0.18)]"
           />
         </motion.div>
       </div>

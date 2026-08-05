@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { MessageSquareDashed, Sparkles } from "lucide-react";
-import { cn, formatRelativeTimeVi, initials } from "@/lib/utils";
+import { cn, formatRelativeTimeVi } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { ConversationPreview } from "@/lib/hooks/useRecentConversations";
 
 interface MessageDropdownProps {
@@ -133,26 +134,18 @@ function ConversationRow({
     >
       {/* Avatar */}
       <div className="relative shrink-0">
-        <div
-          className={cn(
-            "flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-[13px] font-medium",
-            c.isAI
-              ? "bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]"
-              : "bg-surface-container-high text-primary",
-          )}
-        >
-          {c.isAI ? (
+        {c.isAI ? (
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary shadow-[0_4px_12px_-2px_rgba(53,37,205,0.35)]">
             <Sparkles size={18} />
-          ) : c.participantAvatarUrl ? (
-            <img
-              src={c.participantAvatarUrl}
-              alt={c.participantName}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            initials(c.participantName)
-          )}
-        </div>
+          </div>
+        ) : (
+          <UserAvatar
+            avatarUrl={c.participantAvatarUrl}
+            name={c.participantName}
+            size="md"
+            className="h-11 w-11 text-[13px]"
+          />
+        )}
         {unread && (
           <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-primary ring-2 ring-surface-container-lowest" />
         )}

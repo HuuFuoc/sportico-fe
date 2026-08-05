@@ -25,6 +25,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { TiltedCard } from "@/components/ui/TiltedCard";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import {
   trainingPackageStatusLabel,
   trainingPackageStatusBadge,
@@ -162,19 +163,12 @@ export function CoachPublicProfilePreview({
         {/* Avatar + identity */}
         <div className="absolute bottom-0 left-0 right-0 flex items-end gap-4 px-6 pb-5">
           <div className="shrink-0">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className="h-[96px] w-[96px] rounded-full border-4 border-white/20 object-cover object-center shadow-lg ring-2 ring-white/10"
-              />
-            ) : (
-              <div className="flex h-[96px] w-[96px] items-center justify-center rounded-full border-4 border-white/20 bg-white/10 text-white/70 shadow-lg backdrop-blur-sm ring-2 ring-white/10">
-                <span className="text-3xl font-bold">
-                  {displayName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            <UserAvatar
+              avatarUrl={avatarUrl}
+              name={displayName}
+              size="xl"
+              className="border-4 border-white/20 shadow-lg ring-2 ring-white/10"
+            />
           </div>
           <div className="min-w-0 flex-1 pb-1">
             <div className="flex flex-wrap items-center gap-2">

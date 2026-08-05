@@ -27,7 +27,8 @@ import { ErrorState, LoadingState } from "@/components/common/AsyncStates";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
 import { isMockMode } from "@/lib/api-client";
-import { cn, formatCurrency, avatarFor } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type {
   CreateDayRequest,
   CreateExerciseRequest,
@@ -1140,16 +1141,16 @@ export default function CoachLearnerDetailPage({ params }: PageProps) {
           <div className="p-5 flex flex-col gap-4">
             {/* Learner identity + status */}
             <div className="flex items-start gap-4 sm:items-center">
-              <img
-                src={
-                  learnerProfile?.avatarUrl ??
-                  avatarFor(booking.learnerId ?? booking.id)
+              <UserAvatar
+                avatarUrl={learnerProfile?.avatarUrl}
+                name={
+                  learnerProfile?.name ??
+                  (booking.learnerId
+                    ? `HV #${booking.learnerId.slice(0, 8).toUpperCase()}`
+                    : "Học viên")
                 }
-                alt={learnerProfile?.name ?? "Học viên"}
-                className="w-12 h-12 rounded-full object-cover shrink-0 ring-2 ring-[var(--color-border-soft)]"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = avatarFor(booking.id);
-                }}
+                size="lg"
+                className="w-12 h-12 text-[14px] shrink-0 ring-2 ring-[var(--color-border-soft)]"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-0.5">

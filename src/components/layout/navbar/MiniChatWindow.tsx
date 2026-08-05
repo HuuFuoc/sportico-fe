@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import type { DockChat } from "@/lib/store/useChatDock";
 import type { Message } from "@/types";
 
@@ -335,26 +336,18 @@ function Header({
       onClick={minimized ? onToggleMinimize : undefined}
     >
       <div className="relative shrink-0">
-        <div
-          className={cn(
-            "flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-[12px] font-medium",
-            chat.isAI
-              ? "bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary"
-              : "bg-surface-container-high text-primary",
-          )}
-        >
-          {chat.isAI ? (
+        {chat.isAI ? (
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary via-[#5b4ee8] to-[#7d6dff] text-on-primary">
             <Sparkles size={16} />
-          ) : chat.participantAvatarUrl ? (
-            <img
-              src={chat.participantAvatarUrl}
-              alt={chat.participantName}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            initials(chat.participantName)
-          )}
-        </div>
+          </div>
+        ) : (
+          <UserAvatar
+            avatarUrl={chat.participantAvatarUrl}
+            name={chat.participantName}
+            size="sm"
+            className="h-9 w-9 text-[12px]"
+          />
+        )}
       </div>
 
       <div className="min-w-0 flex-1">
