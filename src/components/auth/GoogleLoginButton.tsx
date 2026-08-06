@@ -135,7 +135,18 @@ export function GoogleLoginButton({
     if (typeof window !== "undefined" && window.google?.accounts?.id) {
       renderGoogleButton();
     }
+
+    // Last-resort deadline. If neither `onReady` nor `onError` ever fires
+    // (script blocked by an extension, a next/script edge case on client
+    // navigation), the skeleton would otherwise pulse forever and the user
+    // would have no way to sign in with Google at all. Fall through to the
+    // redirect flow instead of leaving a permanent placeholder.
+    const deadline = window.setTimeout(() => {
+      setScriptState((current) => (current === "loading" ? "failed" : current));
+    }, 5000);
+
     return () => {
+      window.clearTimeout(deadline);
       if (renderCheckRef.current !== null) {
         window.clearTimeout(renderCheckRef.current);
         renderCheckRef.current = null;
@@ -148,10 +159,23 @@ export function GoogleLoginButton({
     };
   }, [clientId, renderGoogleButton]);
 
-  // Mock mode has no backend to exchange a Google token with. The divider is
-  // owned by this component precisely so it vanishes with the button instead
-  // of leaving "Hoặc tiếp tục với" hanging over nothing.
-  if (isMockMode()) return null;
+  // Mock mode has no backend to exchange a Google token against. Show the
+  // control DISABLED with a reason rather than rendering nothing: silently
+  // omitting it is indistinguishable from the feature being broken, and
+  // `NEXT_PUBLIC_API_BASE_URL= pnpm dev` is a normal local workflow here.
+  if (isMockMode()) {
+    return (
+      <div className="space-y-2.5">
+        <Divider>Hoặc tiếp tục với</Divider>
+        <AuthButton type="button" variant="ghost" disabled leading={<GoogleMark />}>
+          Tiếp tục với Google
+        </AuthButton>
+        <p className="text-center text-[12px] text-slate-400">
+          Đăng nhập Google cần kết nối đến backend thật.
+        </p>
+      </div>
+    );
+  }
 
   // 503 AUTH_GOOGLE_CONFIGURATION_MISSING: withdraw the option for this
   // session rather than invite a retry that cannot succeed. No env var names
