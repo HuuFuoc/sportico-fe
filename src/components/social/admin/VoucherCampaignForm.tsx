@@ -3,7 +3,7 @@
 import { useForm, Controller } from "react-hook-form";
 import { InfoCircle, LockSquare } from "iconoir-react";
 import { zodResolver } from "@/lib/validation/auth";
-import { voucherCampaignSchema, type VoucherCampaignFormValues } from "@/lib/social/validation/admin-voucher";
+import { normalizeDiscountType, voucherCampaignSchema, type VoucherCampaignFormValues } from "@/lib/social/validation/admin-voucher";
 import { isoUtcToLocalInput, localInputToIsoUtc } from "@/lib/social/datetime";
 import { cn } from "@/lib/utils";
 import type { VoucherCampaignResponse } from "@/lib/social/types";
@@ -34,7 +34,7 @@ export function VoucherCampaignForm({ mode, initial, financialLocked, submitting
       code: initial?.code ?? "",
       name: initial?.name ?? "",
       description: initial?.description ?? "",
-      discountType: (initial?.discountType as "percentage" | "fixed") ?? "percentage",
+      discountType: normalizeDiscountType(initial?.discountType),
       discountValue: initial?.discountValue ?? 10,
       maxDiscountAmount: initial?.maxDiscountAmount ?? null,
       minOrderAmount: initial?.minOrderAmount ?? null,
@@ -96,7 +96,7 @@ export function VoucherCampaignForm({ mode, initial, financialLocked, submitting
             <label className="mb-1.5 block text-[12px] font-semibold text-on-surface">Loại giảm giá</label>
             <select {...register("discountType")} disabled={financialLocked} className={INPUT_CLASS}>
               <option value="percentage">Theo phần trăm (%)</option>
-              <option value="fixed">Số tiền cố định (₫)</option>
+              <option value="fixed_amount">Số tiền cố định (₫)</option>
             </select>
           </div>
           <div>

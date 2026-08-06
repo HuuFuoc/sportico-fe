@@ -38,7 +38,6 @@ import { LoadingState, ErrorState } from "@/components/common/AsyncStates";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import { api } from "@/lib/api";
-import { savePendingPayos } from "@/lib/payos-pending";
 import { backend } from "@/lib/backend/client";
 import { isMockMode, ApiError } from "@/lib/api-client";
 import { getAccessToken } from "@/lib/auth-token";
@@ -279,25 +278,24 @@ export default function PublicCoachDetailPage({ params }: PageProps) {
 
   // ── Booking ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Mua gói tập. Live mode KHÔNG gọi purchase trực tiếp nữa mà đưa learner sang
+   * trang xác nhận thanh toán — đó là nơi duy nhất nhập được mã giảm giá, và là
+   * nơi giữ luôn logic PayOS (savePendingPayos + redirect + xử lý voucher bị từ
+   * chối lúc mua). Mock/demo mode không có backend nên vẫn giả lập mua tại chỗ.
+   */
   const handleBook = async (packageId: string) => {
     if (booking) return;
     setBooking(true);
     setBookingError(null);
+
+    if (!isMockMode()) {
+      router.push(`/checkout/packages/${packageId}`);
+      return; // giữ spinner trong lúc điều hướng
+    }
+
     try {
-      const result = await api.purchasePackage(packageId);
-      if ("checkoutUrl" in result) {
-        // Save payment identifiers so /payment/success can reconcile even if
-        // PayOS does not pass orderCode back in the redirect URL, and so the
-        // "Đồng bộ thanh toán" button works when the learner returns later.
-        savePendingPayos({
-          bookingId: result.bookingId,
-          paymentId: result.paymentId,
-          orderCode: result.orderCode,
-          createdAt: new Date().toISOString(),
-        });
-        window.location.href = result.checkoutUrl;
-        return;
-      }
+      await api.purchasePackage(packageId);
       router.push("/learner/bookings");
     } catch (err) {
       setBookingError(

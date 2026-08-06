@@ -10,6 +10,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import { AuthSwitchLink } from "@/components/auth/AuthSwitchLink";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { AuthInput } from "@/components/ui/AuthInput";
 import { AuthButton } from "@/components/ui/AuthButton";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -24,6 +25,9 @@ import {
 export default function RegisterPage() {
   const router = useRouter();
   const [registered, setRegistered] = useState(false);
+  // Google signs the user in immediately (no email verification round trip),
+  // so the email form must not submit underneath it.
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const {
     register,
@@ -45,6 +49,7 @@ export default function RegisterPage() {
   const passwordValue = useWatch({ control, name: "password" }) ?? "";
 
   const onSubmit = async (values: RegisterValues) => {
+    if (googleBusy) return;
     try {
       // Backend grants the learner role, creates an INACTIVE user, emails a
       // verification link, and returns NO token. So we do not store a token and
@@ -179,11 +184,20 @@ export default function RegisterPage() {
             <AuthButton
               type="submit"
               loading={isSubmitting}
+              disabled={googleBusy}
               trailing={<ArrowRight size={15} />}
             >
               Tạo tài khoản
             </AuthButton>
           </form>
+        )}
+
+        {!registered && (
+          <GoogleLoginButton
+            text="signup_with"
+            disabled={isSubmitting}
+            onBusyChange={setGoogleBusy}
+          />
         )}
       </AuthCard>
 

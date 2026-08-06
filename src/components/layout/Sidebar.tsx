@@ -111,8 +111,6 @@ const ADMIN_NAV: NavGroup[] = [
   {
     label: "Hệ thống",
     items: [
-      { href: "/admin/ai-settings", label: "Cài đặt AI", icon: "auto_awesome" },
-      { href: "/admin/console", label: "Console", icon: "terminal" },
       { href: "/admin/settings", label: "Cài đặt tài khoản", icon: "manage_accounts" },
     ],
   },
@@ -167,7 +165,7 @@ export function Sidebar({ role }: { role: AppRole }) {
     role === "coach"
       ? "/coach/settings"
       : role === "admin"
-        ? "/admin/console"
+        ? "/admin/settings"
         : "/learner/settings";
 
   return (

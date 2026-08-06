@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { api } from "@/lib/api";
+import { messageForApiError } from "@/lib/errors-vi";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 import {
   VN_BANKS,
@@ -169,10 +170,9 @@ function AccountTab() {
       setCurrentPassword("");
       setNewPassword("");
     } catch (err) {
-      setFeedback({
-        tone: "error",
-        text: err instanceof Error ? err.message : "Đổi mật khẩu thất bại.",
-      });
+      // Covers AUTH_PASSWORD_NOT_SET (409) for Google-created accounts, which
+      // points the user at forgot-password instead of a dead end.
+      setFeedback({ tone: "error", text: messageForApiError(err) });
     } finally {
       setSaving(false);
     }

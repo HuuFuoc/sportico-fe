@@ -59,13 +59,11 @@ src/
 │   │   ├── profile/
 │   │   ├── settings/
 │   │   └── session/[id]/              # 21 SSG paths
-│   └── admin/                         # 6 routes
+│   └── admin/                         # 4 routes
 │       ├── dashboard/
 │       ├── users/
 │       ├── verifications/
-│       ├── revenue/
-│       ├── ai-settings/
-│       └── console/
+│       └── revenue/
 ├── components/
 │   ├── layout/                        # Sidebar, TopBar, AppShell, RoleSwitcher, AskAIPanel
 │   ├── common/                        # StatCard, CoachCard, SessionRow, AIInsightBanner,
@@ -145,7 +143,7 @@ Types trong [`src/types/index.ts`](src/types/index.ts) là contract — backend 
 | Public | `/` |
 | Learner (8) | dashboard · coaches · coaches/[id] · ai-match · schedule · messages · progress · settings |
 | Coach (8) | dashboard · learners · schedule · messages · earnings · profile · settings · session/[id] |
-| Admin (6) | dashboard · users · verifications · revenue · ai-settings · console |
+| Admin (4) | dashboard · users · verifications · revenue |
 
 Mọi route đều `○ Static` hoặc `● SSG` — sẵn sàng deploy lên CDN.
 

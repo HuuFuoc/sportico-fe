@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { savePendingPayos } from "@/lib/payos-pending";
+import { isMockMode } from "@/lib/api-client";
 import { showError, showApiError } from "@/lib/toast";
 
 interface BookSessionButtonProps {
@@ -17,9 +17,10 @@ interface BookSessionButtonProps {
 }
 
 /**
- * Buys a coach's training package. In live mode it opens a real PayOS checkout
- * (redirect); in mock/demo mode it simulates an instant booking and sends the
- * learner to their schedule.
+ * Buys a coach's training package. In live mode it sends the learner to the
+ * checkout screen (`/checkout/packages/[id]`) — the only place a voucher code
+ * can be applied, and the owner of the PayOS redirect. In mock/demo mode there
+ * is no backend to price the package, so it simulates an instant booking.
  *
  * The parent page is server-rendered (demo data, no live `packageId`), so when
  * `packageId` is absent we fetch the coach client-side to get the real one.
@@ -47,20 +48,11 @@ export function BookSessionButton({
         setLoading(false);
         return;
       }
-      const result = await api.purchasePackage(pkgId);
-      if ("checkoutUrl" in result) {
-        // Remember the orderCode so the booking can be reconciled later — even
-        // if PayOS does not echo it back in the redirect URL, or the learner
-        // returns to "Đồng bộ thanh toán" in a later session.
-        savePendingPayos({
-          bookingId: result.bookingId,
-          paymentId: result.paymentId,
-          orderCode: result.orderCode,
-          createdAt: new Date().toISOString(),
-        });
-        window.location.href = result.checkoutUrl;
-        return; // keep the spinner while the browser navigates away
+      if (!isMockMode()) {
+        router.push(`/checkout/packages/${pkgId}`);
+        return; // keep the spinner while the router navigates away
       }
+      await api.purchasePackage(pkgId);
       router.push("/learner/bookings");
     } catch (err) {
       showApiError(err);

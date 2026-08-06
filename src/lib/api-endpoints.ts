@@ -20,6 +20,11 @@ export const endpoints = {
     login: "/api/auth/login",
     refreshToken: "/api/auth/refresh-token",
     me: "/api/auth/me",
+    // Google sign-in. POST = Google Identity Services ID-token login (default
+    // flow). GET = start the redirect OAuth fallback — it answers 302 and MUST
+    // be opened with a browser navigation, never fetch()/apiFetch.
+    google: "/api/auth/google",
+    googleExchange: "/api/auth/google/exchange",
   },
   // ---- Users -------------------------------------------------------------
   coaches: "/coaches",

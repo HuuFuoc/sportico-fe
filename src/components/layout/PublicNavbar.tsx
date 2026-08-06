@@ -56,7 +56,7 @@ function dashboardHref(role: Role): string {
 }
 
 function settingsHref(role: Role): string {
-  if (role === "admin") return "/admin/console";
+  if (role === "admin") return "/admin/settings";
   return `/${role}/settings`;
 }
 

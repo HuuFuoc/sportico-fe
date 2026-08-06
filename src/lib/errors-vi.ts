@@ -30,6 +30,11 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   COMMON_ACCOUNT_NOT_ACTIVE: "Vui lòng xác minh email trước.",
   AUTH_ACCOUNT_INACTIVE: "Vui lòng xác minh email trước.",
   AUTH_INVALID_CREDENTIALS: "Email hoặc mật khẩu không đúng.",
+  // Google-created accounts have no password to compare against. The user must
+  // set one through forgot-password → reset-password; we never kick that email
+  // off for them without an explicit click.
+  AUTH_PASSWORD_NOT_SET:
+    "Tài khoản này đăng nhập bằng Google và chưa có mật khẩu. Hãy dùng \"Quên mật khẩu?\" để đặt mật khẩu mới.",
   AUTH_INVALID_REFRESH_TOKEN: "Phiên đã hết hạn. Vui lòng đăng nhập lại.",
   AUTH_REFRESH_TOKEN_EXPIRED: "Phiên đã hết hạn. Vui lòng đăng nhập lại.",
   COMMON_FORBIDDEN: "Bạn không có quyền thực hiện thao tác này.",

@@ -236,7 +236,7 @@ Khi backend live: swap `authApi.login()` thành real POST `/api/auth/login`, gua
 | `/coach/settings` | ✅ Done | Standard | Account settings |
 | `/coach/layout` | ✅ Done | — | AppShell wrapper |
 
-### 5.5 Admin (8 routes)
+### 5.5 Admin (6 routes)
 
 | Route | Trạng thái | Thiết kế | Mô tả |
 |-------|-----------|---------|-------|
@@ -245,8 +245,6 @@ Khi backend live: swap `authApi.login()` thành real POST `/api/auth/login`, gua
 | `/admin/verifications` | ✅ Done | 3-column moderation | Queue + review + AI trust panel + keyboard shortcuts |
 | `/admin/withdrawals` | ✅ Done | Finance ops | Duyệt/từ chối withdrawal requests |
 | `/admin/revenue` | ✅ Done | Finance ops | KPI strip, anomaly markers, dense payout table, AI alerts |
-| `/admin/ai-settings` | ✅ Done | AI Ops Control | Env switcher, signal weights, ranking simulation, governance |
-| `/admin/console` | ✅ Done | Dev tool | Mock API testing console |
 | `/admin/settings` | ✅ Done | Standard | Admin settings |
 | `/admin/layout` | ✅ Done | — | AppShell wrapper |
 
@@ -368,7 +366,7 @@ const ACCENTS = {
 ```
 
 ### 7c. Finance/Ops console
-Áp dụng: `admin/revenue`, `admin/ai-settings`
+Áp dụng: `admin/revenue`
 - Ít gradient, dày dữ liệu, radius 10–12px
 - Tabular-nums, mono cho IDs
 - Semantic color: green/amber/red/blue

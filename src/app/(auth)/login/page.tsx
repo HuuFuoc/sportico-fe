@@ -8,12 +8,14 @@ import { ArrowRight, CheckCircle2, Lock, Mail, RefreshCw } from "lucide-react";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { AuthSwitchLink } from "@/components/auth/AuthSwitchLink";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { AuthInput } from "@/components/ui/AuthInput";
 import { AuthButton } from "@/components/ui/AuthButton";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { login, resendVerificationEmail, AuthError } from "@/lib/auth-api";
 import { getCurrentUser } from "@/lib/auth-session";
 import { isMockMode } from "@/lib/api-client";
+import { postLoginHref } from "@/lib/auth-post-login";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { useAuthStore, primaryRole } from "@/lib/store/useAuthStore";
 import { showError, showInfo, showSuccess } from "@/lib/toast";
@@ -24,18 +26,14 @@ import {
   type LoginValues,
 } from "@/lib/validation/auth";
 
-/** Post-login destination by role. */
-function postLoginHref(role: Role): string {
-  if (role === "admin") return "/admin/settings?fromLogin=1";
-  if (role === "coach") return "/coach/settings?fromLogin=1";
-  return "/";
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const setRole = useAppStore((s) => s.setRole);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
   const [success, setSuccess] = useState(false);
+  // Google owns the auth state while it is working — block the email form so
+  // the two flows cannot race to write tokens.
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -77,6 +75,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginValues) => {
+    if (googleBusy) return;
     setUnverifiedEmail(null);
     try {
       // 1. Authenticate — stores the new access + refresh tokens.
@@ -187,12 +186,18 @@ export default function LoginPage() {
           <AuthButton
             type="submit"
             loading={isSubmitting}
-            disabled={success}
+            disabled={success || googleBusy}
             trailing={success ? <CheckCircle2 size={15} /> : <ArrowRight size={15} />}
           >
             {success ? "Đang xác minh tài khoản…" : "Đăng nhập"}
           </AuthButton>
         </form>
+
+        <GoogleLoginButton
+          text="signin_with"
+          disabled={isSubmitting || success}
+          onBusyChange={setGoogleBusy}
+        />
 
         {unverifiedEmail && (
           <div className="mt-4 border-t border-slate-100 pt-4">

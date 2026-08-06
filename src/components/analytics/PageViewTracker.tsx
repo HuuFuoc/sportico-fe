@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { scrubPathWithQuery, scrubUrl } from "@/lib/analytics-scrub";
 
 /**
  * Reports one page view per meaningful URL change to POST /api/analytics/pageview.
@@ -30,8 +31,11 @@ export function PageViewTracker() {
   useEffect(() => {
     if (!pathname) return;
 
-    const query = searchParams.toString();
-    const currentPath = query ? `${pathname}?${query}` : pathname;
+    // Single-use secrets ride in the query string on /auth/google/callback,
+    // /verify-email and /reset-password. This beacon fires from the root
+    // layout — ABOVE those pages in the tree — so it sees the URL before the
+    // page can strip it. Redact here, at the only place that sends it.
+    const currentPath = scrubPathWithQuery(pathname, searchParams);
 
     // StrictMode double-invokes effects in dev and re-renders repeat the same
     // URL — only report when the URL actually changed. A reload remounts the
@@ -41,8 +45,8 @@ export function PageViewTracker() {
 
     // First view of the visit attributes to the external referrer; later views
     // attribute to the previous in-app page.
-    const referrer = previousPageRef.current ?? document.referrer;
-    previousPageRef.current = window.location.href;
+    const referrer = previousPageRef.current ?? scrubUrl(document.referrer);
+    previousPageRef.current = scrubUrl(window.location.href);
 
     // Fired without an AbortController on purpose: cancelling in cleanup would
     // drop the beacon whenever the user navigates again quickly. Failures are

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
-import { Analytics } from "@vercel/analytics/next";
+import { VercelAnalytics } from "@/components/analytics/VercelAnalytics";
 import { ScrollRestoration } from "@/components/common/ScrollRestoration";
 import { ScrollToTopButton } from "@/components/common/ScrollToTopButton";
 import { ServiceWorkerRegister } from "@/components/common/ServiceWorkerRegister";
@@ -76,7 +76,7 @@ export default function RootLayout({
           duration={4000}
           toastOptions={{ style: { fontFamily: "var(--font-inter, Inter, sans-serif)" } }}
         />
-        <Analytics />
+        <VercelAnalytics />
       </body>
     </html>
   );

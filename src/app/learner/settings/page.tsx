@@ -8,6 +8,7 @@ import { MaterialIcon } from "@/components/icons/MaterialIcon";
 import { PersonalProfileForm } from "@/components/settings/PersonalProfileForm";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { messageForApiError } from "@/lib/errors-vi";
 import { AVAILABLE_SPORTS } from "@/lib/constants";
 import { useApiResource } from "@/lib/hooks/useApiResource";
 
@@ -102,10 +103,9 @@ function LearnerSettingsInner() {
       setCurrentPassword("");
       setNewPassword("");
     } catch (err) {
-      setPwFeedback({
-        tone: "error",
-        text: err instanceof Error ? err.message : "Đổi mật khẩu thất bại.",
-      });
+      // Covers AUTH_PASSWORD_NOT_SET (409) for Google-created accounts, which
+      // points the user at forgot-password instead of a dead end.
+      setPwFeedback({ tone: "error", text: messageForApiError(err) });
     } finally {
       setSavingPassword(false);
     }

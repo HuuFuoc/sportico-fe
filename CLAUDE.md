@@ -146,7 +146,7 @@ src/
 | Auth | `/login`, `/register` | `(auth)/layout.tsx` — split 2-column light, không có nav |
 | Learner (8) | `/learner/{dashboard,coaches,coaches/[id],ai-match,schedule,messages,progress,settings}` | `AppShell role="learner"` |
 | Coach (9) | `/coach/{dashboard,learners,schedule,messages,earnings,profile,settings,session/[id]}` | `AppShell role="coach"` |
-| Admin (6) | `/admin/{dashboard,users,verifications,revenue,ai-settings,console}` | `AppShell role="admin"` |
+| Admin (11) | `/admin/{dashboard,users,verifications,bank-verifications,revenue,withdrawals,vouchers,community,reports,reviews,settings}` | `AppShell role="admin"` |
 
 **AppShell** = Sidebar trái 256px + TopBar trên 64px + main content + optional right rail (Ask AI). Sticky.
 
@@ -195,7 +195,7 @@ const ACCENTS = {
 };
 ```
 
-### 5c. Finance/Ops console pages (admin/revenue, admin/ai-settings)
+### 5c. Finance/Ops console pages (admin/revenue)
 
 Restrained — **bớt gradient**, dày dày dữ liệu, radius nhỏ (10–12px), tabular-nums, mono cho ID, semantic color cứng (green/amber/red/blue). Đừng "Dribbble" hóa các trang này.
 
@@ -330,7 +330,6 @@ Mọi value tài chính / metric / count → `tabular-nums`. Đặc biệt quan 
 | 2026-05 | `/admin/users` | Spreadsheet → Linear/Airtable (animated tabs, sortable headers, expandable rows, bulk action bar, insights sidebar) |
 | 2026-05 | `/admin/verifications` | Flat queue → 3-column moderation console (queue + center review + AI trust panel + keyboard shortcuts A/R/J/K + reject modal) |
 | 2026-05 | `/admin/revenue` | Marketing dashboard → Finance ops console (KPI strip với anomaly markers, dense payout table, AI alerts) |
-| 2026-05 | `/admin/ai-settings` | Sliders → AI Ops Control Center (env switcher prod/canary/staging/sandbox, signal weights explainability, ranking simulation, governance with compliance refs, deploy modal) |
 | 2026-05 | `/` (landing Scene A) | Light hero → GRIND-style dark full-bleed image hero |
 | 2026-05 | `/` (landing Scene B) | 4-tile symmetric stats → asymmetric 60/40 (featured AI 94% với sparkline + 3 supporting + eyebrow trust + testimonial footer); bỏ grid + sparkles bg, unified slate/violet icon palette — file [StatStrip.tsx](src/components/landing/StatStrip.tsx) |
 | 2026-05 | `/login`, `/register` | Dark cyberpunk → Light Stripe/Linear (auth UI redesign) |

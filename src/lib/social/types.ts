@@ -66,7 +66,8 @@ export interface VoucherQuoteResponse {
   maxDiscountAmount: number | null;
 }
 
-export type VoucherDiscountType = "percentage" | "fixed";
+/** Backend enum — the wire values are exactly these two snake_case strings. */
+export type VoucherDiscountType = "percentage" | "fixed_amount";
 
 export type VoucherCampaignStatus = "draft" | "active" | "paused" | "ended";
 

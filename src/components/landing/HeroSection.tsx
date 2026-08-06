@@ -243,20 +243,20 @@ export function HeroSection({ coach }: { coach: Coach }) {
 
         {/* ============ CTA BUTTONS ============ */}
         <FadeUp delay={0.34}>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-3.5">
             <Link
               href="/coaches"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-[14px] font-bold text-slate-900 shadow-[0_4px_20px_-4px_rgba(255,255,255,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_-4px_rgba(255,255,255,0.5)]"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-[15px] font-bold text-slate-900 shadow-[0_4px_20px_-4px_rgba(255,255,255,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_-4px_rgba(255,255,255,0.5)] sm:px-8 sm:py-4 sm:text-[16px]"
             >
               Tìm HLV của bạn
               <ArrowRight
-                size={14}
+                size={17}
                 className="transition-transform group-hover:translate-x-0.5"
               />
             </Link>
             <Link
               href="/onboarding"
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-3 text-[14px] font-semibold text-white backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/15"
+              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-7 py-3.5 text-[15px] font-semibold text-white backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/15 sm:px-8 sm:py-4 sm:text-[16px]"
             >
               Trở thành HLV
             </Link>

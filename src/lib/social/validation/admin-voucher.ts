@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { VoucherDiscountType } from "@/lib/social/types";
+
 // ============================================================================
 // Admin voucher campaign form schema — used for BOTH create and edit. The
 // financial fields stay in the schema even when the UI locks their inputs
@@ -17,7 +19,7 @@ export const voucherCampaignSchema = z
       .regex(/^[A-Z0-9_-]+$/i, "Mã voucher chỉ gồm chữ, số, gạch ngang và gạch dưới."),
     name: z.string().trim().min(1, "Vui lòng nhập tên chương trình.").max(200, "Tên tối đa 200 ký tự."),
     description: z.string().trim().max(1000, "Mô tả tối đa 1000 ký tự.").optional(),
-    discountType: z.enum(["percentage", "fixed"], { message: "Vui lòng chọn loại giảm giá." }),
+    discountType: z.enum(["percentage", "fixed_amount"], { message: "Vui lòng chọn loại giảm giá." }),
     discountValue: z.number().positive("Giá trị giảm giá phải lớn hơn 0."),
     maxDiscountAmount: z.number().positive().nullable().optional(),
     minOrderAmount: z.number().min(0).nullable().optional(),
@@ -37,3 +39,12 @@ export const voucherCampaignSchema = z
   });
 
 export type VoucherCampaignFormValues = z.infer<typeof voucherCampaignSchema>;
+
+/**
+ * `discountType` comes back from the API as a loose `string | null`. Anything
+ * that isn't the backend's `fixed_amount` is treated as a percentage so the
+ * edit form never renders a `<select>` with a value none of its options match.
+ */
+export function normalizeDiscountType(raw: string | null | undefined): VoucherDiscountType {
+  return raw === "fixed_amount" || raw === "fixed" ? "fixed_amount" : "percentage";
+}
