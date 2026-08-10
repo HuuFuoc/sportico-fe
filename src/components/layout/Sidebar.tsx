@@ -96,7 +96,6 @@ const ADMIN_NAV: NavGroup[] = [
   {
     label: "Tài chính",
     items: [
-      { href: "/admin/revenue", label: "Doanh thu", icon: "payments" },
       { href: "/admin/withdrawals", label: "Rút tiền", icon: "account_balance_wallet" },
       { href: "/admin/vouchers", label: "Voucher", icon: "local_offer" },
     ],
